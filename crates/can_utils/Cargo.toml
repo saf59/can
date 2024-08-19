@@ -1,0 +1,11 @@
+[package]
+name = "can_utils"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+candle-core = { workspace = true }
+
+[lib]
+path = "./can_utils.rs"

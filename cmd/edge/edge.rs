@@ -6,7 +6,7 @@ use candle_core::{DType, Device, Module};
 use candle_nn::Init::Const;
 use candle_nn::{Conv2d, Conv2dConfig, Init, Optimizer, VarBuilder, VarMap};
 
-const LEARNING_RATE: f64 = 0.05;
+const LEARNING_RATE: f64 = 0.1;
 const FILE: &str = "checkpoint.safetensors";
 
 // the same as 6.2.4. Learning a Kernel: https://d2l.djl.ai/chapter_convolutional-neural-networks/conv-layer.html
@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ws2 = vb2.get_with_hints((1, 1, 1, 2,), "weight", init_ws)?;
     let conv2dn = Conv2d::new(ws2, None, Conv2dConfig::default()); //to print same result
     varmap2.load(&FILE)?; // back
-    println!("\nkernel: {:?}", conv2dn.weight().flatten_all()?);
+    print_tensor(conv2dn);
     println!("load: {:?}", varmap2.data());
     Ok(())
 }
@@ -35,20 +35,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn build_model(device: &Device, varmap: &VarMap) -> Result<Init, Box<dyn Error>> {
     let vb = VarBuilder::from_varmap(&varmap, DType::F64, &device);
     let (x, y) = data_set(&device);
-    let init_ws = Const(12345.); // To repeat must be Const. Else: DEFAULT_KAIMING_NORMAL;
+    let init_ws = Const(123.); // To repeat must be Const. Else: DEFAULT_KAIMING_NORMAL;
     // filter: in_channels, out_channels, kernel_height, kernel_width
     let ws = vb.get_with_hints((1, 1, 1, 2,), "weight", init_ws)?;
     let conv2d = Conv2d::new(ws, None, Conv2dConfig::default());
     let mut optimizer = candle_nn::SGD::new(varmap.all_vars(), LEARNING_RATE)?;
 
-    for _i in 0..500 {
+    for _i in 0..400 {
         let y_hat = conv2d.forward(&x)?;
         let loss = l2_loss(&y_hat, &y);
         let _ = optimizer.backward_step(&loss);
         //        if (i + 1) % 2 == 0 { print!("batch {} loss: {}\r", i + 1, loss); }
     }
     // target is: [1.0, -1.0]
-    println!("result: {:?}", conv2d.weight().flatten_all()?);
+    print_tensor(conv2d);
     Ok(init_ws)
+}
+
+fn print_tensor(conv2d: Conv2d)  {
+    println!("Tensor{:.1?}", conv2d.weight().flatten_all().unwrap().to_vec1::<f64>().unwrap());
 }
 

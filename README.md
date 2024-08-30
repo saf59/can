@@ -25,3 +25,4 @@ at /rustc/3f5fd8dd41153bc5fdca9427e9e05be2c767ba23/library\core\src\panicking.rs
 4: core::ops::function::FnOnce::call_once
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
 ```
+fullfp16 android

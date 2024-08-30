@@ -14,28 +14,25 @@ const INIT_WS:Init = Const(123.); // To repeat must be Const. Else: DEFAULT_KAIM
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let device = Device::cuda_if_available(0)?;
     let varmap = VarMap::new();
+
     let start = Instant::now();
-
     let _ = build_model(&device, &varmap);
-
     println!("{:?}, Cuda:{:?}",Instant::now().duration_since(start),&device.is_cuda());
 
-    // save model
     println!("save: {:?}", varmap.data());
     varmap.save(&FILE)?;  // save is Ok
-
-    restore();
+    restore(&FILE);
     Ok(())
 }
 
-fn restore() {
+fn restore<P: AsRef<std::path::Path>>(path: P) {
     // restore only after set VarBuilder configuration (ws2)
     let device = Device::cuda_if_available(0).unwrap();
     let mut varmap2 = VarMap::new();
     let vb2 = VarBuilder::from_varmap(&varmap2, DType::F64, &device);
     let ws2 = vb2.get_with_hints((1, 1, 1, 2,), "weight", INIT_WS).unwrap();
     let conv2dn = Conv2d::new(ws2, None, Conv2dConfig::default()); //to print same result
-    varmap2.load(&FILE).unwrap(); // back
+    varmap2.load(&path).unwrap(); // back
     println!("load: {:?}", varmap2.data());
     print_tensor(conv2dn);
 }

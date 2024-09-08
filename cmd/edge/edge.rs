@@ -14,15 +14,9 @@ const INIT_WS: Init = Const(123.); // To repeat must be Const. Else: DEFAULT_KAI
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let device = Device::cuda_if_available(0)?;
     let varmap = VarMap::new();
-
     let start = Instant::now();
     let _ = build_model(&device, &varmap);
-    println!(
-        "{:?}, Cuda:{:?}",
-        Instant::now().duration_since(start),
-        &device.is_cuda()
-    );
-
+    println!("{:?}, Cuda:{:?}", Instant::now().duration_since(start), &device.is_cuda());
     println!("save: {:?}", varmap.data());
     varmap.save(FILE)?; // save is Ok
     restore(FILE);

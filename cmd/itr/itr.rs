@@ -25,16 +25,32 @@ fn action(device: &Device) -> Result<(), Box<dyn Error>> {
 
     //prepare(&embedding, &wk1, &wv1, &wq1, &device)?;
     let attention1 = attention(&embedding, &wk1, &wv1, &wq1, device)?;
-    println!("attention1:{:.2?}", attention1.to_vec2::<f64>()?);
     let attention2 = attention(&embedding, &wk2, &wv2, &wq2, device)?;
-    println!("attention2:{:.2?}", attention2.to_vec2::<f64>()?);
+    pv2("attention1", &attention1);
+    pv2("attention2", &attention2);
     // 4.3.5  attentions = np.concatenate([attention1, attention2], axis=1)
     let attentions = Tensor::cat(&[attention1, attention2], 1)?;
-    println!("attentions:{:.2?}", attentions.to_vec2::<f64>()?);
+    pv2("attentions",&attentions);
     Ok(())
 }
+fn attention(x: &Tensor, wk: &Tensor, wv: &Tensor, wq: &Tensor, device: &Device) -> Result<Tensor, Box<dyn std::error::Error>> {
+    let k = x.matmul(wk)?;
+    let v = x.matmul(wv)?;
+    let q = x.matmul(wq)?;
 
-//#[warn(dead_code)]
+    let scores = q.matmul(&k.transpose(0, 1).unwrap())?;
+    //let sq3 = Tensor::from_slice(&[3.0_f64.sqrt()], 1, device)?; // ver 1
+    let sq3 = Tensor::from_slice(&[30.0_f64], 1, device)?;
+    let scores = scores.broadcast_div(&sq3)?;
+    let scores = softmax(&scores);
+    Ok(scores.matmul(&v)?)
+}
+fn pv2(prefix:&str,tensor:&Tensor) {
+    println!("{}: {:.2?}",prefix, tensor.to_vec2::<f64>().unwrap());
+}
+fn softmax(x: &Tensor) -> Tensor {
+    candle_nn::ops::softmax(x, 1).unwrap()
+}
 #[allow(dead_code)]
 fn prepare(embedding: &Tensor, wk1: &Tensor, wv1: &Tensor, wq1: &Tensor, device: &Device) -> Result<(), Box<dyn Error>> {
     let k1 = &embedding.matmul(wk1)?;
@@ -54,23 +70,6 @@ fn prepare(embedding: &Tensor, wk1: &Tensor, wv1: &Tensor, wq1: &Tensor, device:
     let sm = softmax(&sqrt3);
     println!("sm:{:.2?}", sm.to_vec2::<f64>()?);
     let a1 = sm.matmul(v1)?;
-    println!("a1:{:.2?}", a1.to_vec2::<f64>()?);
+    println!("a1:{:.2?}", &a1.to_vec2::<f64>()?);
     Ok(())
-}
-
-fn softmax(x: &Tensor) -> Tensor {
-    candle_nn::ops::softmax(x, 1).unwrap()
-}
-
-fn attention(x: &Tensor, wk: &Tensor, wv: &Tensor, wq: &Tensor, device: &Device) -> Result<Tensor, Box<dyn std::error::Error>> {
-    let k = x.matmul(wk)?;
-    let v = x.matmul(wv)?;
-    let q = x.matmul(wq)?;
-
-    let scores = q.matmul(&k.transpose(0, 1).unwrap())?;
-    //let sq3 = Tensor::from_slice(&[3.0_f64.sqrt()], 1, device)?; // ver 1
-    let sq3 = Tensor::from_slice(&[30.0_f64], 1, device)?;
-    let scores = scores.broadcast_div(&sq3)?;
-    let scores = softmax(&scores);
-    Ok(scores.matmul(&v)?)
 }

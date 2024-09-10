@@ -38,7 +38,8 @@ fn attention(x: &Tensor, wk: &Tensor, wv: &Tensor, wq: &Tensor, device: &Device)
     let v = x.matmul(wv)?;
     let q = x.matmul(wq)?;
 
-    let scores = q.matmul(&k.transpose(0, 1).unwrap())?;
+    //let scores = q.matmul(&k.transpose(0, 1).unwrap())?;
+    let scores = q.matmul(&k.t().unwrap())?;
     //let sq3 = Tensor::from_slice(&[3.0_f64.sqrt()], 1, device)?; // ver 1
     let sq3 = Tensor::from_slice(&[30.0_f64], 1, device)?;
     let scores = scores.broadcast_div(&sq3)?;
@@ -61,7 +62,8 @@ fn prepare(embedding: &Tensor, wk1: &Tensor, wv1: &Tensor, wq1: &Tensor, device:
     println!("v1:{:?}", v1.to_vec2::<f64>());
     println!("q1:{:?}", q1.to_vec2::<f64>());
 
-    let scores1 = &q1.matmul(&k1.transpose(0, 1).unwrap())?;
+    //let scores1 = &q1.matmul(&k1.transpose(0, 1).unwrap())?;
+    let scores1 = &q1.matmul(&k1.t().unwrap())?;
     println!("scores1:{:.2?}", scores1.to_vec2::<f64>()?);
 
     let v3 = 3.0_f64.sqrt();

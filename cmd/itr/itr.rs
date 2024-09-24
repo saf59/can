@@ -23,14 +23,14 @@ fn action(device: &Device) -> Result<(), Box<dyn Error>> {
 
     let embedding = Tensor::from_slice(&[1., 3., 3., 5., 2.84, 3.99, 4., 6.], (2, 4), device)?;
 
-    //prepare(&embedding, &wk1, &wv1, &wq1, &device)?;
+    prepare(&embedding, &wk1, &wv1, &wq1, &device)?;
     let attention1 = attention(&embedding, &wk1, &wv1, &wq1, device)?;
     let attention2 = attention(&embedding, &wk2, &wv2, &wq2, device)?;
-    pv2("attention1", &attention1);
-    pv2("attention2", &attention2);
+    pv("attention1", &attention1);
+    pv("attention2", &attention2);
     // 4.3.5  attentions = np.concatenate([attention1, attention2], axis=1)
     let attentions = Tensor::cat(&[attention1, attention2], 1)?;
-    pv2("attentions",&attentions);
+    pv("attentions", &attentions);
     Ok(())
 }
 fn attention(x: &Tensor, wk: &Tensor, wv: &Tensor, wq: &Tensor, device: &Device) -> Result<Tensor, Box<dyn std::error::Error>> {
@@ -46,8 +46,14 @@ fn attention(x: &Tensor, wk: &Tensor, wv: &Tensor, wq: &Tensor, device: &Device)
     let scores = softmax(&scores);
     Ok(scores.matmul(&v)?)
 }
-fn pv2(prefix:&str,tensor:&Tensor) {
-    println!("{}: {:.2?}",prefix, tensor.to_vec2::<f64>().unwrap());
+fn pv(prefix:&str, tensor:&Tensor) {
+    match tensor.rank() {
+        1 => println!("{}: {:.2?}",prefix, tensor.to_vec1::<f64>().unwrap()),
+        2 => println!("{}: {:.2?}",prefix, tensor.to_vec2::<f64>().unwrap()),
+        3 => println!("{}: {:.2?}",prefix, tensor.to_vec3::<f64>().unwrap()),
+        x => println!("Too big Tensor size:{:?}",x)
+    }
+
 }
 fn softmax(x: &Tensor) -> Tensor {
     candle_nn::ops::softmax(x, 1).unwrap()

@@ -1,3 +1,6 @@
+Как работают трансформеры: разбираем математику / Хабр
+https://habr.com/ru/articles/785474/
+
 # ENV
 - CUDA_TOOLKIT_ROOT_DIR = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8"
 - CUDA_PATH = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8"

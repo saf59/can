@@ -1,0 +1,15 @@
+[package]
+name = "bm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+indicatif = "0.17.5"
+sysinfo = "0.29.7"
+
+[[bin]]
+path = "./bm.rs"
+name = "bm"
+
+

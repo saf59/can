@@ -6,7 +6,7 @@ license = "MIT OR Apache-2.0"
 
 [workspace]
 members = [
-	"cmd/edge", "cmd/itr", "cmd/bm",
+	"cmd/edge", "cmd/itr", "cmd/bm", "cmd/ub",
 	"crates/can_data", "crates/can_utils", 
 ]
 resolver = "2"

@@ -1,0 +1,17 @@
+[package]
+name = "ub"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+crossbeam-channel = "0.5.13"
+anyhow = "1.0.89"
+ctrlc = "3.4.5"
+chrono = "0.4.38"
+
+[[bin]]
+path = "./ub.rs"
+name = "ub"
+
+

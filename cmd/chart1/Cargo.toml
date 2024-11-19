@@ -1,0 +1,17 @@
+[package]
+name = "chart1"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono = { version="0.4.38", features = ["serde"] }
+plotly = "0.10.0"
+serde = { version = "1.0.215", features = ["derive"] }
+serde_json = "=1.0.133"
+
+[[bin]]
+path = "./chart1.rs"
+name = "chart1"
+
+

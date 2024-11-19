@@ -6,12 +6,12 @@ license = "MIT OR Apache-2.0"
 
 [workspace]
 members = [
-	"cmd/edge", "cmd/itr", "cmd/bm", "cmd/ub",
+	"cmd/edge", "cmd/itr", "cmd/bm", "cmd/ub", "cmd/setbuff", "cmd/chart1",
 	"crates/can_data", "crates/can_utils", 
 ]
 resolver = "2"
 
 [workspace.dependencies]
-candle-core = "0.7.1"
-candle-nn = "0.7.1"
+candle-core = "0.8.0"
+candle-nn = "0.8.0"
 

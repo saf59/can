@@ -1,0 +1,31 @@
+[package]
+name = "train"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+accelerate-src = { workspace = true, optional = true }
+candle-core = { workspace = true }
+candle-nn = { workspace = true }
+candle-datasets = { workspace = true }
+clap = { workspace = true }
+can_data = { path = "../../crates/can_data" }
+can_utils = { path = "../../crates/can_utils" }
+#cudarc = { version = "=0.12.0", features = ["std", "cublas", "cublaslt", "curand", "driver", "nvrtc", "f16", "cuda-version-from-build-system", "dynamic-linking"], default-features=false }
+intel-mkl-src = { workspace = true, optional = true }
+#byteorder = { workspace = true }
+rand = { workspace = true }
+
+[dev-dependencies]
+
+
+[features]
+#default = ["cuda","intel-mkl-src"]
+#cuda = []
+
+[[bin]]
+path = "./train.rs"
+name = "train"
+

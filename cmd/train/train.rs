@@ -3,13 +3,15 @@ extern crate accelerate_src; // This should reach 91.5% accuracy.
 #[cfg(feature = "mkl")]
 extern crate intel_mkl_src;
 
+use std::path::Path;
 use clap::{Parser, ValueEnum};
 
 use candle_core::{DType, Result, Tensor, D};
 use candle_nn::{loss, ops, Linear, Module, Optimizer, VarBuilder, VarMap};
+use medius_data::{load_dir, Dataset};
 
-const IMAGE_DIM: usize = 784;
-const LABELS: usize = 10;
+const IMAGE_DIM: usize = 260;
+const LABELS: usize = 5;
 
 trait Model: Sized {
     fn new(vs: VarBuilder) -> Result<Self>;
@@ -43,13 +45,13 @@ struct TrainingArgs {
 }
 
 fn training_loop<M: Model>(
-    m: candle_datasets::vision::Dataset,
+    m: Dataset,
     args: &TrainingArgs,
 ) -> anyhow::Result<()> {
     let dev = candle_core::Device::cuda_if_available(0)?;
 
     let train_labels = m.train_labels;
-    let train_images = m.train_images.to_device(&dev)?;
+    let train_images = m.train_data.to_device(&dev)?;
     let train_labels = train_labels.to_dtype(DType::U32)?.to_device(&dev)?;
 
     let mut varmap = VarMap::new();
@@ -62,7 +64,7 @@ fn training_loop<M: Model>(
     }
 
     let mut sgd = candle_nn::SGD::new(varmap.all_vars(), args.learning_rate)?;
-    let test_images = m.test_images.to_device(&dev)?;
+    let test_images = m.test_data.to_device(&dev)?;
     let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(&dev)?;
     for epoch in 1..args.epochs {
         let logits = model.forward(&train_images)?;
@@ -125,14 +127,17 @@ struct Args {
 pub fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     // Load the dataset
-    let m = if let Some(directory) = args.local_mnist {
+/*    let m = if let Some(directory) = args.local_mnist {
         candle_datasets::vision::mnist::load_dir(directory)?
     } else {
         candle_datasets::vision::mnist::load()?
     };
-    println!("train-images: {:?}", m.train_images.shape());
+*/
+    let base: &Path = "./data".as_ref();
+    let m =load_dir(&base.join("stat_n260Tlist"),0.9)?;
+    println!("train-images: {:?}", m.train_data.shape());
     println!("train-labels: {:?}", m.train_labels.shape());
-    println!("test-images: {:?}", m.test_images.shape());
+    println!("test-images: {:?}", m.test_data.shape());
     println!("test-labels: {:?}", m.test_labels.shape());
 
     let default_learning_rate = 0.05;

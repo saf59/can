@@ -15,14 +15,14 @@ pub struct Dataset {
     pub test_labels: Tensor,
     pub labels: usize,
 }
-pub fn load_dir<T: AsRef<std::path::Path>>(
+pub fn load_dir<T: AsRef<Path>>(
     dir: T,
     train_part: f32,
 ) -> candle_core::Result<Dataset> {
-    let base: &Path = "../../data".as_ref();
-    let src = &base.join(&dir);
-    let y = read_medius_y(&src).unwrap();
-    let x = read_medius_x(&src).unwrap();
+    //let p: &Path = "./".as_ref();
+    //println!("in:{:?}",p.canonicalize());
+    let y = read_medius_y(&dir.as_ref())?;
+    let x = read_medius_x(&dir.as_ref())?;
     let size = y.len();
     let width = x.len() / size;
     let mut indexes: Vec<usize> = (0..size).collect();
@@ -36,9 +36,9 @@ pub fn load_dir<T: AsRef<std::path::Path>>(
     }
     Ok(Dataset {
         train_data: Tensor::from_vec(train_x, (border, width), &Device::Cpu)?,
-        train_labels: Tensor::from_vec(train_y, (border, 1), &Device::Cpu)?,
+        train_labels: Tensor::from_vec(train_y, border, &Device::Cpu)?,
         test_data: Tensor::from_vec(test_x, (size - border, width), &Device::Cpu)?,
-        test_labels: Tensor::from_vec(test_y, (size - border, 1), &Device::Cpu)?,
+        test_labels: Tensor::from_vec(test_y, size - border, &Device::Cpu)?,
         labels: nodes.len(),
     })
 }
@@ -52,7 +52,7 @@ fn fill_x_y(
     let mut out_y: Vec<u8> = Vec::new();
     for i in ind {
         out_y.push(y[i]);
-        for ix in &x[(i * width)..(i * (width + 1))] {
+        for ix in &x[(i * width)..((i+1) * width)] {
             out_x.push(*ix);
         }
     }
@@ -100,7 +100,8 @@ mod tests {
     }
     #[test]
     fn test_load_dir() {
-        let dataset = load_dir("stat_n260Tlist",0.9);
+        let base: &Path = "../../data".as_ref();
+        let dataset = load_dir(&base.join("stat_n260Tlist"),0.9);
         println!("{:?}",dataset.unwrap().test_data.shape())
     }
 }

@@ -61,6 +61,9 @@ fn training_loop<M: Model>(
     if let Some(load) = &args.load {
         println!("loading weights from {load}");
         varmap.load(load)?
+    } else {
+        println!("loading weights from out");
+        varmap.load("out")?
     }
 
     let mut sgd = candle_nn::SGD::new(varmap.all_vars(), args.learning_rate)?;
@@ -89,6 +92,9 @@ fn training_loop<M: Model>(
     if let Some(save) = &args.save {
         println!("saving trained weights in {save}");
         varmap.save(save)?
+    } else {
+        println!("saving trained weights in out");
+        varmap.save("out")?
     }
     Ok(())
 }
@@ -102,13 +108,14 @@ enum WhichModel {
 
 #[derive(Parser)]
 struct Args {
-    #[clap(value_enum, default_value_t = WhichModel::Linear)]
-    model: WhichModel,
+
+    // #[clap(value_enum, default_value_t = WhichModel::Linear)]
+    // model: WhichModel,
 
     #[arg(long)]
     learning_rate: Option<f64>,
 
-    #[arg(long, default_value_t = 200)]
+    #[arg(long, default_value_t = 10)]
     epochs: usize,
 
     /// The file where to save the trained weights, in safetensors format.
@@ -119,9 +126,9 @@ struct Args {
     #[arg(long)]
     load: Option<String>,
 
-    /// The directory where to load the dataset from, in ubyte format.
-    #[arg(long)]
-    local_mnist: Option<String>,
+    // The directory where to load the dataset from, in ubyte format.
+    // #[arg(long)]
+    // local_mnist: Option<String>,
 }
 
 pub fn main() -> anyhow::Result<()> {
@@ -140,7 +147,7 @@ pub fn main() -> anyhow::Result<()> {
     println!("test-images: {:?}", m.test_data.shape());
     println!("test-labels: {:?}", m.test_labels.shape());
 
-    let default_learning_rate = 0.05;
+    let default_learning_rate = args.learning_rate.unwrap_or(0.05);
     let training_args = TrainingArgs {
         epochs: args.epochs,
         learning_rate: args.learning_rate.unwrap_or(default_learning_rate),

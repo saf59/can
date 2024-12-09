@@ -95,8 +95,7 @@ fn training_loop<M: Model>(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()
 
 #[derive(Parser)]
 struct Args {
-    // #[clap(value_enum, default_value_t = WhichModel::Linear)]
-    // model: WhichModel,
+    /// The part of train data in x.csv and y.csv
     #[arg(long, default_value_t = 0.9)]
     train_part: f32,
 
@@ -112,7 +111,7 @@ struct Args {
     #[arg(long, default_value_t = 10)]
     hidden1: usize,
 
-    /// The file where to save the trained weights, in safetensors format.
+    /// The ./data/[subDir] (or canonical dir) with two data files x.csv and y.csv
     #[arg(long, default_value_t = String::from("stat_n260Tlist"))]
     data: String,
 }

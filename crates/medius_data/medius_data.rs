@@ -15,10 +15,7 @@ pub struct Dataset {
     pub test_labels: Tensor,
     pub labels: usize,
 }
-pub fn load_dir<T: AsRef<Path>>(
-    dir: T,
-    train_part: f32,
-) -> candle_core::Result<Dataset> {
+pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32) -> candle_core::Result<Dataset> {
     //let p: &Path = "./".as_ref();
     //println!("in:{:?}",p.canonicalize());
     let y = read_medius_y(&dir.as_ref())?;
@@ -28,17 +25,23 @@ pub fn load_dir<T: AsRef<Path>>(
     let mut indexes: Vec<usize> = (0..size).collect();
     indexes.shuffle(&mut thread_rng());
     let border: usize = ((size as f32) * train_part) as usize;
-    let (train_x, train_y) = fill_x_y(0..border, &x, &y, width);
-    let (test_x, test_y) = fill_x_y(border..indexes.len(), &x, &y, width);
+    let (train, test) = if train_part < 1.0 {
+        (0..border, border..indexes.len())
+    } else {
+        (0..indexes.len(), 0..indexes.len())
+    };
+    let (train_size, test_size) = (&train.len(),&test.len());
+    let (train_x, train_y) = fill_x_y(train, &x, &y, width);
+    let (test_x, test_y) = fill_x_y(test, &x, &y, width);
     let mut nodes: HashMap<u8, usize> = HashMap::new();
     for n in y.iter() {
         nodes.entry(*n).and_modify(|count| *count += 1).or_insert(1);
     }
     Ok(Dataset {
-        train_data: Tensor::from_vec(train_x, (border, width), &Device::Cpu)?,
-        train_labels: Tensor::from_vec(train_y, border, &Device::Cpu)?,
-        test_data: Tensor::from_vec(test_x, (size - border, width), &Device::Cpu)?,
-        test_labels: Tensor::from_vec(test_y, size - border, &Device::Cpu)?,
+        train_data: Tensor::from_vec(train_x, (*train_size, width), &Device::Cpu)?,
+        train_labels: Tensor::from_vec(train_y, *train_size, &Device::Cpu)?,
+        test_data: Tensor::from_vec(test_x, (*test_size, width), &Device::Cpu)?,
+        test_labels: Tensor::from_vec(test_y, *test_size, &Device::Cpu)?,
         labels: nodes.len(),
     })
 }
@@ -52,7 +55,7 @@ fn fill_x_y(
     let mut out_y: Vec<u8> = Vec::new();
     for i in ind {
         out_y.push(y[i]);
-        for ix in &x[(i * width)..((i+1) * width)] {
+        for ix in &x[(i * width)..((i + 1) * width)] {
             out_x.push(*ix);
         }
     }
@@ -101,7 +104,7 @@ mod tests {
     #[test]
     fn test_load_dir() {
         let base: &Path = "../../data".as_ref();
-        let dataset = load_dir(&base.join("stat_n260Tlist"),0.9);
-        println!("{:?}",dataset.unwrap().test_data.shape())
+        let dataset = load_dir(&base.join("stat_n260Tlist"), 0.9);
+        println!("{:?}", dataset.unwrap().test_data.shape())
     }
 }

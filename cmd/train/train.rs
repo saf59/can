@@ -3,8 +3,9 @@ extern crate accelerate_src; // This should reach 91.5% accuracy.
 #[cfg(feature = "mkl")]
 extern crate intel_mkl_src;
 
-use std::path::Path;
 use clap::{Parser, ValueEnum};
+use std::path::Path;
+use std::time::Instant;
 
 use candle_core::{DType, Result, Tensor, D};
 use candle_nn::{loss, ops, Linear, Module, Optimizer, VarBuilder, VarMap};
@@ -25,8 +26,8 @@ struct Mlp {
 
 impl Model for Mlp {
     fn new(vs: VarBuilder) -> Result<Self> {
-        let ln1 = candle_nn::linear(IMAGE_DIM, 100, vs.pp("ln1"))?;
-        let ln2 = candle_nn::linear(100, LABELS, vs.pp("ln2"))?;
+        let ln1 = candle_nn::linear(IMAGE_DIM, 40, vs.pp("ln1"))?;
+        let ln2 = candle_nn::linear(40, 10, vs.pp("ln2"))?;
         Ok(Self { ln1, ln2 })
     }
 
@@ -44,10 +45,7 @@ struct TrainingArgs {
     epochs: usize,
 }
 
-fn training_loop<M: Model>(
-    m: Dataset,
-    args: &TrainingArgs,
-) -> anyhow::Result<()> {
+fn training_loop<M: Model>(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()> {
     let dev = candle_core::Device::cuda_if_available(0)?;
 
     let train_labels = m.train_labels;
@@ -60,10 +58,14 @@ fn training_loop<M: Model>(
 
     if let Some(load) = &args.load {
         println!("loading weights from {load}");
-        if <std::string::String as AsRef<Path>>::as_ref(load).exists() { varmap.load(load)?; }
+        if <std::string::String as AsRef<Path>>::as_ref(load).exists() {
+            varmap.load(load)?;
+        }
     } else {
         println!("loading weights from out");
-        if Path::new("out").exists() { varmap.load("out")?; }
+        if Path::new("out").exists() {
+            varmap.load("out")?;
+        }
     }
 
     let mut sgd = candle_nn::SGD::new(varmap.all_vars(), args.learning_rate)?;
@@ -83,17 +85,17 @@ fn training_loop<M: Model>(
             .sum_all()?
             .to_scalar::<f32>()?;
         let test_accuracy = sum_ok / test_labels.dims1()? as f32;
-        println!(
-            "{epoch:4} train loss: {:8.5} test acc: {:5.2}%",
+        print!(
+            "{epoch:4} train loss: {:8.5} test acc: {:5.2}% \r",
             loss.to_scalar::<f32>()?,
             100. * test_accuracy
         );
     }
     if let Some(save) = &args.save {
-        println!("saving trained weights in {save}");
+        println!("\nsaving trained weights in {save}");
         varmap.save(save)?
     } else {
-        println!("saving trained weights in out");
+        println!("\nsaving trained weights in out");
         varmap.save("out")?
     }
     Ok(())
@@ -108,9 +110,10 @@ enum WhichModel {
 
 #[derive(Parser)]
 struct Args {
-
     // #[clap(value_enum, default_value_t = WhichModel::Linear)]
     // model: WhichModel,
+    #[arg(long, default_value_t = 0.9)]
+    train_part: f32,
 
     #[arg(long)]
     learning_rate: Option<f64>,
@@ -125,7 +128,6 @@ struct Args {
     /// The file where to load the trained weights from, in safetensors format.
     #[arg(long)]
     load: Option<String>,
-
     // The directory where to load the dataset from, in ubyte format.
     // #[arg(long)]
     // local_mnist: Option<String>,
@@ -134,14 +136,14 @@ struct Args {
 pub fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     // Load the dataset
-/*    let m = if let Some(directory) = args.local_mnist {
-        candle_datasets::vision::mnist::load_dir(directory)?
-    } else {
-        candle_datasets::vision::mnist::load()?
-    };
-*/
+    /*    let m = if let Some(directory) = args.local_mnist {
+            candle_datasets::vision::mnist::load_dir(directory)?
+        } else {
+            candle_datasets::vision::mnist::load()?
+        };
+    */
     let base: &Path = "./data".as_ref();
-    let m =load_dir(&base.join("stat_n260Tlist"),0.9)?;
+    let m = load_dir(&base.join("stat_n260Tlist"), args.train_part)?;
     println!("train-images: {:?}", m.train_data.shape());
     println!("train-labels: {:?}", m.train_labels.shape());
     println!("test-images: {:?}", m.test_data.shape());
@@ -154,5 +156,8 @@ pub fn main() -> anyhow::Result<()> {
         load: args.load,
         save: args.save,
     };
-    training_loop::<Mlp>(m, &training_args)
+    let start = Instant::now();
+    training_loop::<Mlp>(m, &training_args);
+    println!("{:?}", Instant::now().duration_since(start));
+    Ok(())
 }

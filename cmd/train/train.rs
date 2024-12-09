@@ -60,10 +60,10 @@ fn training_loop<M: Model>(
 
     if let Some(load) = &args.load {
         println!("loading weights from {load}");
-        varmap.load(load)?
+        if <std::string::String as AsRef<Path>>::as_ref(load).exists() { varmap.load(load)?; }
     } else {
         println!("loading weights from out");
-        varmap.load("out")?
+        if Path::new("out").exists() { varmap.load("out")?; }
     }
 
     let mut sgd = candle_nn::SGD::new(varmap.all_vars(), args.learning_rate)?;

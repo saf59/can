@@ -1,21 +1,15 @@
-#[cfg(feature = "accelerate")]
-extern crate accelerate_src; // This should reach 91.5% accuracy.
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
+use std::fs::create_dir_all;
 use clap::{Parser, ValueEnum};
 use std::path::Path;
 use std::time::Instant;
 
 use candle_core::{DType, Result, Tensor, D};
-use candle_nn::{loss, ops, Linear, Module, Optimizer, VarBuilder, VarMap};
+use candle_nn::{loss, ops, Linear, Module, Optimizer, ParamsAdamW, VarBuilder, VarMap};
+use candle_nn::Activation::Relu;
 use medius_data::{load_dir, Dataset};
 
-const IMAGE_DIM: usize = 260;
-const LABELS: usize = 5;
-
 trait Model: Sized {
-    fn new(vs: VarBuilder) -> Result<Self>;
+    fn new(vs: VarBuilder,inputs:usize,outputs:usize,hidden:&[usize]) -> Result<Self>;
     fn forward(&self, xs: &Tensor) -> Result<Tensor>;
 }
 
@@ -25,9 +19,9 @@ struct Mlp {
 }
 
 impl Model for Mlp {
-    fn new(vs: VarBuilder) -> Result<Self> {
-        let ln1 = candle_nn::linear(IMAGE_DIM, 40, vs.pp("ln1"))?;
-        let ln2 = candle_nn::linear(40, 10, vs.pp("ln2"))?;
+    fn new(vs: VarBuilder,inputs:usize,outputs:usize,hidden:&[usize]) -> Result<Self> {
+        let ln1 = candle_nn::linear(inputs, hidden[0], vs.pp("ln1"))?;
+        let ln2 = candle_nn::linear(hidden[0], hidden[1], vs.pp("ln2"))?;
         Ok(Self { ln1, ln2 })
     }
 
@@ -40,6 +34,7 @@ impl Model for Mlp {
 
 struct TrainingArgs {
     learning_rate: f64,
+    model:String,
     load: Option<String>,
     save: Option<String>,
     epochs: usize,
@@ -49,35 +44,36 @@ fn training_loop<M: Model>(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()
     let dev = candle_core::Device::cuda_if_available(0)?;
 
     let train_labels = m.train_labels;
-    let train_images = m.train_data.to_device(&dev)?;
+    let train_data = m.train_data.to_device(&dev)?;
     let train_labels = train_labels.to_dtype(DType::U32)?.to_device(&dev)?;
 
     let mut varmap = VarMap::new();
     let vs = VarBuilder::from_varmap(&varmap, DType::F32, &dev);
-    let model = M::new(vs.clone())?;
-
-    if let Some(load) = &args.load {
-        println!("loading weights from {load}");
-        if <std::string::String as AsRef<Path>>::as_ref(load).exists() {
-            varmap.load(load)?;
-        }
-    } else {
-        println!("loading weights from out");
-        if Path::new("out").exists() {
-            varmap.load("out")?;
-        }
+    let (len,inputs) = m.train_data.shape().dims2()?;
+    println!("inputs:{:?},outputs:{:?}",&inputs,&m.labels);
+    let hidden = &[40,10];
+    let model = M::new(vs.clone(),inputs,m.labels,hidden)?;
+    let model_path:&Path = Path::new::<Path>(args.model.as_ref());
+    let _ = create_dir_all(model_path.parent().unwrap());
+    println!("loading weights from {:}",model_path.to_string_lossy());
+    if model_path.exists() {
+        varmap.load(model_path)?;
     }
-
-    let mut sgd = candle_nn::SGD::new(varmap.all_vars(), args.learning_rate)?;
-    let test_images = m.test_data.to_device(&dev)?;
+    let mut opt = candle_nn::SGD::new(varmap.all_vars(), args.learning_rate)?;
+/*    let mut opt = candle_nn::AdamW::new(varmap.all_vars(),ParamsAdamW {
+        lr: args.learning_rate,
+        ..Default::default()
+    })?;
+*/
+    let test_data = m.test_data.to_device(&dev)?;
     let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(&dev)?;
     for epoch in 1..args.epochs {
-        let logits = model.forward(&train_images)?;
+        let logits = model.forward(&train_data)?;
         let log_sm = ops::log_softmax(&logits, D::Minus1)?;
         let loss = loss::nll(&log_sm, &train_labels)?;
-        sgd.backward_step(&loss)?;
+        opt.backward_step(&loss)?;
 
-        let test_logits = model.forward(&test_images)?;
+        let test_logits = model.forward(&test_data)?;
         let sum_ok = test_logits
             .argmax(D::Minus1)?
             .eq(&test_labels)?
@@ -91,13 +87,8 @@ fn training_loop<M: Model>(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()
             100. * test_accuracy
         );
     }
-    if let Some(save) = &args.save {
-        println!("\nsaving trained weights in {save}");
-        varmap.save(save)?
-    } else {
-        println!("\nsaving trained weights in out");
-        varmap.save("out")?
-    }
+    println!("\nsaving trained weights in {:}",model_path.to_string_lossy());
+    let _ = varmap.save(model_path);
     Ok(())
 }
 
@@ -115,11 +106,21 @@ struct Args {
     #[arg(long, default_value_t = 0.9)]
     train_part: f32,
 
-    #[arg(long)]
-    learning_rate: Option<f64>,
+    #[arg(long, default_value_t = 0.5)]
+    learning_rate: f64,
 
     #[arg(long, default_value_t = 10)]
     epochs: usize,
+
+    #[arg(long, default_value_t = 40)]
+    hidden0: usize,
+
+    #[arg(long, default_value_t = 10)]
+    hidden1: usize,
+
+    /// The file where to save the trained weights, in safetensors format.
+    #[arg(long, default_value_t = String::from("stat_n260Tlist"))]
+    data: String,
 
     /// The file where to save the trained weights, in safetensors format.
     #[arg(long)]
@@ -143,21 +144,21 @@ pub fn main() -> anyhow::Result<()> {
         };
     */
     let base: &Path = "./data".as_ref();
-    let m = load_dir(&base.join("stat_n260Tlist"), args.train_part)?;
-    println!("train-images: {:?}", m.train_data.shape());
-    println!("train-labels: {:?}", m.train_labels.shape());
-    println!("test-images: {:?}", m.test_data.shape());
-    println!("test-labels: {:?}", m.test_labels.shape());
-
-    let default_learning_rate = args.learning_rate.unwrap_or(0.05);
+    let m = load_dir(base.join("stat_n260Tlist"), args.train_part)?;
+    print!("train-data: {:?}", m.train_data.shape());
+    print!(", train-labels: {:?}", m.train_labels.shape());
+    print!(", test-data: {:?}", m.test_data.shape());
+    println!(", test-labels: {:?}", m.test_labels.shape());
+    let model = format!("./models/{:}_{:?}_{:?}.safetensors",args.data,args.hidden0,args.hidden1);
     let training_args = TrainingArgs {
         epochs: args.epochs,
-        learning_rate: args.learning_rate.unwrap_or(default_learning_rate),
+        learning_rate: args.learning_rate,
+        model:model,
         load: args.load,
         save: args.save,
     };
     let start = Instant::now();
-    training_loop::<Mlp>(m, &training_args);
-    println!("{:?}", Instant::now().duration_since(start));
+    let _ = training_loop::<Mlp>(m, &training_args);
+    println!("{:5.2?}", Instant::now().duration_since(start));
     Ok(())
 }

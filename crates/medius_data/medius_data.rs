@@ -18,8 +18,8 @@ pub struct Dataset {
 pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32) -> candle_core::Result<Dataset> {
     //let p: &Path = "./".as_ref();
     //println!("in:{:?}",p.canonicalize());
-    let y = read_medius_y(&dir.as_ref())?;
-    let x = read_medius_x(&dir.as_ref())?;
+    let y = read_medius_y(dir.as_ref())?;
+    let x = read_medius_x(dir.as_ref())?;
     let size = y.len();
     let width = x.len() / size;
     let mut indexes: Vec<usize> = (0..size).collect();
@@ -47,8 +47,8 @@ pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32) -> candle_core::Result<
 }
 fn fill_x_y(
     ind: core::ops::Range<usize>,
-    x: &Vec<f32>,
-    y: &Vec<u8>,
+    x: &[f32],
+    y: &[u8],
     width: usize,
 ) -> (Vec<f32>, Vec<u8>) {
     let mut out_x: Vec<f32> = Vec::new();

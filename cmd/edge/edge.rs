@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let varmap = VarMap::new();
     let start = Instant::now();
     let _ = build_model(&device, &varmap);
-    println!("{:?}, Cuda:{:?}", Instant::now().duration_since(start), &device.is_cuda());
+    println!("{:5.2?}, Cuda:{:?}", Instant::now().duration_since(start), &device.is_cuda());
     println!("save: {:?}", varmap.data());
     varmap.save(FILE)?; // save is Ok
     restore(FILE);

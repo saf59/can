@@ -23,7 +23,7 @@ fn action(device: &Device) -> Result<(), Box<dyn Error>> {
 
     let embedding = Tensor::from_slice(&[1., 3., 3., 5., 2.84, 3.99, 4., 6.], (2, 4), device)?;
 
-    prepare(&embedding, &wk1, &wv1, &wq1, &device)?;
+    prepare(&embedding, &wk1, &wv1, &wq1, device)?;
     let attention1 = attention(&embedding, &wk1, &wv1, &wq1, device)?;
     let attention2 = attention(&embedding, &wk2, &wv2, &wq2, device)?;
     pv("attention1", &attention1);

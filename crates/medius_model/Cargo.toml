@@ -1,16 +1,14 @@
 [package]
-name = "train"
+name = "medius_model"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-clap = { workspace = true }
+candle-core = { workspace = true }
+candle-nn = { workspace = true }
 medius_data = { path = "../../crates/medius_data" }
-medius_model = { path = "../../crates/medius_model" }
 
-[[bin]]
-path = "./train.rs"
-name = "train"
-
+[lib]
+path = "./medius_model.rs"

@@ -1,5 +1,5 @@
 [package]
-name = "train"
+name = "detect3"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -11,6 +11,6 @@ medius_data = { path = "../../crates/medius_data" }
 medius_model = { path = "../../crates/medius_model" }
 
 [[bin]]
-path = "./train.rs"
-name = "train"
+path = "./detect3.rs"
+name = "detect3"
 

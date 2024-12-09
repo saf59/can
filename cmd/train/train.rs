@@ -1,15 +1,14 @@
+use clap::Parser;
 use std::fs::create_dir_all;
-use clap::{Parser, ValueEnum};
 use std::path::Path;
 use std::time::Instant;
 
 use candle_core::{DType, Result, Tensor, D};
-use candle_nn::{loss, ops, Linear, Module, Optimizer, ParamsAdamW, VarBuilder, VarMap};
-use candle_nn::Activation::Relu;
+use candle_nn::{loss, ops, Linear, Module, Optimizer, VarBuilder, VarMap};
 use medius_data::{load_dir, Dataset};
 
 trait Model: Sized {
-    fn new(vs: VarBuilder,inputs:usize,outputs:usize,hidden:&[usize]) -> Result<Self>;
+    fn new(vs: VarBuilder, inputs: usize, hidden0: usize, hidden1: usize) -> Result<Self>;
     fn forward(&self, xs: &Tensor) -> Result<Tensor>;
 }
 
@@ -19,9 +18,9 @@ struct Mlp {
 }
 
 impl Model for Mlp {
-    fn new(vs: VarBuilder,inputs:usize,outputs:usize,hidden:&[usize]) -> Result<Self> {
-        let ln1 = candle_nn::linear(inputs, hidden[0], vs.pp("ln1"))?;
-        let ln2 = candle_nn::linear(hidden[0], hidden[1], vs.pp("ln2"))?;
+    fn new(vs: VarBuilder, inputs: usize, hidden0: usize, hidden1: usize) -> Result<Self> {
+        let ln1 = candle_nn::linear(inputs, hidden0, vs.pp("ln1"))?;
+        let ln2 = candle_nn::linear(hidden0, hidden1, vs.pp("ln2"))?;
         Ok(Self { ln1, ln2 })
     }
 
@@ -33,11 +32,11 @@ impl Model for Mlp {
 }
 
 struct TrainingArgs {
+    model: String,
     learning_rate: f64,
-    model:String,
-    load: Option<String>,
-    save: Option<String>,
     epochs: usize,
+    hidden0: usize,
+    hidden1: usize,
 }
 
 fn training_loop<M: Model>(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()> {
@@ -49,22 +48,21 @@ fn training_loop<M: Model>(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()
 
     let mut varmap = VarMap::new();
     let vs = VarBuilder::from_varmap(&varmap, DType::F32, &dev);
-    let (len,inputs) = m.train_data.shape().dims2()?;
-    println!("inputs:{:?},outputs:{:?}",&inputs,&m.labels);
-    let hidden = &[40,10];
-    let model = M::new(vs.clone(),inputs,m.labels,hidden)?;
-    let model_path:&Path = Path::new::<Path>(args.model.as_ref());
+    let (_len, inputs) = m.train_data.shape().dims2()?;
+    println!("inputs:{:?},outputs:{:?},hidden:[{:?},{:?}]", &inputs, &m.labels, args.hidden0, args.hidden1);
+    let model = M::new(vs.clone(), inputs, args.hidden0, args.hidden1)?;
+    let model_path: &Path = Path::new::<Path>(args.model.as_ref());
     let _ = create_dir_all(model_path.parent().unwrap());
-    println!("loading weights from {:}",model_path.to_string_lossy());
+    println!("loading weights from {:}", model_path.to_string_lossy());
     if model_path.exists() {
         varmap.load(model_path)?;
     }
     let mut opt = candle_nn::SGD::new(varmap.all_vars(), args.learning_rate)?;
-/*    let mut opt = candle_nn::AdamW::new(varmap.all_vars(),ParamsAdamW {
-        lr: args.learning_rate,
-        ..Default::default()
-    })?;
-*/
+    /*    let mut opt = candle_nn::AdamW::new(varmap.all_vars(),ParamsAdamW {
+            lr: args.learning_rate,
+            ..Default::default()
+        })?;
+    */
     let test_data = m.test_data.to_device(&dev)?;
     let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(&dev)?;
     for epoch in 1..args.epochs {
@@ -87,16 +85,12 @@ fn training_loop<M: Model>(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()
             100. * test_accuracy
         );
     }
-    println!("\nsaving trained weights in {:}",model_path.to_string_lossy());
+    println!(
+        "\nsaving trained weights in {:}",
+        model_path.to_string_lossy()
+    );
     let _ = varmap.save(model_path);
     Ok(())
-}
-
-#[derive(ValueEnum, Clone)]
-enum WhichModel {
-    Linear,
-    Mlp,
-    Cnn,
 }
 
 #[derive(Parser)]
@@ -121,41 +115,26 @@ struct Args {
     /// The file where to save the trained weights, in safetensors format.
     #[arg(long, default_value_t = String::from("stat_n260Tlist"))]
     data: String,
-
-    /// The file where to save the trained weights, in safetensors format.
-    #[arg(long)]
-    save: Option<String>,
-
-    /// The file where to load the trained weights from, in safetensors format.
-    #[arg(long)]
-    load: Option<String>,
-    // The directory where to load the dataset from, in ubyte format.
-    // #[arg(long)]
-    // local_mnist: Option<String>,
 }
 
 pub fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    // Load the dataset
-    /*    let m = if let Some(directory) = args.local_mnist {
-            candle_datasets::vision::mnist::load_dir(directory)?
-        } else {
-            candle_datasets::vision::mnist::load()?
-        };
-    */
     let base: &Path = "./data".as_ref();
-    let m = load_dir(base.join("stat_n260Tlist"), args.train_part)?;
+    let m = load_dir(base.join(&args.data), args.train_part)?;
     print!("train-data: {:?}", m.train_data.shape());
     print!(", train-labels: {:?}", m.train_labels.shape());
     print!(", test-data: {:?}", m.test_data.shape());
     println!(", test-labels: {:?}", m.test_labels.shape());
-    let model = format!("./models/{:}_{:?}_{:?}.safetensors",args.data,args.hidden0,args.hidden1);
+    let model = format!(
+        "./models/{:}_{:?}_{:?}.safetensors",
+        args.data, args.hidden0, args.hidden1
+    );
     let training_args = TrainingArgs {
-        epochs: args.epochs,
+        model,
         learning_rate: args.learning_rate,
-        model:model,
-        load: args.load,
-        save: args.save,
+        epochs: args.epochs,
+        hidden0: args.hidden0,
+        hidden1: args.hidden1,
     };
     let start = Instant::now();
     let _ = training_loop::<Mlp>(m, &training_args);

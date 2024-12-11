@@ -18,6 +18,11 @@ struct Timepoint {
     value: f64,
 }
 
+#[cfg(not(target_os = "windows"))]
+fn main() -> std::io::Result<()> {
+   println!("It is only foe Windows!");
+}
+
 #[cfg(target_os = "windows")]
 fn main() -> std::io::Result<()> {
     let data_dir = "T:/EnerReg/14102024/memo/";

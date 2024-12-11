@@ -1,54 +1,40 @@
-use clap::Parser;
 use std::path::Path;
+use clap::Parser;
 use std::time::Instant;
-
-use medius_data::load_dir;
-use medius_model::{training_loop, TrainingArgs};
+use candle_core::{Device, Tensor, D};
+use candle_nn::ops;
+use medius_model::{get_model, Model};
+use medius_parser::{parse_wav, BufSize};
 
 #[derive(Parser)]
 struct Args {
-    /// The part of train data in x.csv and y.csv
-    #[arg(long, default_value_t = 0.9)]
-    train_part: f32,
-
-    #[arg(long, default_value_t = 0.5)]
-    learning_rate: f64,
-
-    #[arg(long, default_value_t = 10)]
-    epochs: usize,
-
-    #[arg(long, default_value_t = 40)]
-    hidden0: usize,
-
-    #[arg(long, default_value_t = 10)]
-    hidden1: usize,
-
-    /// The ./data/[subDir] (or canonical dir) with two data files x.csv and y.csv
-    #[arg(long, default_value_t = String::from("stat_n260Tlist"))]
-    data: String,
+    /// Path to stereo *.wav file with sample rate 192_000
+    wav:String,
+    /// FFT buffer size
+    #[clap(short, value_enum, default_value_t = BufSize::Small)]
+    buf_size: BufSize,
+    /// Number of beans
+    #[arg(short, default_value_t = 260)]
+    n: usize,
+    /// Laser frequency
+    #[arg(short, default_value_t = 37523.4522)]
+    frequency: f32,
 }
 
 pub fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    let base: &Path = "./data".as_ref();
-    let m = load_dir(base.join(&args.data), args.train_part)?;
-    print!("train-data: {:?}", m.train_data.shape());
-    print!(", train-labels: {:?}", m.train_labels.shape());
-    print!(", test-data: {:?}", m.test_data.shape());
-    println!(", test-labels: {:?}", m.test_labels.shape());
-    let model = format!(
-        "./models/{:}_{:?}_{:?}.safetensors",
-        args.data, args.hidden0, args.hidden1
-    );
-    let training_args = TrainingArgs {
-        model,
-        learning_rate: args.learning_rate,
-        epochs: args.epochs,
-        hidden0: args.hidden0,
-        hidden1: args.hidden1,
-    };
     let start = Instant::now();
-    let _ = training_loop(m, &training_args);
+    let buf_size: usize = args.buf_size as usize;
+    let inputs = args.n;
+    let data = parse_wav(args.wav.as_ref() as &Path, args.n, args.frequency, buf_size).unwrap();
+    let data = Tensor::from_vec(data, (1,inputs), &Device::Cpu)?;
+    let dev = candle_core::Device::cuda_if_available(0)?;
+    let (varmap, model) = get_model(&dev, inputs, 5, 40, 10, "./models/stat_n260Tlist_40_10.safetensors".as_ref())?;
+    let logits = model.forward(&data)?;
+    let max =logits.argmax(D::Minus1);
+    let log_sm = ops::log_softmax(&logits, D::Minus1)?;
+    println!("{:?} {:?}",log_sm,max?);
+
     println!("{:5.2?}", Instant::now().duration_since(start));
     Ok(())
 }

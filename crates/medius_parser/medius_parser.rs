@@ -1,4 +1,5 @@
 use candle_core::cpu::erf::erf;
+use clap::ValueEnum;
 use pacmog::PcmReader;
 use rustfft::num_complex::Complex;
 use rustfft::FftPlanner;
@@ -9,23 +10,34 @@ use std::path::Path;
 const SAMPLE_RATE: usize = 192_000;
 const F5: f32 = 37523.4522;
 const TOP: f32 = 54000.0;
-pub fn parse_wav<P: AsRef<Path>>(path: P, n: usize, frequency:f32, to_low:bool) -> anyhow::Result<Vec<f32>> {
+
+#[derive(ValueEnum, Clone)]
+pub enum BufSize {
+    Big = 65_536 * 2,
+    Small = 65_536,
+}
+
+pub fn parse_wav<P: AsRef<Path>>(
+    path: P,
+    n: usize,
+    frequency: f32,
+    buff_size: usize,
+) -> anyhow::Result<Vec<f32>> {
     let nf = frequency / F5;
-    let buf_size:usize = if to_low {65_536} else {65_536 * 2};
     let all = fs::read(&path).unwrap();
     let raw = read_wav(all).unwrap();
     let useful: Vec<f32> = useful3(&raw);
-    let ampl: Vec<f32> = fft_amplitudes(&useful,buf_size);
+    let ampl: Vec<f32> = fft_amplitudes(&useful, buff_size);
     let range_list = build_range_list(TOP, n);
     let out = weighted5_one(&ampl, n, &range_list, nf);
     Ok(out)
 }
 
-fn fft_amplitudes(data: &[f32],buf_size:usize) -> Vec<f32> {
+fn fft_amplitudes(data: &[f32], buf_size: usize) -> Vec<f32> {
     let mut fft_planner = FftPlanner::<f32>::new();
     let fft = fft_planner.plan_fft_forward(buf_size);
 
-    let mut buffer = f32_to_complex_vec(&data,buf_size);
+    let mut buffer = f32_to_complex_vec(&data, buf_size);
     fft.process(&mut buffer);
     let n: f32 = (buf_size / 2usize) as f32;
     let mut amplitudes: Vec<f32> = Vec::with_capacity(buffer.len() / 2);
@@ -37,7 +49,7 @@ fn fft_amplitudes(data: &[f32],buf_size:usize) -> Vec<f32> {
     amplitudes
 }
 
-fn f32_to_complex_vec(data: &[f32],buf_size:usize) -> Vec<Complex<f32>> {
+fn f32_to_complex_vec(data: &[f32], buf_size: usize) -> Vec<Complex<f32>> {
     let mut complex_data = Vec::with_capacity(buf_size);
     let max = data.len();
     for i in 0..buf_size {
@@ -250,18 +262,16 @@ impl SimpleMovingAverage {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Instant;
     use super::*;
+    use std::time::Instant;
     const frequency: f32 = 37523.4522;
-    const n:usize = 260;
-    const to_low:bool = true;
-    const src: &str =
-    r"W:\data\medius\Audiodaten Scanner\Sample_1\Matrix_1_WP-0.4\x1_y1.wav";
+    const n: usize = 260;
+    const src: &str = r"W:\data\medius\Audiodaten Scanner\Sample_1\Matrix_1_WP-0.4\x1_y1.wav";
 
     #[test]
     fn test111() {
         let nf = frequency / F5;
-        let buf_size:usize = if to_low {65_536} else {65_536 * 2};
+        let buff_size: usize = BufSize::Small as usize;
         let all = fs::read(src.as_ref() as &Path).unwrap();
         let raw = read_wav(all).unwrap();
         //raw  :0.0005187988..0.0012817383
@@ -269,7 +279,7 @@ mod tests {
         let useful: Vec<f32> = useful3(&raw);
         println!("useful:{:?}..{:?}", useful[0], useful.last().unwrap());
         assert!((0.124176025 - useful[0]).abs() < 1e-9);
-        let ampl: Vec<f32> = fft_amplitudes(&useful,buf_size);
+        let ampl: Vec<f32> = fft_amplitudes(&useful, buff_size);
         println!("ampl  :{:?}..{:?}", ampl[0], ampl.last().unwrap());
         //assert!((2.974548e-6 - ampl.last().unwrap()).abs() < 1e-9);
         let range_list = build_range_list(TOP, n);
@@ -280,11 +290,16 @@ mod tests {
     }
     #[test]
     fn test111_parse() {
-        let out = parse_wav(src.as_ref() as &Path, n, frequency, to_low).unwrap();
+        let buf_size: usize = BufSize::Small as usize;
         let start = Instant::now();
-        println!("out  :{:?}..{:?} {:5.2?}", out[0], out.last().unwrap(), Instant::now().duration_since(start));
+        let out = parse_wav(src.as_ref() as &Path, n, frequency, buf_size).unwrap();
+        println!(
+            "out  :{:?}..{:?} {:5.2?}",
+            out[0],
+            out.last().unwrap(),
+            Instant::now().duration_since(start)
+        );
         assert!((0.17772603 - out[0]).abs() < 1e-9);
         assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-9);
     }
 }
-

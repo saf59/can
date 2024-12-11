@@ -1,31 +1,47 @@
 use std::fs::create_dir_all;
 use std::path::Path;
 
-use candle_core::{DType, Result, Tensor, D};
+use candle_core::{DType, Device, Result, Tensor, D};
 use candle_nn::{loss, ops, Linear, Module, Optimizer, VarBuilder, VarMap};
 use medius_data::Dataset;
 
-trait Model: Sized {
-    fn new(vs: VarBuilder, inputs: usize, hidden0: usize, hidden1: usize) -> Result<Self>;
+pub trait Model: Sized {
+    fn new(
+        vs: VarBuilder,
+        inputs: usize,
+        outputs: usize,
+        hidden0: usize,
+        hidden1: usize,
+    ) -> Result<Self>;
     fn forward(&self, xs: &Tensor) -> Result<Tensor>;
 }
 
 pub struct Mlp {
     ln1: Linear,
     ln2: Linear,
+    ln3: Linear,
 }
 
 impl Model for Mlp {
-    fn new(vs: VarBuilder, inputs: usize, hidden0: usize, hidden1: usize) -> Result<Self> {
+    fn new(
+        vs: VarBuilder,
+        inputs: usize,
+        outputs: usize,
+        hidden0: usize,
+        hidden1: usize,
+    ) -> Result<Self> {
         let ln1 = candle_nn::linear(inputs, hidden0, vs.pp("ln1"))?;
         let ln2 = candle_nn::linear(hidden0, hidden1, vs.pp("ln2"))?;
-        Ok(Self { ln1, ln2 })
+        let ln3 = candle_nn::linear(hidden1, outputs, vs.pp("ln3"))?;
+        Ok(Self { ln1, ln2, ln3 })
     }
 
     fn forward(&self, xs: &Tensor) -> Result<Tensor> {
         let xs = self.ln1.forward(xs)?;
         let xs = xs.relu()?;
-        self.ln2.forward(&xs)
+        let xs = self.ln2.forward(&xs)?;
+        let xs = xs.relu()?;
+        self.ln3.forward(&xs)
     }
 }
 
@@ -43,18 +59,14 @@ pub fn training_loop(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()> {
     let train_labels = m.train_labels;
     let train_data = m.train_data.to_device(&dev)?;
     let train_labels = train_labels.to_dtype(DType::U32)?.to_device(&dev)?;
-
-    let mut varmap = VarMap::new();
-    let vs = VarBuilder::from_varmap(&varmap, DType::F32, &dev);
     let (_len, inputs) = m.train_data.shape().dims2()?;
-    println!("inputs:{:?},outputs:{:?},hidden:[{:?},{:?}]", &inputs, &m.labels, args.hidden0, args.hidden1);
-    let model = Mlp::new(vs.clone(), inputs, args.hidden0, args.hidden1)?;
+    let labels = m.labels;
+    let hidden0 = args.hidden0;
+    let hidden1 = args.hidden1;
     let model_path: &Path = Path::new::<Path>(args.model.as_ref());
-    let _ = create_dir_all(model_path.parent().unwrap());
-    println!("loading weights from {:}", model_path.to_string_lossy());
-    if model_path.exists() {
-        varmap.load(model_path)?;
-    }
+
+    let (varmap, model) = get_model(&dev, inputs, labels, hidden0, hidden1, model_path)?;
+
     let mut opt = candle_nn::SGD::new(varmap.all_vars(), args.learning_rate)?;
     /*    let mut opt = candle_nn::AdamW::new(varmap.all_vars(),ParamsAdamW {
             lr: args.learning_rate,
@@ -89,4 +101,27 @@ pub fn training_loop(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()> {
     );
     let _ = varmap.save(model_path);
     Ok(())
+}
+
+pub fn get_model(
+    dev: &Device,
+    inputs: usize,
+    labels: usize,
+    hidden0: usize,
+    hidden1: usize,
+    model_path: &Path,
+) -> anyhow::Result<(VarMap, Mlp)> {
+    let mut varmap = VarMap::new();
+    let vs = VarBuilder::from_varmap(&varmap, DType::F32, &dev);
+    println!(
+        "inputs:{:?},outputs:{:?},hidden:[{:?},{:?}]",
+        &inputs, labels, hidden0, hidden1
+    );
+    let model = Mlp::new(vs.clone(), inputs, labels, hidden0, hidden1)?;
+    let _ = create_dir_all(model_path.parent().unwrap());
+    println!("loading weights from {:}", model_path.to_string_lossy());
+    if model_path.exists() {
+        varmap.load(model_path)?;
+    }
+    Ok((varmap, model))
 }

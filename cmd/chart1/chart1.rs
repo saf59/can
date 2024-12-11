@@ -21,6 +21,7 @@ struct Timepoint {
 #[cfg(not(target_os = "windows"))]
 fn main() -> std::io::Result<()> {
    println!("It is only foe Windows!");
+    Ok(())
 }
 
 #[cfg(target_os = "windows")]

@@ -87,6 +87,7 @@ fn get_real_data(data_dir: &str, file_name: &str) -> Result<(Vec<DateTime<Utc>>,
     Ok((x, y))
 }
 
+#[cfg(target_os = "windows")]
 fn date_time_scatter_trace(name: &str, x_data: &[DateTime<Utc>], y_data: &[f64]) -> Box<dyn plotly::Trace> {
     plotly::Scatter::new(x_data.to_vec(), y_data.to_vec())
         .mode(plotly::common::Mode::Lines)

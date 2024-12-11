@@ -18,6 +18,7 @@ struct Timepoint {
     value: f64,
 }
 
+#[cfg(target_os = "windows")]
 fn main() -> std::io::Result<()> {
     let data_dir = "T:/EnerReg/14102024/memo/";
     let h_file = "generation@id=318_L2h.json";
@@ -42,7 +43,8 @@ fn main() -> std::io::Result<()> {
     plot.add_trace(h_trace);
     plot.add_trace(real_trace);
     plot.set_layout(layout);
-    plot.show();
+    plot.write_html("out.html");
+    //plot.show();
     Ok(())
 }
 

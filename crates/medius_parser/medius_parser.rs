@@ -8,6 +8,7 @@ use std::fs;
 use std::path::Path;
 
 const SAMPLE_RATE: usize = 192_000;
+#[allow(clippy::excessive_precision)]
 const F5: f32 = 37523.4522;
 const TOP: f32 = 54000.0;
 
@@ -36,14 +37,14 @@ pub fn parse_wav<P: AsRef<Path>>(
 fn fft_amplitudes(data: &[f32], buf_size: usize) -> Vec<f32> {
     let mut fft_planner = FftPlanner::<f32>::new();
     let fft = fft_planner.plan_fft_forward(buf_size);
-
-    let mut buffer = f32_to_complex_vec(&data, buf_size);
+    let mut buffer = f32_to_complex_vec(data, buf_size);
     fft.process(&mut buffer);
-    let n: f32 = (buf_size / 2usize) as f32;
-    let mut amplitudes: Vec<f32> = Vec::with_capacity(buffer.len() / 2);
-    for i in 0..buffer.len() / 2 {
-        let real = buffer[i].re.powi(2);
-        let imag = buffer[i].im.powi(2);
+    let half = buf_size / 2usize;
+    let n: f32 = half as f32;
+    let mut amplitudes: Vec<f32> = Vec::with_capacity(half);
+    for item in buffer.iter().take(half) {
+        let real = item.re.powi(2);
+        let imag = item.im.powi(2);
         amplitudes.push(((real + imag).sqrt()) / n);
     }
     amplitudes
@@ -52,9 +53,9 @@ fn fft_amplitudes(data: &[f32], buf_size: usize) -> Vec<f32> {
 fn f32_to_complex_vec(data: &[f32], buf_size: usize) -> Vec<Complex<f32>> {
     let mut complex_data = Vec::with_capacity(buf_size);
     let max = data.len();
-    for i in 0..buf_size {
+    for (i, item) in data.iter().enumerate().take(buf_size) {
         if i < max {
-            complex_data.push(Complex::new(data[i], 0.0))
+            complex_data.push(Complex::new(*item, 0.0))
         } else {
             complex_data.push(Complex::new(0.0, 0.0))
         };
@@ -63,8 +64,8 @@ fn f32_to_complex_vec(data: &[f32], buf_size: usize) -> Vec<Complex<f32>> {
 }
 
 fn weighted5_one(row: &[f32], n: usize, f_rangelist: &[std::ops::Range<f32>], nf: f32) -> Vec<f32> {
-    let (median, multiplayer) = median_and_multiplier(&row);
-    let norm_row = normalize_array(&row, median, multiplayer);
+    let (median, multiplayer) = median_and_multiplier(row);
+    let norm_row = normalize_array(row, median, multiplayer);
     let mut result = vec![0.0; n]; // Initialize result with zeros
     let freq = frequencies(row.len());
     //println!("freq  :{:?}..{:?}", freq[0], freq.last().unwrap(), );
@@ -80,7 +81,7 @@ fn weighted5_one(row: &[f32], n: usize, f_rangelist: &[std::ops::Range<f32>], nf
         let range_index = range_index(f_rangelist, freq[i] / nf);
         grouped_data
             .entry(range_index)
-            .or_insert(Vec::new())
+            .or_default()
             .push(*d);
     }
 
@@ -116,7 +117,7 @@ fn read_wav(data: Vec<u8>) -> anyhow::Result<Vec<f32>> {
     let reader = PcmReader::new(wav)?;
     let specs = reader.get_pcm_specs();
     let num_samples = specs.num_samples;
-    return if specs.sample_rate as usize == SAMPLE_RATE && specs.num_channels == 2 {
+    if specs.sample_rate as usize == SAMPLE_RATE && specs.num_channels == 2 {
         let channel = 0;
         let mut data: Vec<f32> = Vec::with_capacity(num_samples as usize);
         for sample in 0..num_samples {
@@ -131,7 +132,7 @@ fn read_wav(data: Vec<u8>) -> anyhow::Result<Vec<f32>> {
         };
         Err(anyhow::Error::msg(format!("A stereo file was expected with a sample rate of {}, but a {} file with a sample rate of {} was received!",
                                        SAMPLE_RATE, mode, specs.sample_rate)))
-    };
+    }
 }
 
 fn median_and_multiplier(values: &[f32]) -> (f32, f32) {
@@ -213,9 +214,7 @@ fn useful3(raw: &[f32]) -> Vec<f32> {
         .unwrap_or(smoothed_diff.len() - 1);
 
     // Slice the original data
-    let aligned = raw[first..last + 1].to_vec(); // Include last element
-
-    aligned
+    raw[first..last + 1].to_vec() // Include last element
 }
 
 struct SimpleMovingAverage {
@@ -264,15 +263,15 @@ impl SimpleMovingAverage {
 mod tests {
     use super::*;
     use std::time::Instant;
-    const frequency: f32 = 37523.4522;
-    const n: usize = 260;
-    const src: &str = r"W:\data\medius\Audiodaten Scanner\Sample_1\Matrix_1_WP-0.4\x1_y1.wav";
+    const FREQUENCY: f32 = 37523.4522;
+    const N: usize = 260;
+    const SRC: &str = r"W:\data\medius\Audiodaten Scanner\Sample_1\Matrix_1_WP-0.4\x1_y1.wav";
 
     #[test]
     fn test111() {
-        let nf = frequency / F5;
+        let nf = FREQUENCY / F5;
         let buff_size: usize = BufSize::Small as usize;
-        let all = fs::read(src.as_ref() as &Path).unwrap();
+        let all = fs::read(SRC.as_ref() as &Path).unwrap();
         let raw = read_wav(all).unwrap();
         //raw  :0.0005187988..0.0012817383
         println!("raw  :{:?}..{:?}", raw[0], raw.last().unwrap());
@@ -282,8 +281,8 @@ mod tests {
         let ampl: Vec<f32> = fft_amplitudes(&useful, buff_size);
         println!("ampl  :{:?}..{:?}", ampl[0], ampl.last().unwrap());
         //assert!((2.974548e-6 - ampl.last().unwrap()).abs() < 1e-9);
-        let range_list = build_range_list(TOP, n);
-        let out = weighted5_one(&ampl, n, &range_list, nf);
+        let range_list = build_range_list(TOP, N);
+        let out = weighted5_one(&ampl, N, &range_list, nf);
         println!("out  :{:?}..{:?}", out[0], out.last().unwrap());
         assert!((0.17772603 - out[0]).abs() < 1e-9);
         assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-9);
@@ -292,7 +291,7 @@ mod tests {
     fn test111_parse() {
         let buf_size: usize = BufSize::Small as usize;
         let start = Instant::now();
-        let out = parse_wav(src.as_ref() as &Path, n, frequency, buf_size).unwrap();
+        let out = parse_wav(SRC.as_ref() as &Path, N, FREQUENCY, buf_size).unwrap();
         println!(
             "out  :{:?}..{:?} {:5.2?}",
             out[0],

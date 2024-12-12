@@ -65,7 +65,7 @@ pub fn training_loop(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()> {
     let hidden1 = args.hidden1;
     let model_path: &Path = Path::new::<Path>(args.model.as_ref());
 
-    let (varmap, model) = get_model(&dev, inputs, labels, hidden0, hidden1, model_path)?;
+    let (varmap, model) = get_model(&dev, inputs, labels, hidden0, hidden1, model_path, false)?;
 
     let mut opt = candle_nn::SGD::new(varmap.all_vars(), args.learning_rate)?;
     /*    let mut opt = candle_nn::AdamW::new(varmap.all_vars(),ParamsAdamW {
@@ -110,16 +110,21 @@ pub fn get_model(
     hidden0: usize,
     hidden1: usize,
     model_path: &Path,
+    verbose: bool,
 ) -> anyhow::Result<(VarMap, Mlp)> {
     let mut varmap = VarMap::new();
-    let vs = VarBuilder::from_varmap(&varmap, DType::F32, &dev);
-    println!(
-        "inputs:{:?},outputs:{:?},hidden:[{:?},{:?}]",
-        &inputs, labels, hidden0, hidden1
-    );
+    let vs = VarBuilder::from_varmap(&varmap, DType::F32, dev);
+    if verbose {
+        println!(
+            "inputs:{:?},outputs:{:?},hidden:[{:?},{:?}]",
+            &inputs, labels, hidden0, hidden1
+        );
+    }
     let model = Mlp::new(vs.clone(), inputs, labels, hidden0, hidden1)?;
     let _ = create_dir_all(model_path.parent().unwrap());
-    println!("loading weights from {:}", model_path.to_string_lossy());
+    if verbose {
+        println!("loading weights from {:}", model_path.to_string_lossy());
+    }
     if model_path.exists() {
         varmap.load(model_path)?;
     }

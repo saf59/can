@@ -269,7 +269,7 @@ mod tests {
     #[allow(clippy::excessive_precision)]
     const FREQUENCY: f32 = 37523.4522;
     const N: usize = 260;
-    const SRC: &str = r"test_data\x1_y1.wav";
+    const SRC: &str = r"test_data/x1_y1.wav";
 
     #[test]
     fn test111() {

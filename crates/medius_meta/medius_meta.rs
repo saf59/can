@@ -5,9 +5,11 @@ use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use utils::first_char;
 
+const MODELS_DIR: &str = "./models";
+const DEFAULT: &str = "./models/default";
 const META_NAME: &str = "model.meta";
 const MODEL_NAME: &str = "model.safetensors";
-#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq,Debug)]
 pub struct Meta {
     // data && parse
     pub n: usize,
@@ -58,12 +60,28 @@ pub enum BufSize {
     Small = 65_536,
 }
 impl Meta {
-    fn save(&self) {
+    pub fn save(&self) {
         let file = self.meta_file();
-        let _ = create_dir_all(file.parent().expect("Parent dir."));
+        let parent = file.parent().expect("Parent dir.");
+        let _ = create_dir_all(parent);
         let out_string = serde_yaml::to_string(&self).unwrap();
-        fs::write(file, out_string).expect("Unable to write file");
+        fs::write(file, out_string).expect("Unable to write meta file");
+        self.save_default();
     }
+
+    fn save_default(&self) {
+        let model_name = self.model_name();
+        fs::write(DEFAULT, model_name).expect("Unable to write default file");
+    }
+
+    pub fn load_default() ->Meta {
+        let path:&Path = DEFAULT.as_ref();
+        if !path.exists() { return Meta::default();}
+        let buf = fs::read(DEFAULT).expect("Unable to read default file");
+        let model_default = std::str::from_utf8(&buf).unwrap();
+        Self::load(&model_default)
+    }
+
     fn load(path: &str) -> Self {
         let file = Self::named(path,META_NAME);
         let buf = fs::read(file).unwrap();
@@ -96,7 +114,7 @@ impl Meta {
     }
 
     fn named(type_name: &str, file_name: &str) -> PathBuf {
-        let dir: &Path = "./models".as_ref();
+        let dir: &Path = MODELS_DIR.as_ref();
         let dir = &dir.join(type_name);
         dir.join(file_name)
     }

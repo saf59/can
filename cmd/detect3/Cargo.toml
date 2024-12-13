@@ -8,8 +8,6 @@ license.workspace = true
 anyhow = { workspace = true }
 clap = { workspace = true }
 candle-core = { workspace = true }
-candle-nn = { workspace = true }
-medius_data = { path = "../../crates/medius_data" }
 medius_model = { path = "../../crates/medius_model" }
 medius_parser = { path = "../../crates/medius_parser" }
 

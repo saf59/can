@@ -9,11 +9,8 @@ anyhow = { workspace = true }
 candle-core = { workspace = true }
 clap = { workspace = true }
 utils = { path = "../../crates/utils" }
-serde = { workspace = true }
-rand = { workspace = true }
 pacmog = "0.5.0"
 rustfft = "6.2.0"
-
 
 [lib]
 path = "./medius_parser.rs"

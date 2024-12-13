@@ -6,7 +6,8 @@ license.workspace = true
 
 [dependencies]
 serde = { workspace = true }
-serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+utils = { path = "../../crates/utils" }
 
 [lib]
 path = "medius_meta.rs"

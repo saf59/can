@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::fs;
 use std::fs::create_dir_all;
 use std::path::Path;
+use utils::first_char;
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
 pub struct Meta {
@@ -37,7 +38,7 @@ impl Meta {
         let dir= &dir.join(&binding.as_str());
         let _ = create_dir_all(dir);
         let file = dir.join("model.meta");
-        let out_string = serde_json::to_string_pretty(&self).unwrap();
+        let out_string = serde_yaml::to_string(&self).unwrap();
         fs::write(file, out_string).expect("Unable to write file");
     }
     fn load<T: AsRef<Path>>(dir: T) -> Self {
@@ -52,6 +53,7 @@ impl Meta {
 
 #[cfg(test)]
 mod tests {
+    use utils::set_root;
     use super::*;
     #[test]
     fn test_name() {
@@ -61,16 +63,15 @@ mod tests {
     }
     #[test]
     fn test_save() {
+        set_root();
         let meta: Meta = Default::default();
         meta.save();
         let name = meta.name();
         let meta2 = Meta::load(&name);
     }
     #[test]
-    fn test_load() {}
+    fn test_load() {
+        set_root();
+    }
 }
 
-fn first_char<T: Debug>(e: &T) -> char {
-    let name = format!("{:?}", e);
-    name.chars().next().unwrap()
-}

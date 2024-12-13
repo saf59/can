@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 members = [
     "cmd/edge", "cmd/itr", "cmd/bm", "cmd/ub", "cmd/setbuff", "cmd/chart1",
     "cmd/train", "cmd/detect3",
-    "crates/can_data", "crates/can_utils",
+    "crates/can_data", "crates/can_utils", "crates/utils",
     "crates/medius_data", "crates/medius_model","crates/medius_meta", "crates/medius_parser",
 ]
 resolver = "2"
@@ -22,6 +22,7 @@ rand = "0.8.5"
 chrono = { version="0.4.39", features = ["serde"] }
 serde = { version = "1.0.216", features = ["derive"] }
 serde_json = "=1.0.133"
+serde_yaml = "0.9"
 
 
 

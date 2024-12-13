@@ -95,11 +95,8 @@ fn get_reader(dir: &Path, csv: &str) -> candle_core::Result<Reader<File>> {
 #[cfg(test)]
 mod tests {
     use std::env;
+    use utils::set_root;
     use super::*;
-    fn set_root() {
-        let root = Path::new("../..");
-        let _ = env::set_current_dir(&root);
-    }
     #[test]
     fn test_x_y() {
         set_root();

@@ -263,6 +263,8 @@ impl SimpleMovingAverage {
 mod tests {
     use super::*;
     use std::time::Instant;
+    use utils::set_root;
+
     #[allow(clippy::excessive_precision)]
     const FREQUENCY: f32 = 37523.4522;
     const N: usize = 260;
@@ -270,6 +272,7 @@ mod tests {
 
     #[test]
     fn test111() {
+        set_root();
         let nf = FREQUENCY / F5;
         let buff_size: usize = BufSize::Small as usize;
         let all = fs::read(SRC.as_ref() as &Path).unwrap();
@@ -288,6 +291,7 @@ mod tests {
     }
     #[test]
     fn test111_parse() {
+        set_root();
         let buf_size: usize = BufSize::Small as usize;
         let start = Instant::now();
         let out = parse_wav(SRC.as_ref() as &Path, N, FREQUENCY, buf_size).unwrap();

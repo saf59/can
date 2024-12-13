@@ -9,6 +9,7 @@ anyhow = { workspace = true }
 candle-core = { workspace = true }
 candle-nn = { workspace = true }
 medius_data = { path = "../../crates/medius_data" }
+utils = { path = "../../crates/utils" }
 
 [lib]
 path = "./medius_model.rs"

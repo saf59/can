@@ -5,6 +5,7 @@ use rustfft::num_complex::Complex;
 use rustfft::FftPlanner;
 use std::collections::HashMap;
 use std::fs;
+#[allow(unused_imports)]
 use std::path::Path;
 
 const SAMPLE_RATE: usize = 192_000;

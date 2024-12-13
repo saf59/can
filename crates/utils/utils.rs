@@ -1,6 +1,5 @@
 use std::env;
 use std::fmt::Debug;
-use std::path::Path;
 
 pub fn set_root() {
     let root = project_root::get_project_root().unwrap();

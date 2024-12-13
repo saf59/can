@@ -13,12 +13,6 @@ const SAMPLE_RATE: usize = 192_000;
 const F5: f32 = 37523.4522;
 const TOP: f32 = 54000.0;
 
-#[derive(ValueEnum, Clone)]
-pub enum BufSize {
-    Big = 65_536 * 2,
-    Small = 65_536,
-}
-
 pub fn parse_wav<P: AsRef<Path>>(
     path: P,
     n: usize,

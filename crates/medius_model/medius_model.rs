@@ -4,6 +4,7 @@ use std::path::Path;
 use candle_core::{DType, Device, Result, Tensor, D};
 use candle_nn::{loss, ops, Linear, Module, Optimizer, VarBuilder, VarMap};
 use medius_data::Dataset;
+use medius_meta::Meta;
 
 pub trait Model: Sized {
     fn new(
@@ -45,15 +46,15 @@ impl Model for Mlp {
     }
 }
 
-pub struct TrainingArgs {
+/*pub struct TrainingArgs {
     pub model: String,
     pub learning_rate: f64,
     pub epochs: usize,
     pub hidden0: usize,
     pub hidden1: usize,
 }
-
-pub fn training_loop(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()> {
+*/
+pub fn training_loop(m: Dataset, meta: &Meta) -> anyhow::Result<()> {
     let dev = candle_core::Device::cuda_if_available(0)?;
 
     let train_labels = m.train_labels;
@@ -61,13 +62,14 @@ pub fn training_loop(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()> {
     let train_labels = train_labels.to_dtype(DType::U32)?.to_device(&dev)?;
     let (_len, inputs) = m.train_data.shape().dims2()?;
     let labels = m.labels;
-    let hidden0 = args.hidden0;
-    let hidden1 = args.hidden1;
-    let model_path: &Path = Path::new::<Path>(args.model.as_ref());
+    let hidden0 = meta.hidden0;
+    let hidden1 = meta.hidden1;
+    let binding = meta.model_file();
+    let model_path: &Path = binding.as_ref();
 
     let (varmap, model) = get_model(&dev, inputs, labels, hidden0, hidden1, model_path, false)?;
 
-    let mut opt = candle_nn::SGD::new(varmap.all_vars(), args.learning_rate)?;
+    let mut opt = candle_nn::SGD::new(varmap.all_vars(), meta.learning_rate)?;
     /*    let mut opt = candle_nn::AdamW::new(varmap.all_vars(),ParamsAdamW {
             lr: args.learning_rate,
             ..Default::default()
@@ -75,7 +77,7 @@ pub fn training_loop(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()> {
     */
     let test_data = m.test_data.to_device(&dev)?;
     let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(&dev)?;
-    for epoch in 1..args.epochs {
+    for epoch in 1..meta.epochs {
         let logits = model.forward(&train_data)?;
         let log_sm = ops::log_softmax(&logits, D::Minus1)?;
         let loss = loss::nll(&log_sm, &train_labels)?;
@@ -96,7 +98,7 @@ pub fn training_loop(m: Dataset, args: &TrainingArgs) -> anyhow::Result<()> {
         );
     }
     println!(
-        "\nsaving trained weights in {:}",
+        "\nsaving trained weights to {:}",
         model_path.to_string_lossy()
     );
     let _ = varmap.save(model_path);

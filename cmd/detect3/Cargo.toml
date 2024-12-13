@@ -10,6 +10,8 @@ clap = { workspace = true }
 candle-core = { workspace = true }
 medius_model = { path = "../../crates/medius_model" }
 medius_parser = { path = "../../crates/medius_parser" }
+medius_meta = { path = "../../crates/medius_meta" }
+
 
 [[bin]]
 path = "./detect3.rs"

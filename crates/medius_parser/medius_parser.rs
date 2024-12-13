@@ -266,7 +266,7 @@ mod tests {
     #[allow(clippy::excessive_precision)]
     const FREQUENCY: f32 = 37523.4522;
     const N: usize = 260;
-    const SRC: &str = r"W:\data\medius\Audiodaten Scanner\Sample_1\Matrix_1_WP-0.4\x1_y1.wav";
+    const SRC: &str = r"test_data\x1_y1.wav";
 
     #[test]
     fn test111() {

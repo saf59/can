@@ -103,7 +103,6 @@ mod tests {
     #[test]
     fn test_x_y() {
         set_root();
-        //let y = read_medius_y("W:/data/medius/src/V3/stat_n260Tlist".as_ref()).unwrap();
         let base: &Path = "data".as_ref();
         let y = read_medius_x(&base.join("stat_n260Tlist")).unwrap();
         println!("{:?},{:?},{:?}", y.len(), y[1], y.last())

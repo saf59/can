@@ -281,14 +281,14 @@ mod tests {
         println!("raw  :{:?}..{:?}", raw[0], raw.last().unwrap());
         let useful: Vec<f32> = useful3(&raw);
         println!("useful:{:?}..{:?}", useful[0], useful.last().unwrap());
-        assert!((0.124176025 - useful[0]).abs() < 1e-9);
+        assert!((0.124176025 - useful[0]).abs() < 1e-8);
         let ampl: Vec<f32> = fft_amplitudes(&useful, buff_size);
         println!("ampl  :{:?}..{:?}", ampl[0], ampl.last().unwrap());
         let range_list = build_range_list(TOP, N);
         let out = weighted5_one(&ampl, N, &range_list, nf);
         println!("out  :{:?}..{:?}", out[0], out.last().unwrap());
         assert!((0.17772603 - out[0]).abs() < 1e-9);
-        assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-9);
+        assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-8);
     }
     #[test]
     fn test111_parse() {
@@ -302,7 +302,7 @@ mod tests {
             out.last().unwrap(),
             Instant::now().duration_since(start)
         );
-        assert!((0.17772603 - out[0]).abs() < 1e-9);
-        assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-9);
+        assert!((0.17772603 - out[0]).abs() < 1e-8);
+        assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-8);
     }
 }

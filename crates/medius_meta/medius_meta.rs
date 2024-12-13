@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn test_save_load() {
         set_root();
-        let meta: Meta = Default::default();
+        let mut meta: Meta = Default::default();
         let name = meta.name();
         let file = meta.file();
         if !file.exists() {

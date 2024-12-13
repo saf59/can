@@ -263,6 +263,7 @@ impl SimpleMovingAverage {
 mod tests {
     use super::*;
     use std::time::Instant;
+    #[allow(clippy::excessive_precision)]
     const FREQUENCY: f32 = 37523.4522;
     const N: usize = 260;
     const SRC: &str = r"W:\data\medius\Audiodaten Scanner\Sample_1\Matrix_1_WP-0.4\x1_y1.wav";
@@ -273,14 +274,12 @@ mod tests {
         let buff_size: usize = BufSize::Small as usize;
         let all = fs::read(SRC.as_ref() as &Path).unwrap();
         let raw = read_wav(all).unwrap();
-        //raw  :0.0005187988..0.0012817383
         println!("raw  :{:?}..{:?}", raw[0], raw.last().unwrap());
         let useful: Vec<f32> = useful3(&raw);
         println!("useful:{:?}..{:?}", useful[0], useful.last().unwrap());
         assert!((0.124176025 - useful[0]).abs() < 1e-9);
         let ampl: Vec<f32> = fft_amplitudes(&useful, buff_size);
         println!("ampl  :{:?}..{:?}", ampl[0], ampl.last().unwrap());
-        //assert!((2.974548e-6 - ampl.last().unwrap()).abs() < 1e-9);
         let range_list = build_range_list(TOP, N);
         let out = weighted5_one(&ampl, N, &range_list, nf);
         println!("out  :{:?}..{:?}", out[0], out.last().unwrap());

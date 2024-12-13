@@ -15,6 +15,7 @@ pub struct Dataset {
     pub test_labels: Tensor,
     pub labels: usize,
 }
+
 pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32) -> candle_core::Result<Dataset> {
     //let p: &Path = "./".as_ref();
     //println!("in:{:?}",p.canonicalize());
@@ -93,17 +94,24 @@ fn get_reader(dir: &Path, csv: &str) -> candle_core::Result<Reader<File>> {
 
 #[cfg(test)]
 mod tests {
+    use std::env;
     use super::*;
+    fn set_root() {
+        let root = Path::new("../..");
+        let _ = env::set_current_dir(&root);
+    }
     #[test]
     fn test_x_y() {
+        set_root();
         //let y = read_medius_y("W:/data/medius/src/V3/stat_n260Tlist".as_ref()).unwrap();
-        let base: &Path = "../../data".as_ref();
+        let base: &Path = "data".as_ref();
         let y = read_medius_x(&base.join("stat_n260Tlist")).unwrap();
         println!("{:?},{:?},{:?}", y.len(), y[1], y.last())
     }
     #[test]
     fn test_load_dir() {
-        let base: &Path = "../../data".as_ref();
+        set_root();
+        let base: &Path = "data".as_ref();
         let dataset = load_dir(&base.join("stat_n260Tlist"), 0.9);
         println!("{:?}", dataset.unwrap().test_data.shape())
     }

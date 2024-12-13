@@ -6,18 +6,17 @@ license = "MIT OR Apache-2.0"
 
 [workspace]
 members = [
-    "cmd/edge", "cmd/itr", "cmd/bm", "cmd/ub", "cmd/setbuff", "cmd/chart1", "cmd/train", "cmd/detect3",
-    "crates/can_data", "crates/can_utils", "crates/medius_data", "crates/medius_model",
+    "cmd/edge", "cmd/itr", "cmd/bm", "cmd/ub", "cmd/setbuff", "cmd/chart1",
+    "cmd/train", "cmd/detect3",
+    "crates/can_data", "crates/can_utils",
+    "crates/medius_data", "crates/medius_model","crates/medius_meta", "crates/medius_parser",
 ]
 resolver = "2"
 
 [workspace.dependencies]
-accelerate-src = { version = "0.3.2" }
 anyhow = { version = "1.0.94", features = ["backtrace"] }
 candle-core = "0.8.0"
 candle-nn = "0.8.0"
-candle-datasets = "0.8.0"
-intel-mkl-src = { version = "0.8.1", features = ["mkl-static-lp64-iomp"] }
 clap = { version = "4.5.23", features = ["derive"] }
 rand = "0.8.5"
 chrono = { version="0.4.39", features = ["serde"] }

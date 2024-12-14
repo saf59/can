@@ -42,13 +42,13 @@ impl Default for Meta {
         }
     }
 }
-#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
 pub enum ModelType {
     Regression,
     Classification,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
 pub enum AlgType {
     Bin,
     Mfcc,

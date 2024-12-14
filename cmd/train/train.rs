@@ -4,7 +4,7 @@ use std::process;
 use std::time::Instant;
 
 use medius_data::load_dir;
-use medius_meta::Meta;
+use medius_meta::{AlgType, BufSize, Meta, ModelType};
 use medius_model::training_loop;
 
 #[derive(Parser)]
@@ -12,6 +12,21 @@ struct Args {
     /// Show defaults and exit
     #[arg(short, default_value_t=false)]
     defaults: bool,
+    /// Inputs
+    #[arg(short)]
+    n: Option<usize>,
+    /// Algorithm
+    #[arg(long, value_enum)]
+    alg_type: Option<AlgType>,
+    /// Buffer size
+    #[arg(long, value_enum)]
+    buff_size: Option<BufSize>,
+    /// Use frequency scaling
+    #[arg(long)]
+    scaled_frequency: Option<bool>,
+    /// Model type
+    #[arg(long, value_enum)]
+    model_type: Option<ModelType>,
     #[arg(long)]
     epochs: Option<usize>,
     /// The part of train data in x.csv and y.csv

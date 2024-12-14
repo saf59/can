@@ -9,3 +9,4 @@ project-root = "0.2.2"
 
 [lib]
 path = "utils.rs"
+doctest = false

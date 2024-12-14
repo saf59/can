@@ -14,3 +14,4 @@ rustfft = "6.2.0"
 
 [lib]
 path = "./medius_parser.rs"
+doctest = false

@@ -97,18 +97,18 @@ mod tests {
     use utils::set_root;
     use super::*;
 
-    const base: &str = "./data/B260_ST";
+    const BASE: &str = "./data/B260_ST";
 
     #[test]
     fn test_x_y() {
         set_root();
-        let y = read_medius_x(&Path::new(base)).unwrap();
+        let y = read_medius_x(&Path::new(BASE)).unwrap();
         println!("{:?},{:?},{:?}", y.len(), y[1], y.last())
     }
     #[test]
     fn test_load_dir() {
         set_root();
-        let dataset = load_dir(base, 0.9);
+        let dataset = load_dir(BASE, 0.9);
         println!("{:?}", dataset.unwrap().test_data.shape())
     }
 }

@@ -9,3 +9,4 @@ candle-core = { workspace = true }
 
 [lib]
 path = "./can_utils.rs"
+doctest = false

@@ -1,5 +1,4 @@
 use candle_core::cpu::erf::erf;
-use clap::ValueEnum;
 use pacmog::PcmReader;
 use rustfft::num_complex::Complex;
 use rustfft::FftPlanner;
@@ -258,6 +257,7 @@ impl SimpleMovingAverage {
 mod tests {
     use super::*;
     use std::time::Instant;
+    use medius_meta::BufSize;
     use utils::set_root;
 
     #[allow(clippy::excessive_precision)]

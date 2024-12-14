@@ -1,10 +1,9 @@
-use std::fs::create_dir_all;
-use std::path::Path;
-
 use candle_core::{DType, Device, Result, Tensor, D};
 use candle_nn::{loss, ops, Linear, Module, Optimizer, VarBuilder, VarMap};
 use medius_data::Dataset;
 use medius_meta::Meta;
+use std::fs::create_dir_all;
+use std::path::Path;
 
 pub trait Model: Sized {
     fn new(
@@ -45,15 +44,6 @@ impl Model for Mlp {
         self.ln3.forward(&xs)
     }
 }
-
-/*pub struct TrainingArgs {
-    pub model: String,
-    pub learning_rate: f64,
-    pub epochs: usize,
-    pub hidden0: usize,
-    pub hidden1: usize,
-}
-*/
 pub fn training_loop(m: Dataset, meta: &Meta) -> anyhow::Result<()> {
     let dev = candle_core::Device::cuda_if_available(0)?;
 

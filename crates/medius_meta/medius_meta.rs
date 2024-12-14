@@ -79,7 +79,7 @@ impl Meta {
         if !path.exists() { return Meta::default();}
         let buf = fs::read(DEFAULT).expect("Unable to read default file");
         let model_default = std::str::from_utf8(&buf).unwrap();
-        Self::load(&model_default)
+        Self::load(model_default)
     }
 
     fn load(path: &str) -> Self {

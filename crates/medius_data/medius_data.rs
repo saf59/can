@@ -94,21 +94,21 @@ fn get_reader(dir: &Path, csv: &str) -> candle_core::Result<Reader<File>> {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
     use utils::set_root;
     use super::*;
+
+    const base: &str = "./data/B260_ST";
+
     #[test]
     fn test_x_y() {
         set_root();
-        let base: &Path = "data".as_ref();
-        let y = read_medius_x(&base.join("stat_n260Tlist")).unwrap();
+        let y = read_medius_x(&Path::new(base)).unwrap();
         println!("{:?},{:?},{:?}", y.len(), y[1], y.last())
     }
     #[test]
     fn test_load_dir() {
         set_root();
-        let base: &Path = "data".as_ref();
-        let dataset = load_dir(&base.join("stat_n260Tlist"), 0.9);
+        let dataset = load_dir(base, 0.9);
         println!("{:?}", dataset.unwrap().test_data.shape())
     }
 }

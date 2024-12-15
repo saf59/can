@@ -27,7 +27,8 @@ struct Args {
     /// Model type
     #[arg(long, value_enum)]
     model_type: Option<ModelType>,
-    #[arg(long)]
+    /// Train epochs [default = 0]
+    #[arg(short, long)]
     epochs: Option<usize>,
     /// The part of train data in x.csv and y.csv
     #[arg(long)]
@@ -66,6 +67,7 @@ fn print_dataset_info(m: &Dataset) {
 fn meta() -> anyhow::Result<Meta> {
     let args = Args::parse();
     let mut meta = Meta::load_default();
+
     if let Some(n) = args.n {
         meta.n = n;
     }
@@ -83,7 +85,7 @@ fn meta() -> anyhow::Result<Meta> {
     }
     if let Some(epochs) = args.epochs {
         meta.epochs = epochs;
-    }
+    } else { meta.epochs = 0 } // DEFAULT
     if let Some(train_part) = args.train_part {
         meta.train_part = train_part;
     }

@@ -3,7 +3,6 @@ alg_type: Bin
 buff_size: Small
 scaled_frequency: true
 model_type: Classification
-epochs: 1
 learning_rate: 0.5
 train_part: 0.9
 hidden0: 40

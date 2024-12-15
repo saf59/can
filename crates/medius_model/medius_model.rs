@@ -1,7 +1,7 @@
 use candle_core::{DType, Device, Result, Tensor, D};
 use candle_nn::{loss, ops, Linear, Module, Optimizer, VarBuilder, VarMap};
 use medius_data::Dataset;
-use medius_meta::Meta;
+use medius_meta::{Meta, DEFAULT_VM};
 use std::fs::create_dir_all;
 use std::path::Path;
 
@@ -92,6 +92,7 @@ pub fn training_loop(m: Dataset, meta: &Meta) -> anyhow::Result<()> {
         model_path.to_string_lossy()
     );
     let _ = varmap.save(model_path);
+    let _ = varmap.save(DEFAULT_VM);
     Ok(())
 }
 

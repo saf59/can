@@ -6,7 +6,8 @@ use std::path::{Path, PathBuf};
 use utils::first_char;
 
 const MODELS_DIR: &str = "./models";
-const DEFAULT: &str = "./models/default";
+const DEFAULT: &str = "./models/model.meta";
+pub const DEFAULT_VM: &str = "./models/model.safetensors";
 const META_NAME: &str = "model.meta";
 const MODEL_NAME: &str = "model.safetensors";
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq,Debug)]
@@ -18,6 +19,7 @@ pub struct Meta {
     pub scaled_frequency: bool,
     // model
     pub model_type: ModelType,
+    #[serde(skip)]
     pub epochs: usize,
     pub learning_rate: f64,
     pub train_part: f32,
@@ -65,8 +67,8 @@ impl Meta {
         let parent = file.parent().expect("Parent dir.");
         let _ = create_dir_all(parent);
         let out_string = serde_yaml::to_string(&self).unwrap();
-        fs::write(file, out_string).expect("Unable to write meta file");
-        self.save_default();
+        fs::write(file, &out_string).expect("Unable to write meta file");
+        fs::write(DEFAULT, out_string).expect("Unable to write default meta file");
     }
 
     fn save_default(&self) {
@@ -77,9 +79,8 @@ impl Meta {
     pub fn load_default() ->Meta {
         let path:&Path = DEFAULT.as_ref();
         if !path.exists() { return Meta::default();}
-        let buf = fs::read(DEFAULT).expect("Unable to read default file");
-        let model_default = std::str::from_utf8(&buf).unwrap();
-        Self::load(model_default)
+        let buf = fs::read(DEFAULT).unwrap();
+        serde_yaml::from_slice(&buf).unwrap()
     }
 
     fn load(path: &str) -> Self {
@@ -134,12 +135,6 @@ mod tests {
     fn test_save_load() {
         set_root();
         let meta: Meta = Default::default();
-        let name = meta.model_name();
-        let file = meta.meta_file();
-        if !file.exists() {
-            meta.save();
-        }
-        let _meta2 = Meta::load(&name);
-        //assert!(meta == meta2);
+        let _meta2 = Meta::load(&meta.model_name());
     }
 }

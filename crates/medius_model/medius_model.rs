@@ -50,14 +50,11 @@ pub fn training_loop(m: Dataset, meta: &Meta) -> anyhow::Result<()> {
     let train_labels = m.train_labels;
     let train_data = m.train_data.to_device(&dev)?;
     let train_labels = train_labels.to_dtype(DType::U32)?.to_device(&dev)?;
-    let (_len, inputs) = m.train_data.shape().dims2()?;
-    let labels = m.labels;
-    let hidden0 = meta.hidden0;
-    let hidden1 = meta.hidden1;
+    //let (_len, inputs) = m.train_data.shape().dims2()?;
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();
-
-    let (varmap, model) = get_model(&dev, inputs, labels, hidden0, hidden1, model_path, false)?;
+    let mut varmap = VarMap::new();
+    let model = get_model(&dev, &mut varmap, meta, false)?;
 
     let mut opt = candle_nn::SGD::new(varmap.all_vars(), meta.learning_rate)?;
     /*    let mut opt = candle_nn::AdamW::new(varmap.all_vars(),ParamsAdamW {
@@ -98,19 +95,23 @@ pub fn training_loop(m: Dataset, meta: &Meta) -> anyhow::Result<()> {
 
 pub fn get_model(
     dev: &Device,
-    inputs: usize,
-    labels: usize,
-    hidden0: usize,
-    hidden1: usize,
-    model_path: &Path,
+    varmap: &mut VarMap,
+    meta: &Meta,
     verbose: bool,
-) -> anyhow::Result<(VarMap, Mlp)> {
-    let mut varmap = VarMap::new();
-    let vs = VarBuilder::from_varmap(&varmap, DType::F32, dev);
+) -> anyhow::Result<Mlp> {
+    //let mut varmap = VarMap::new();
+    let vs = VarBuilder::from_varmap(varmap, DType::F32, dev);
+    let labels = 5;
+    let inputs = meta.n;
+    let hidden0 = meta.hidden0;
+    let hidden1 = meta.hidden1;
+    let binding = meta.model_file();
+    let model_path: &Path = binding.as_ref();
+
     if verbose {
         println!(
             "inputs:{:?},outputs:{:?},hidden:[{:?},{:?}]",
-            &inputs, labels, hidden0, hidden1
+            inputs, labels, meta.hidden0, meta.hidden1
         );
     }
     let model = Mlp::new(vs.clone(), inputs, labels, hidden0, hidden1)?;
@@ -121,5 +122,5 @@ pub fn get_model(
     if model_path.exists() {
         varmap.load(model_path)?;
     }
-    Ok((varmap, model))
+    Ok(model)
 }

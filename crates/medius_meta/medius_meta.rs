@@ -71,21 +71,10 @@ impl Meta {
         fs::write(DEFAULT, out_string).expect("Unable to write default meta file");
     }
 
-    fn save_default(&self) {
-        let model_name = self.model_name();
-        fs::write(DEFAULT, model_name).expect("Unable to write default file");
-    }
-
     pub fn load_default() ->Meta {
         let path:&Path = DEFAULT.as_ref();
         if !path.exists() { return Meta::default();}
         let buf = fs::read(DEFAULT).unwrap();
-        serde_yaml::from_slice(&buf).unwrap()
-    }
-
-    fn load(path: &str) -> Self {
-        let file = Self::named(path,META_NAME);
-        let buf = fs::read(file).unwrap();
         serde_yaml::from_slice(&buf).unwrap()
     }
     pub fn data_name(&self) -> String {
@@ -124,17 +113,10 @@ impl Meta {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use utils::set_root;
     #[test]
     fn test_name() {
         let meta: Meta = Default::default();
         let name = meta.model_name();
-        assert!(name == "C_40_10_B260_ST");
-    }
-    #[test]
-    fn test_save_load() {
-        set_root();
-        let meta: Meta = Default::default();
-        let _meta2 = Meta::load(&meta.model_name());
+        assert_eq!(name, "C_40_10_B260_ST");
     }
 }

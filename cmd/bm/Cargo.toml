@@ -5,8 +5,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-indicatif = "0.17.5"
-sysinfo = "0.29.7"
+indicatif = "0.17.9"
+sysinfo = "0.33.0"
 
 [[bin]]
 path = "./bm.rs"

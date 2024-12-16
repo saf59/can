@@ -7,7 +7,7 @@ license.workspace = true
 [dependencies]
 anyhow = { workspace = true }
 chrono = { workspace = true }
-crossbeam-channel = "0.5.13"
+crossbeam-channel = "0.5.14"
 ctrlc = "3.4.5"
 
 [[bin]]

@@ -15,8 +15,8 @@ resolver = "2"
 
 [workspace.dependencies]
 anyhow = { version = "1.0.94", features = ["backtrace"] }
-candle-core = "0.8.0"
-candle-nn = "0.8.0"
+candle-core = "0.8.1"
+candle-nn = "0.8.1"
 clap = { version = "4.5.23", features = ["derive"] }
 rand = "0.8.5"
 chrono = { version="0.4.39", features = ["serde"] }

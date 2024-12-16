@@ -3,10 +3,11 @@ use std::fmt::Debug;
 use std::fs;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
+use std::string::ToString;
 use utils::first_char;
 
-const MODELS_DIR: &str = "./models";
-const DEFAULT: &str = "./models/model.meta";
+pub const MODELS_DIR: &str = "./models";
+pub const DEFAULT: &str = "./models/model.meta";
 pub const DEFAULT_VM: &str = "./models/model.safetensors";
 const META_NAME: &str = "model.meta";
 const MODEL_NAME: &str = "model.safetensors";
@@ -72,11 +73,29 @@ impl Meta {
     }
 
     pub fn load_default() ->Meta {
-        let path:&Path = DEFAULT.as_ref();
-        if !path.exists() { return Meta::default();}
+        if !(DEFAULT.as_ref() as &Path).exists() { return Meta::default();}
         let buf = fs::read(DEFAULT).unwrap();
         serde_yaml::from_slice(&buf).unwrap()
     }
+
+    pub fn init() -> Meta {
+        if !(DEFAULT.as_ref() as &Path).exists() {
+            let bytes = include_bytes!("../.././models/model.meta");
+            let _ = create_dir_all(MODELS_DIR);
+            fs::write(DEFAULT, bytes).expect("Unable to write default meta file");
+        }
+        let meta = Meta::load_default();
+        let binding = &meta.model_file();
+        let model_path: &Path = binding.as_ref();
+        if !model_path.exists() {
+            let bytes = include_bytes!("../.././models/model.safetensors");
+            let _ = create_dir_all(model_path.parent().unwrap());
+            fs::write(model_path, bytes).expect("Unable to write default meta file");
+        }
+        meta
+    }
+
+
     pub fn data_name(&self) -> String {
         let at = first_char(&self.alg_type);
         let sn = &self.n.to_string();

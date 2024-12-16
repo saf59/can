@@ -53,8 +53,7 @@ pub fn training_loop(m: Dataset, meta: &Meta) -> anyhow::Result<()> {
     //let (_len, inputs) = m.train_data.shape().dims2()?;
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();
-    let mut varmap = VarMap::new();
-    let model = get_model(&dev, &mut varmap, meta, false)?;
+    let (varmap, model) = get_model(&dev, meta, false)?;
 
     let mut opt = candle_nn::SGD::new(varmap.all_vars(), meta.learning_rate)?;
     /*    let mut opt = candle_nn::AdamW::new(varmap.all_vars(),ParamsAdamW {
@@ -89,18 +88,17 @@ pub fn training_loop(m: Dataset, meta: &Meta) -> anyhow::Result<()> {
         model_path.to_string_lossy()
     );
     let _ = varmap.save(model_path);
-    let _ = varmap.save(DEFAULT_VM);
+    let _ = varmap.save(DEFAULT_VM); // only for include_bytes!("../.././models/model.safetensors");
     Ok(())
 }
 
 pub fn get_model(
     dev: &Device,
-    varmap: &mut VarMap,
     meta: &Meta,
     verbose: bool,
-) -> anyhow::Result<Mlp> {
-    //let mut varmap = VarMap::new();
-    let vs = VarBuilder::from_varmap(varmap, DType::F32, dev);
+) -> anyhow::Result<(VarMap,Mlp)> {
+    let mut varmap = VarMap::new();
+    let vs = VarBuilder::from_varmap(&varmap, DType::F32, dev);
     let labels = 5;
     let inputs = meta.n;
     let hidden0 = meta.hidden0;
@@ -115,12 +113,12 @@ pub fn get_model(
         );
     }
     let model = Mlp::new(vs.clone(), inputs, labels, hidden0, hidden1)?;
-    let _ = create_dir_all(model_path.parent().unwrap());
-    if verbose {
-        println!("loading weights from {:}", model_path.to_string_lossy());
-    }
     if model_path.exists() {
+        if verbose {
+            println!("loading weights from {:}", model_path.to_string_lossy());
+        }
+        let _ = create_dir_all(model_path.parent().unwrap());
         varmap.load(model_path)?;
     }
-    Ok(model)
+    Ok((varmap,model))
 }

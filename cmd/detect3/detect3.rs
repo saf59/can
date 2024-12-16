@@ -5,7 +5,6 @@ use medius_model::{get_model, Model};
 use medius_parser::parse_wav;
 use std::path::Path;
 use std::time::Instant;
-use candle_nn::VarMap;
 
 #[derive(Parser)]
 struct Args {
@@ -22,15 +21,13 @@ struct Args {
 pub fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let start = Instant::now();
-    let meta = &Meta::load_default();
+    let meta = Meta::init();
     let buff_size: usize = meta.buff_size.clone() as usize;
     let inputs = meta.n;
     let dev = candle_core::Device::cuda_if_available(0)?;
-
     let data = parse_wav(args.wav.as_ref() as &Path, inputs, args.frequency, buff_size).unwrap();
     let data = Tensor::from_vec(data, (1,inputs), &dev)?;
-    let mut varmap = VarMap::new();
-    let model = get_model(&dev, &mut varmap,  meta, args.verbose)?;
+    let (_vm,model) = get_model(&dev, &meta, args.verbose)?;
     let logits = model.forward(&data)?;
     let max =logits.argmax(D::Minus1).unwrap().to_vec1::<u32>().unwrap();
     let max = max.first();
@@ -41,3 +38,4 @@ pub fn main() -> anyhow::Result<()> {
     } else {println!("{:?}", wp);}
     Ok(())
 }
+

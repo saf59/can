@@ -42,12 +42,12 @@ struct Args {
 }
 
 pub fn main() -> anyhow::Result<()> {
-    let meta = meta()?;
+    let mut meta = meta()?;
     let base: &Path = "./data".as_ref();
     let m = load_dir(base.join(meta.data_name()), meta.train_part)?;
     print_dataset_info(&m);
     let start = Instant::now();
-    match training_loop(m, &meta) {
+    match training_loop(m, &mut meta) {
         Ok(_) => {
             println!("{:5.2?}", Instant::now().duration_since(start));
             meta.save();

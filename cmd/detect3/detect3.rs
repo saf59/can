@@ -1,7 +1,7 @@
 use candle_core::{Tensor, D};
 use clap::Parser;
 use medius_meta::Meta;
-use medius_model::{get_model, Model};
+use medius_model::{get_model, Mlp, Model};
 use medius_parser::parse_wav;
 use std::path::Path;
 use std::time::Instant;
@@ -28,14 +28,22 @@ pub fn main() -> anyhow::Result<()> {
     let data = parse_wav(args.wav.as_ref() as &Path, inputs, args.frequency, buff_size).unwrap();
     let data = Tensor::from_vec(data, (1,inputs), &dev)?;
     let (_vm,model) = get_model(&dev, &meta, args.verbose)?;
-    let logits = model.forward(&data)?;
-    let max =logits.argmax(D::Minus1).unwrap().to_vec1::<u32>().unwrap();
-    let max = max.first();
-    let wp:f32 = (*max.unwrap() as f32)  * -0.1;
+    let wp = match meta.model_type {
+        medius_meta::ModelType::Classification => by_class(&data, model),
+        medius_meta::ModelType::Regression => by_class(&data, model)
+    }?;
     if args.verbose {
         println!("result: {:?}", wp);
         println!("{:5.2?}", Instant::now().duration_since(start));
     } else {println!("{:?}", wp);}
     Ok(())
+}
+
+fn by_class(data: &Tensor, model: Mlp) -> anyhow::Result<f32> {
+    let logits = model.forward(data)?;
+    let max = logits.argmax(D::Minus1).unwrap().to_vec1::<u32>().unwrap();
+    let max = max.first();
+    let wp: f32 = (*max.unwrap() as f32) * -0.1;
+    Ok(wp)
 }
 

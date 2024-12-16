@@ -26,6 +26,7 @@ pub struct Meta {
     pub train_part: f32,
     pub hidden0: usize,
     pub hidden1: usize,
+    pub outputs: usize
 }
 impl Default for Meta {
     fn default() -> Self {
@@ -42,6 +43,7 @@ impl Default for Meta {
             train_part: 0.9,
             hidden0: 40,
             hidden1: 10,
+            outputs:1
         }
     }
 }

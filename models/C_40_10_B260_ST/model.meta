@@ -7,3 +7,4 @@ learning_rate: 0.5
 train_part: 0.9
 hidden0: 40
 hidden1: 10
+outputs: 5

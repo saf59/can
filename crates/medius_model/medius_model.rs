@@ -1,7 +1,7 @@
 use candle_core::{DType, Device, Result, Tensor, D};
 use candle_nn::{loss, ops, Linear, Module, Optimizer, VarBuilder, VarMap};
 use medius_data::Dataset;
-use medius_meta::{Meta, DEFAULT_VM};
+use medius_meta::{Meta, ModelType, DEFAULT_VM};
 use std::fs::create_dir_all;
 use std::path::Path;
 
@@ -44,7 +44,7 @@ impl Model for Mlp {
         self.ln3.forward(&xs)
     }
 }
-pub fn training_loop(m: Dataset, meta: &Meta) -> anyhow::Result<()> {
+pub fn training_loop(m: Dataset, meta: &mut Meta) -> anyhow::Result<()> {
     let dev = candle_core::Device::cuda_if_available(0)?;
 
     let train_labels = m.train_labels;
@@ -53,14 +53,17 @@ pub fn training_loop(m: Dataset, meta: &Meta) -> anyhow::Result<()> {
     //let (_len, inputs) = m.train_data.shape().dims2()?;
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();
+    meta.outputs = if meta.model_type== ModelType::Regression {1} else {m.labels};
     let (varmap, model) = get_model(&dev, meta, false)?;
-
     let mut opt = candle_nn::SGD::new(varmap.all_vars(), meta.learning_rate)?;
-    /*    let mut opt = candle_nn::AdamW::new(varmap.all_vars(),ParamsAdamW {
-            lr: args.learning_rate,
+/*    let mut opt: dyn Optimizer<Config=()> = match &meta.model_type {
+        Classification => candle_nn::SGD::new(varmap.all_vars(), meta.learning_rate) as dyn Optimizer,
+        Regression => candle_nn::AdamW::new(varmap.all_vars(), ParamsAdamW {
+            lr: meta.learning_rate,
             ..Default::default()
-        })?;
-    */
+        }) as dyn Optimizer
+    }?;
+*/
     let test_data = m.test_data.to_device(&dev)?;
     let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(&dev)?;
     for epoch in 1..meta.epochs {
@@ -99,20 +102,20 @@ pub fn get_model(
 ) -> anyhow::Result<(VarMap,Mlp)> {
     let mut varmap = VarMap::new();
     let vs = VarBuilder::from_varmap(&varmap, DType::F32, dev);
-    let labels = 5;
     let inputs = meta.n;
     let hidden0 = meta.hidden0;
     let hidden1 = meta.hidden1;
+    let outputs = meta.outputs;
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();
 
     if verbose {
         println!(
             "inputs:{:?},outputs:{:?},hidden:[{:?},{:?}]",
-            inputs, labels, meta.hidden0, meta.hidden1
+            inputs, outputs, meta.hidden0, meta.hidden1
         );
     }
-    let model = Mlp::new(vs.clone(), inputs, labels, hidden0, hidden1)?;
+    let model = Mlp::new(vs.clone(), inputs, outputs, hidden0, hidden1)?;
     if model_path.exists() {
         if verbose {
             println!("loading weights from {:}", model_path.to_string_lossy());

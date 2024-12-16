@@ -80,7 +80,7 @@ impl Meta {
 
     pub fn init() -> Meta {
         if !(DEFAULT.as_ref() as &Path).exists() {
-            let bytes = include_bytes!("../../models/model.meta");
+            let bytes = include_bytes!("./../../models/model.meta");
             let _ = create_dir_all(MODELS_DIR);
             fs::write(DEFAULT, bytes).expect("Unable to write default meta file");
         }
@@ -88,7 +88,7 @@ impl Meta {
         let binding = &meta.model_file();
         let model_path: &Path = binding.as_ref();
         if !model_path.exists() {
-            let bytes = include_bytes!("../../models/model.safetensors");
+            let bytes = include_bytes!("./../../models/model.safetensors");
             let _ = create_dir_all(model_path.parent().unwrap());
             fs::write(model_path, bytes).expect("Unable to write default meta file");
         }

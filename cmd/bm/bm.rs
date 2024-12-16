@@ -3,7 +3,7 @@ use std::env;
 use std::f64;
 use std::thread::available_parallelism;
 use std::time::Instant;
-use sysinfo::{System, SystemExt};
+use sysinfo::System;
 
 pub fn factorial(num: u128) -> u128 {
     (1..=num).product()
@@ -29,15 +29,14 @@ fn main() {
         &num_calcs, &num_iters, &total_calc,
     );
     // get sysinfo
-    let mut sys = System::new_all();
-    sys.refresh_all();
+    //sys.refresh_all();
     // Display system information:
-    println!("System name:             {:?}", sys.name());
-    println!("System kernel version:   {:?}", sys.kernel_version());
-    println!("System OS version:       {:?}", sys.os_version());
-    println!("System host name:        {:?}", sys.host_name());
+    println!("System name:             {:?}", System::name());
+    println!("System kernel version:   {:?}", System::kernel_version());
+    println!("System OS version:       {:?}", System::os_version());
+    println!("System host name:        {:?}", System::host_name());
     // Number of CPUs:
-    println!("Number of available threads: {}", sys.cpus().len());
+    println!("Number of available threads: {}", System::new().cpus().len());
 
     let available_cores: u64 = available_parallelism().unwrap().get() as u64; // get info how many threads we can use and use half of them
     let iter_per_core: u64 = num_calcs / available_cores;

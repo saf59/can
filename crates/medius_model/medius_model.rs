@@ -55,6 +55,9 @@ pub fn training_loop(m: Dataset, meta: &mut Meta) -> anyhow::Result<()> {
     let model_path: &Path = binding.as_ref();
     meta.outputs = if meta.model_type== ModelType::Regression {1} else {m.labels};
     let (varmap, model) = get_model(&dev, meta, false)?;
+    let test_data = m.test_data.to_device(&dev)?;
+    let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(&dev)?;
+
     let mut opt = candle_nn::SGD::new(varmap.all_vars(), meta.learning_rate)?;
 /*    let mut opt: dyn Optimizer<Config=()> = match &meta.model_type {
         Classification => candle_nn::SGD::new(varmap.all_vars(), meta.learning_rate) as dyn Optimizer,
@@ -64,8 +67,6 @@ pub fn training_loop(m: Dataset, meta: &mut Meta) -> anyhow::Result<()> {
         }) as dyn Optimizer
     }?;
 */
-    let test_data = m.test_data.to_device(&dev)?;
-    let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(&dev)?;
     for epoch in 1..meta.epochs {
         let logits = model.forward(&train_data)?;
         let log_sm = ops::log_softmax(&logits, D::Minus1)?;

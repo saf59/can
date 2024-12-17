@@ -1,8 +1,9 @@
 use candle_core::{DType, Device, Result, Tensor, D};
-use candle_nn::{loss, ops, Linear, Module, Optimizer, VarBuilder, VarMap};
+use candle_nn::{loss, ops, Linear, Module, Optimizer, ParamsAdamW, VarBuilder, VarMap};
 use medius_data::Dataset;
 use medius_meta::{Meta, ModelType, DEFAULT_VM};
 use std::fs::create_dir_all;
+use std::ops::Mul;
 use std::path::Path;
 
 pub trait Model: Sized {
@@ -46,54 +47,89 @@ impl Model for Mlp {
 }
 pub fn training_loop(m: Dataset, meta: &mut Meta) -> anyhow::Result<()> {
     let dev = candle_core::Device::cuda_if_available(0)?;
-
-    let train_labels = m.train_labels;
-    let train_data = m.train_data.to_device(&dev)?;
-    let train_labels = train_labels.to_dtype(DType::U32)?.to_device(&dev)?;
-    //let (_len, inputs) = m.train_data.shape().dims2()?;
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();
     meta.outputs = if meta.model_type== ModelType::Regression {1} else {m.labels};
     let (varmap, model) = get_model(&dev, meta, false)?;
-    let test_data = m.test_data.to_device(&dev)?;
-    let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(&dev)?;
-
-    let mut opt = candle_nn::SGD::new(varmap.all_vars(), meta.learning_rate)?;
-/*    let mut opt: dyn Optimizer<Config=()> = match &meta.model_type {
-        Classification => candle_nn::SGD::new(varmap.all_vars(), meta.learning_rate) as dyn Optimizer,
-        Regression => candle_nn::AdamW::new(varmap.all_vars(), ParamsAdamW {
-            lr: meta.learning_rate,
-            ..Default::default()
-        }) as dyn Optimizer
+    match meta.model_type {
+        ModelType::Classification => train_classification(m, meta, &dev, &varmap, &model),
+        ModelType::Regression => train_regression(m, meta, &dev, &varmap, &model)
     }?;
-*/
+    println!("\nsaving trained weights to {:}", model_path.to_string_lossy());
+    let _ = varmap.save(model_path);
+    let _ = varmap.save(DEFAULT_VM); // only for include_bytes!("../.././models/model.safetensors");
+    Ok(())
+}
+
+fn train_classification(m: Dataset, meta: &mut Meta, dev: &Device, varmap: &VarMap, model: &Mlp) -> anyhow::Result<()> {
+    let mut opt = candle_nn::SGD::new(varmap.all_vars(), meta.learning_rate)?;
+    let train_data = m.train_data.to_device(dev)?;
+    let train_labels = m.train_labels.to_dtype(DType::U32)?.to_device(dev)?;
+    let test_data = m.test_data.to_device(dev)?;
+    let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(dev)?;
     for epoch in 1..meta.epochs {
-        let logits = model.forward(&train_data)?;
-        let log_sm = ops::log_softmax(&logits, D::Minus1)?;
+        let logits = &model.forward(&train_data)?;
+        let log_sm = ops::log_softmax(logits, D::Minus1)?;
         let loss = loss::nll(&log_sm, &train_labels)?;
         opt.backward_step(&loss)?;
-
-        let test_logits = model.forward(&test_data)?;
-        let sum_ok = test_logits
-            .argmax(D::Minus1)?
-            .eq(&test_labels)?
-            .to_dtype(DType::F32)?
-            .sum_all()?
-            .to_scalar::<f32>()?;
-        let test_accuracy = sum_ok / test_labels.dims1()? as f32;
+        let test_accuracy = test_classification(model, &test_data, &test_labels)?;
         print!(
             "{epoch:4} train loss: {:8.5} test acc: {:5.2}% \r",
             loss.to_scalar::<f32>()?,
             100. * test_accuracy
         );
     }
-    println!(
-        "\nsaving trained weights to {:}",
-        model_path.to_string_lossy()
-    );
-    let _ = varmap.save(model_path);
-    let _ = varmap.save(DEFAULT_VM); // only for include_bytes!("../.././models/model.safetensors");
     Ok(())
+}
+fn train_regression(m: Dataset, meta: &mut Meta, dev: &Device, varmap: &VarMap, model: &Mlp) -> anyhow::Result<()> {
+    let mut opt = candle_nn::AdamW::new(varmap.all_vars(), ParamsAdamW {
+        lr: meta.learning_rate,
+        ..Default::default()
+    })?;
+    let train_data = m.train_data.to_device(dev)?;
+    let train_labels = m.train_labels.to_dtype(DType::F32).unwrap().mul(-0.1)?.to_device(dev)?;
+    let test_data = m.test_data.to_device(dev)?;
+    let test_labels = m.test_labels.to_dtype(DType::F32).unwrap().mul(-0.1)?.to_device(dev)?;
+    //println!("labels:{:?}",test_labels.to_vec1::<f32>().unwrap());
+    for epoch in 1..meta.epochs {
+        let logits = &model.forward(&train_data).unwrap().flatten_to(1)?;
+        //println!("f:{:?} -> y:{:?}",logits.shape(),train_labels.shape());
+        let loss = logits.sub(&train_labels)?.sqr()?.mul(0.5).unwrap();
+        //println!("loss:{:?}",loss.shape());
+        let loss =loss.mean(0)?;
+        //let loss = candle_nn::loss::cross_entropy(&logits, &train_labels)?;
+        opt.backward_step(&loss)?;
+        let test_accuracy = test_regression(model, &test_data, &test_labels)?;
+        print!(
+            "{epoch:4} train loss: {:8.6} test acc: {:5.6}% \r",
+            loss.to_scalar::<f32>()?,
+            100. * test_accuracy
+        );
+    }
+    Ok(())
+}
+
+
+fn test_classification(model: &Mlp, test_data: &Tensor, test_labels: &Tensor) -> anyhow::Result<f32> {
+    let test_logits = model.forward(test_data)?;
+    let sum_ok = test_logits
+        .argmax(D::Minus1)?
+        .eq(test_labels)?
+        .to_dtype(DType::F32)?
+        .sum_all()?
+        .to_scalar::<f32>()?;
+    let test_accuracy = sum_ok / test_labels.dims1()? as f32;
+    Ok(test_accuracy)
+}
+fn test_regression(model: &Mlp, test_data: &Tensor, test_labels: &Tensor) -> anyhow::Result<f32> {
+    let test_logits = model.forward(test_data).unwrap().flatten_to(1)?;
+    //0println!("result:{:?}",test_logits.to_vec1::<f32>().unwrap());
+    //let loss = test_logits.sub(&test_labels)?.sqr()?.sum_all()?;
+    //let loss = candle_nn::loss::cross_entropy(&test_labels, &test_labels)?;
+    let loss = test_logits.sub(&test_labels)?.sqr()?.mul(0.5).unwrap().mean(0)?;
+    //let loss = candle_nn::loss::cross_entropy(&test_logits.flatten_to(1)?, &test_labels)?;
+    let test_accuracy = loss.to_vec0::<f32>()? as f32;
+    Ok(test_accuracy)
 }
 
 pub fn get_model(

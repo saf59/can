@@ -1,6 +1,6 @@
 use candle_core::{Tensor, D};
 use clap::Parser;
-use medius_meta::Meta;
+use medius_meta::{Meta, ModelType};
 use medius_model::{get_model, Model};
 use medius_parser::parse_wav;
 use std::path::Path;
@@ -30,13 +30,13 @@ pub fn main() -> anyhow::Result<()> {
     let (_vm,model) = get_model(&dev, &meta, args.verbose)?;
     let result = model.forward(&data)?;
     let wp = match meta.model_type {
-        medius_meta::ModelType::Classification => by_class(&result),
-        medius_meta::ModelType::Regression => by_class(&result)
+        ModelType::Classification => by_class(&result),
+        ModelType::Regression => by_regr(&result)
     }?;
     if args.verbose {
-        println!("result: {:?}", wp);
+        println!("result: {:5.2?}", wp);
         println!("{:5.2?}", Instant::now().duration_since(start));
-    } else {println!("{:?}", wp);}
+    } else {println!("{:5.2?}", wp);}
     Ok(())
 }
 
@@ -46,4 +46,7 @@ fn by_class(logits: &Tensor) -> anyhow::Result<f32> {
     let wp: f32 = (*max.unwrap() as f32) * -0.1;
     Ok(wp)
 }
-
+fn by_regr(logits: &Tensor) -> anyhow::Result<f32> {
+    let wp: f32 = logits.flatten_all()?.get(0).unwrap().to_scalar::<f32>().unwrap();
+    Ok(wp)
+}

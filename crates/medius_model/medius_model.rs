@@ -50,7 +50,7 @@ pub fn training_loop(m: Dataset, meta: &mut Meta) -> anyhow::Result<()> {
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();
     meta.outputs = if meta.model_type== ModelType::Regression {1} else {m.labels};
-    let (varmap, model) = get_model(&dev, meta, false)?;
+    let (varmap, model) = get_model(&dev, meta, false,&fill_from_file)?;
     match meta.model_type {
         ModelType::Classification => train_classification(m, meta, &dev, &varmap, &model),
         ModelType::Regression => train_regression(m, meta, &dev, &varmap, &model)
@@ -128,6 +128,7 @@ pub fn get_model(
     dev: &Device,
     meta: &Meta,
     verbose: bool,
+    f: &dyn Fn(&Meta, bool, &mut VarMap) -> anyhow::Result<()>
 ) -> anyhow::Result<(VarMap,Mlp)> {
     let mut varmap = VarMap::new();
     let vs = VarBuilder::from_varmap(&varmap, DType::F32, dev);
@@ -135,16 +136,21 @@ pub fn get_model(
     let hidden0 = meta.hidden0;
     let hidden1 = meta.hidden1;
     let outputs = meta.outputs;
-    let binding = meta.model_file();
-    let model_path: &Path = binding.as_ref();
-
     if verbose { println!("inputs:{:?},outputs:{:?},hidden:[{:?},{:?}]",
                  inputs, outputs, meta.hidden0, meta.hidden1); }
     let model = Mlp::new(vs.clone(), inputs, outputs, hidden0, hidden1)?;
+    //fill_from_file(meta, verbose, &mut varmap)?;
+    f(meta, verbose, &mut varmap)?;
+    Ok((varmap,model))
+}
+
+pub fn fill_from_file(meta: &Meta, verbose: bool, varmap: &mut VarMap) -> anyhow::Result<()> {
+    let binding = meta.model_file();
+    let model_path: &Path = binding.as_ref();
     if model_path.exists() {
-        if verbose { println!("loading weights from {:}", model_path.to_string_lossy());}
+        if verbose { println!("loading weights from {:}", model_path.to_string_lossy()); }
         let _ = create_dir_all(model_path.parent().unwrap());
         varmap.load(model_path)?;
     }
-    Ok((varmap,model))
+    Ok(())
 }

@@ -1,8 +1,10 @@
 use candle_core::{Tensor, D};
 use clap::Parser;
-use medius_meta::{Meta, ModelType};
+use medius_meta::{Meta, ModelType, DEFAULT, MODELS_DIR};
 use medius_model::{get_model, Model};
 use medius_parser::parse_wav;
+use std::fs;
+use std::fs::create_dir_all;
 use std::path::Path;
 use std::time::Instant;
 
@@ -21,7 +23,7 @@ struct Args {
 pub fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let start = Instant::now();
-    let meta = Meta::init();
+    let meta = init();
     let buff_size: usize = meta.buff_size.clone() as usize;
     let inputs = meta.n;
     let dev = candle_core::Device::cuda_if_available(0)?;
@@ -49,4 +51,21 @@ fn by_class(logits: &Tensor) -> anyhow::Result<f32> {
 fn by_regr(logits: &Tensor) -> anyhow::Result<f32> {
     let wp: f32 = logits.flatten_all()?.get(0).unwrap().to_scalar::<f32>().unwrap();
     Ok(wp)
+}
+
+pub fn init() -> Meta {
+    if !(DEFAULT.as_ref() as &Path).exists() {
+        let bytes = include_bytes!("./../../models/model.meta");
+        let _ = create_dir_all(MODELS_DIR);
+        fs::write(DEFAULT, bytes).expect("Unable to write default meta file");
+    }
+    let meta = Meta::load_default();
+    let binding = &meta.model_file();
+    let model_path: &Path = binding.as_ref();
+    if !model_path.exists() {
+        let bytes = include_bytes!("./../../models/model.safetensors");
+        let _ = create_dir_all(model_path.parent().unwrap());
+        fs::write(model_path, bytes).expect("Unable to write default meta file");
+    }
+    meta
 }

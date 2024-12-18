@@ -90,14 +90,10 @@ fn train_regression(m: Dataset, meta: &mut Meta, dev: &Device, varmap: &VarMap, 
     let train_labels = m.train_labels.to_dtype(DType::F32).unwrap().mul(-0.1)?.to_device(dev)?;
     let test_data = m.test_data.to_device(dev)?;
     let test_labels = m.test_labels.to_dtype(DType::F32).unwrap().mul(-0.1)?.to_device(dev)?;
-    //println!("labels:{:?}",test_labels.to_vec1::<f32>().unwrap());
     for epoch in 1..meta.epochs {
         let logits = &model.forward(&train_data).unwrap().flatten_to(1)?;
-        //println!("f:{:?} -> y:{:?}",logits.shape(),train_labels.shape());
         let loss = logits.sub(&train_labels)?.sqr()?.mul(0.5).unwrap();
-        //println!("loss:{:?}",loss.shape());
         let loss =loss.mean(0)?;
-        //let loss = candle_nn::loss::cross_entropy(&logits, &train_labels)?;
         opt.backward_step(&loss)?;
         let test_accuracy = test_regression(model, &test_data, &test_labels)?;
         print!(
@@ -123,12 +119,8 @@ fn test_classification(model: &Mlp, test_data: &Tensor, test_labels: &Tensor) ->
 }
 fn test_regression(model: &Mlp, test_data: &Tensor, test_labels: &Tensor) -> anyhow::Result<f32> {
     let test_logits = model.forward(test_data).unwrap().flatten_to(1)?;
-    //0println!("result:{:?}",test_logits.to_vec1::<f32>().unwrap());
-    //let loss = test_logits.sub(&test_labels)?.sqr()?.sum_all()?;
-    //let loss = candle_nn::loss::cross_entropy(&test_labels, &test_labels)?;
-    let loss = test_logits.sub(&test_labels)?.sqr()?.mul(0.5).unwrap().mean(0)?;
-    //let loss = candle_nn::loss::cross_entropy(&test_logits.flatten_to(1)?, &test_labels)?;
-    let test_accuracy = loss.to_vec0::<f32>()? as f32;
+    let loss = test_logits.sub(test_labels)?.sqr()?.mul(0.5).unwrap().mean(0)?;
+    let test_accuracy = loss.to_vec0::<f32>()?;
     Ok(test_accuracy)
 }
 
@@ -146,17 +138,11 @@ pub fn get_model(
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();
 
-    if verbose {
-        println!(
-            "inputs:{:?},outputs:{:?},hidden:[{:?},{:?}]",
-            inputs, outputs, meta.hidden0, meta.hidden1
-        );
-    }
+    if verbose { println!("inputs:{:?},outputs:{:?},hidden:[{:?},{:?}]",
+                 inputs, outputs, meta.hidden0, meta.hidden1); }
     let model = Mlp::new(vs.clone(), inputs, outputs, hidden0, hidden1)?;
     if model_path.exists() {
-        if verbose {
-            println!("loading weights from {:}", model_path.to_string_lossy());
-        }
+        if verbose { println!("loading weights from {:}", model_path.to_string_lossy());}
         let _ = create_dir_all(model_path.parent().unwrap());
         varmap.load(model_path)?;
     }

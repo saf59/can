@@ -79,25 +79,6 @@ impl Meta {
         let buf = fs::read(DEFAULT).unwrap();
         serde_yaml::from_slice(&buf).unwrap()
     }
-
-    pub fn init() -> Meta {
-        if !(DEFAULT.as_ref() as &Path).exists() {
-            let bytes = include_bytes!("./../../models/model.meta");
-            let _ = create_dir_all(MODELS_DIR);
-            fs::write(DEFAULT, bytes).expect("Unable to write default meta file");
-        }
-        let meta = Meta::load_default();
-        let binding = &meta.model_file();
-        let model_path: &Path = binding.as_ref();
-        if !model_path.exists() {
-            let bytes = include_bytes!("./../../models/model.safetensors");
-            let _ = create_dir_all(model_path.parent().unwrap());
-            fs::write(model_path, bytes).expect("Unable to write default meta file");
-        }
-        meta
-    }
-
-
     pub fn data_name(&self) -> String {
         let at = first_char(&self.alg_type);
         let sn = &self.n.to_string();

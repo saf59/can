@@ -1,13 +1,12 @@
+use candle_core::safetensors::Load;
 use candle_core::{Tensor, D};
+use candle_nn::VarMap;
 use clap::Parser;
-use medius_meta::{Meta, ModelType, DEFAULT, MODELS_DIR};
-use medius_model::{fill_from_file, get_model, Model};
+use medius_meta::{Meta, ModelType};
+use medius_model::{get_model, Model};
 use medius_parser::parse_wav;
-use std::fs;
-use std::fs::create_dir_all;
 use std::path::Path;
 use std::time::Instant;
-
 #[derive(Parser)]
 struct Args {
     /// Verbose mode
@@ -19,11 +18,10 @@ struct Args {
     #[arg(short, default_value_t = 37523.4522)]
     frequency: f32,
 }
-
 pub fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let start = Instant::now();
-    let meta = init();
+    let meta = static_meta();
     let buff_size: usize = meta.buff_size.clone() as usize;
     let inputs = meta.n;
     let dev = candle_core::Device::cuda_if_available(0)?;
@@ -33,9 +31,9 @@ pub fn main() -> anyhow::Result<()> {
         args.frequency,
         buff_size,
     )
-    .unwrap();
+        .unwrap();
     let data = Tensor::from_vec(data, (1, inputs), &dev)?;
-    let (_vm, model) = get_model(&dev, &meta, args.verbose, &fill_from_file)?;
+    let (_vm, model) = get_model(&dev, &meta, args.verbose, &fill_from_static)?;
     let result = model.forward(&data)?;
     let wp = match meta.model_type {
         ModelType::Classification => by_class(&result),
@@ -49,7 +47,6 @@ pub fn main() -> anyhow::Result<()> {
     }
     Ok(())
 }
-
 fn by_class(logits: &Tensor) -> anyhow::Result<f32> {
     let max = logits.argmax(D::Minus1).unwrap().to_vec1::<u32>().unwrap();
     let max = max.first();
@@ -65,23 +62,16 @@ fn by_regr(logits: &Tensor) -> anyhow::Result<f32> {
         .unwrap();
     Ok(wp)
 }
-
-// Check if there are models/model.meta and models/*/model.safetensors files,
-// and if they are not there, create them from the default static files.
-// Default files are created automatically during the training process.
-pub fn init() -> Meta {
-    if !(DEFAULT.as_ref() as &Path).exists() {
-        let bytes = include_bytes!("./../../models/model.meta");
-        let _ = create_dir_all(MODELS_DIR);
-        fs::write(DEFAULT, bytes).expect("Unable to write default meta file");
+fn static_meta() -> Meta {
+    let buf = include_bytes!("./../../models/model.meta");
+    serde_yaml::from_slice(buf).unwrap()
+}
+fn fill_from_static(_meta: &Meta, _verbose: bool, varmap: &mut VarMap) -> anyhow::Result<()> {
+    let dev = candle_core::Device::cuda_if_available(0)?;
+    let buf = include_bytes!("./../../models/model.safetensors");
+    let map = safetensors::SafeTensors::deserialize(buf).unwrap();
+    for (k, v) in map.tensors() {
+        let _ = varmap.set_one(k,v.load(&dev)?);
     }
-    let meta = Meta::load_default();
-    let binding = &meta.model_file();
-    let model_path: &Path = binding.as_ref();
-    if !model_path.exists() {
-        let bytes = include_bytes!("./../../models/model.safetensors");
-        let _ = create_dir_all(model_path.parent().unwrap());
-        fs::write(model_path, bytes).expect("Unable to write default meta file");
-    }
-    meta
+    Ok(())
 }

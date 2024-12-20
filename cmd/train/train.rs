@@ -6,7 +6,7 @@ use std::time::Instant;
 use medius_data::{load_dir, Dataset};
 use medius_meta::{AlgType, BufSize, Meta, ModelType};
 use medius_model::training_loop;
-
+/// Command line arguments for the training program
 #[derive(Parser)]
 struct Args {
     /// Show defaults and exit
@@ -47,6 +47,7 @@ pub fn main() -> anyhow::Result<()> {
     let m = load_dir(base.join(meta.data_name()), meta.train_part)?;
     print_dataset_info(&m);
     let start = Instant::now();
+    // Run training loop
     match training_loop(m, &mut meta) {
         Ok(_) => {
             println!("{:5.2?}", Instant::now().duration_since(start));
@@ -56,18 +57,18 @@ pub fn main() -> anyhow::Result<()> {
     }
     Ok(())
 }
-
+/// Print information about the dataset
 fn print_dataset_info(m: &Dataset) {
     print!("train-data: {:?}", m.train_data.shape());
     print!(", train-labels: {:?}", m.train_labels.shape());
     print!(", test-data: {:?}", m.test_data.shape());
     println!(", test-labels: {:?}", m.test_labels.shape());
 }
-
+/// Load metadata and parse command line arguments
 fn meta() -> anyhow::Result<Meta> {
     let args = Args::parse();
     let mut meta = Meta::load_default();
-
+    // Override metadata with command line arguments if provided
     if let Some(n) = args.n {
         meta.n = n;
     }
@@ -98,10 +99,12 @@ fn meta() -> anyhow::Result<Meta> {
     if let Some(hidden1) = args.hidden1 {
         meta.hidden1 = hidden1;
     }
+    // Check if the algorithm type is implemented
     if args.defaults {
         println!("{:#?}",meta);
         process::exit(0);
     }
+    // Check if the algorithm type is implemented
     if meta.alg_type != AlgType::Bin {
         return Err(anyhow::Error::msg(format!(
             "Algorithm {:#?} is not implemented yet!", meta.alg_type

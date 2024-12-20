@@ -143,7 +143,7 @@ pub fn get_model(
     f(meta, verbose, &mut varmap)?;
     Ok((varmap,model))
 }
-
+/// Fill VarMap from file
 pub fn fill_from_file(meta: &Meta, verbose: bool, varmap: &mut VarMap) -> anyhow::Result<()> {
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();

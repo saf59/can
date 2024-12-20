@@ -128,7 +128,7 @@ pub fn get_model(
     dev: &Device,
     meta: &Meta,
     verbose: bool,
-    f: &dyn Fn(&Meta, bool, &mut VarMap) -> anyhow::Result<()>
+    fill: &dyn Fn(&Meta, bool, &mut VarMap) -> anyhow::Result<()>
 ) -> anyhow::Result<(VarMap,Mlp)> {
     let mut varmap = VarMap::new();
     let vs = VarBuilder::from_varmap(&varmap, DType::F32, dev);
@@ -139,8 +139,7 @@ pub fn get_model(
     if verbose { println!("inputs:{:?},outputs:{:?},hidden:[{:?},{:?}]",
                  inputs, outputs, meta.hidden0, meta.hidden1); }
     let model = Mlp::new(vs.clone(), inputs, outputs, hidden0, hidden1)?;
-    //fill_from_file(meta, verbose, &mut varmap)?;
-    f(meta, verbose, &mut varmap)?;
+    fill(meta, verbose, &mut varmap)?;
     Ok((varmap,model))
 }
 /// Fill VarMap from file

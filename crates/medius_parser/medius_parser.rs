@@ -265,6 +265,7 @@ mod tests {
     const N: usize = 260;
     const SRC: &str = r"test_data/x1_y1.wav";
 
+    /// Same as parse_wav but step by step and from the test data
     #[test]
     fn test111() {
         set_root();
@@ -284,6 +285,7 @@ mod tests {
         assert!((0.17772603 - out[0]).abs() < 1e-9);
         assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-8);
     }
+    /// Check parse_wav result from the test data
     #[test]
     fn test111_parse() {
         set_root();

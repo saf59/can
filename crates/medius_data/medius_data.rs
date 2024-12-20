@@ -62,7 +62,7 @@ fn fill_x_y(
     }
     (out_x, out_y)
 }
-fn read_medius_x(dir: &std::path::Path) -> candle_core::Result<Vec<f32>> {
+fn read_medius_x(dir: &Path) -> candle_core::Result<Vec<f32>> {
     let reader = get_reader(dir, "x.csv")?;
     let data = reader
         .into_records()
@@ -74,7 +74,7 @@ fn read_medius_x(dir: &std::path::Path) -> candle_core::Result<Vec<f32>> {
     Ok(data)
 }
 
-fn read_medius_y(dir: &std::path::Path) -> candle_core::Result<Vec<u8>> {
+fn read_medius_y(dir: &Path) -> candle_core::Result<Vec<u8>> {
     let reader = get_reader(dir, "y.csv")?;
     let data = reader
         .into_records()
@@ -85,7 +85,7 @@ fn read_medius_y(dir: &std::path::Path) -> candle_core::Result<Vec<u8>> {
     Ok(data)
 }
 fn get_reader(dir: &Path, csv: &str) -> candle_core::Result<Reader<File>> {
-    let x_entry = std::fs::File::open(dir.join(csv))?;
+    let x_entry = File::open(dir.join(csv))?;
     let reader = csv::ReaderBuilder::new()
         .has_headers(false)
         .from_reader(x_entry);

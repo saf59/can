@@ -4,7 +4,7 @@ use std::time::Instant;
 
 // Как работают трансформеры: разбираем математику / Хабр
 // https://habr.com/ru/articles/785474/
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     let device = Device::cuda_if_available(0)?;
     let start = Instant::now();
     let _ = action(&device);
@@ -33,7 +33,7 @@ fn action(device: &Device) -> Result<(), Box<dyn Error>> {
     pv("attentions", &attentions);
     Ok(())
 }
-fn attention(x: &Tensor, wk: &Tensor, wv: &Tensor, wq: &Tensor, device: &Device) -> Result<Tensor, Box<dyn std::error::Error>> {
+fn attention(x: &Tensor, wk: &Tensor, wv: &Tensor, wq: &Tensor, device: &Device) -> Result<Tensor, Box<dyn Error>> {
     let k = x.matmul(wk)?;
     let v = x.matmul(wv)?;
     let q = x.matmul(wq)?;

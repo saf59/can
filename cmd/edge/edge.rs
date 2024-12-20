@@ -11,7 +11,7 @@ const FILE: &str = "checkpoint.safetensors";
 const INIT_WS: Init = Const(123.); // To repeat must be Const. Else: DEFAULT_KAIMING_NORMAL;
 
 // the same as 6.2.4. Learning a Kernel: https://d2l.djl.ai/chapter_convolutional-neural-networks/conv-layer.html
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     let device = Device::cuda_if_available(0)?;
     let varmap = VarMap::new();
     let start = Instant::now();

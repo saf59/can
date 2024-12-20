@@ -27,8 +27,7 @@ pub fn main() -> anyhow::Result<()> {
     let inputs = meta.n;
     let dev = candle_core::Device::cuda_if_available(0)?;
     // Parse wav file
-    let data = parse_wav(args.wav.as_ref() as &Path, inputs, args.frequency, buff_size)
-        .unwrap();
+    let data = parse_wav(args.wav.as_ref() as &Path, inputs, args.frequency, buff_size)?;
     // Convert data(extracted wav properties) to Tensor
     let data = Tensor::from_vec(data, (1, inputs), &dev)?;
     // Build model and fill it VarMap
@@ -49,7 +48,7 @@ pub fn main() -> anyhow::Result<()> {
 }
 /// Extract classification result
 fn by_class(logits: &Tensor) -> anyhow::Result<f32> {
-    let max = logits.argmax(D::Minus1).unwrap().to_vec1::<u32>().unwrap();
+    let max = logits.argmax(D::Minus1)?.to_vec1::<u32>()?;
     let max = max.first();
     let wp: f32 = (*max.unwrap() as f32) * -0.1;
     Ok(wp)
@@ -58,10 +57,8 @@ fn by_class(logits: &Tensor) -> anyhow::Result<f32> {
 fn by_regr(logits: &Tensor) -> anyhow::Result<f32> {
     let wp: f32 = logits
         .flatten_all()?
-        .get(0)
-        .unwrap()
-        .to_scalar::<f32>()
-        .unwrap();
+        .get(0)?
+        .to_scalar::<f32>()?;
     Ok(wp)
 }
 /// Get Meta embed resource
@@ -73,7 +70,7 @@ fn static_meta() -> Meta {
 fn fill_from_static(_meta: &Meta, _verbose: bool, varmap: &mut VarMap) -> anyhow::Result<()> {
     let dev = candle_core::Device::cuda_if_available(0)?;
     let buf = include_bytes!("./../../models/model.safetensors");
-    let map = safetensors::SafeTensors::deserialize(buf).unwrap();
+    let map = safetensors::SafeTensors::deserialize(buf)?;
     for (k, v) in map.tensors() {
         let _ = varmap.set_one(k,v.load(&dev)?);
     }

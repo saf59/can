@@ -19,8 +19,8 @@ pub fn parse_wav<P: AsRef<Path>>(
     buff_size: usize,
 ) -> anyhow::Result<Vec<f32>> {
     let nf = frequency / F5;
-    let all = fs::read(&path).unwrap();
-    let raw = read_wav(all).unwrap();
+    let all = fs::read(&path)?;
+    let raw = read_wav(all)?;
     let useful: Vec<f32> = useful3(&raw);
     let ampl: Vec<f32> = fft_amplitudes(&useful, buff_size);
     let range_list = build_range_list(TOP, n);
@@ -115,7 +115,7 @@ fn read_wav(data: Vec<u8>) -> anyhow::Result<Vec<f32>> {
         let channel = 0;
         let mut data: Vec<f32> = Vec::with_capacity(num_samples as usize);
         for sample in 0..num_samples {
-            data.push(reader.read_sample(channel, sample).unwrap());
+            data.push(reader.read_sample(channel, sample)?);
         }
         Ok(data)
     } else {

@@ -46,7 +46,7 @@ impl Model for Mlp {
     }
 }
 pub fn training_loop(m: Dataset, meta: &mut Meta) -> anyhow::Result<()> {
-    let dev = candle_core::Device::cuda_if_available(0)?;
+    let dev = Device::cuda_if_available(0)?;
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();
     meta.outputs = if meta.model_type== ModelType::Regression {1} else {m.labels};
@@ -92,7 +92,7 @@ fn train_regression(m: Dataset, meta: &mut Meta, dev: &Device, varmap: &VarMap, 
     let test_labels = m.test_labels.to_dtype(DType::F32).unwrap().mul(-0.1)?.to_device(dev)?;
     for epoch in 1..meta.epochs {
         let logits = &model.forward(&train_data).unwrap().flatten_to(1)?;
-        let loss = logits.sub(&train_labels)?.sqr()?.mul(0.5).unwrap();
+        let loss = logits.sub(&train_labels)?.sqr()?.mul(0.5)?;
         let loss =loss.mean(0)?;
         opt.backward_step(&loss)?;
         let test_accuracy = test_regression(model, &test_data, &test_labels)?;

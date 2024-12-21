@@ -1,0 +1,10 @@
+n: 260
+alg_type: Bin
+buff_size: Small
+scaled_frequency: true
+model_type: Regression
+learning_rate: 0.005
+train_part: 1.0
+hidden0: 40
+hidden1: 10
+outputs: 1

@@ -22,6 +22,7 @@ pub struct Meta {
     pub model_type: ModelType,
     #[serde(skip)]
     pub epochs: usize,
+    pub batch_size: usize,
     pub learning_rate: f64,
     pub train_part: f32,
     pub hidden0: usize,
@@ -40,6 +41,7 @@ impl Default for Meta {
             // Model parameters
             model_type: ModelType::Classification,
             epochs: 100,
+            batch_size: 40,
             learning_rate: 0.5,
             train_part: 0.9,
             hidden0: 40,
@@ -98,7 +100,8 @@ impl Meta {
         let h0 = &self.hidden0.to_string();
         let h1 = &self.hidden1.to_string();
         let sf = if self.scaled_frequency { 'T' } else { 'F' };
-        format!("{mt}_{h0}_{h1}_{at}{sn}_{bs}{sf}")
+        let bcs = &self.batch_size.to_string();
+        format!("{mt}_{h0}_{h1}_{at}{sn}_{bs}{sf}_${bcs}")
     }
     /// Returns the file path for the metadata file
     pub fn meta_file(&self) -> PathBuf {

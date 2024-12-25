@@ -24,7 +24,7 @@ pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32) -> candle_core::Result<
     let size = y.len();
     let width = x.len() / size;
     let mut indexes: Vec<usize> = (0..size).collect();
-    indexes.shuffle(&mut thread_rng());
+    indexes.shuffle(&mut thread_rng()); // randomize indexes
     let border: usize = ((size as f32) * train_part) as usize;
     let (train, test) = if train_part < 1.0 {
         (0..border, border..indexes.len())

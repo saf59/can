@@ -30,6 +30,9 @@ struct Args {
     /// Train epochs [default = 0]
     #[arg(short, long)]
     epochs: Option<usize>,
+    /// Train batch size
+    #[arg(short, long)]
+    batch_size: Option<usize>,
     /// The part of train data in x.csv and y.csv
     #[arg(long)]
     train_part: Option<f32>,
@@ -87,6 +90,9 @@ fn meta() -> anyhow::Result<Meta> {
     if let Some(epochs) = args.epochs {
         meta.epochs = epochs;
     } else { meta.epochs = 0 } // DEFAULT
+    if let Some(batch_size) = args.batch_size {
+        meta.batch_size = batch_size;
+    }
     if let Some(train_part) = args.train_part {
         meta.train_part = train_part;
     }

@@ -101,7 +101,7 @@ impl Meta {
         let h1 = &self.hidden1.to_string();
         let sf = if self.scaled_frequency { 'T' } else { 'F' };
         let bcs = &self.batch_size.to_string();
-        format!("{mt}_{h0}_{h1}_{at}{sn}_{bs}{sf}_${bcs}")
+        format!("{mt}_{h0}_{h1}_{at}{sn}_{bs}{sf}_{bcs}")
     }
     /// Returns the file path for the metadata file
     pub fn meta_file(&self) -> PathBuf {

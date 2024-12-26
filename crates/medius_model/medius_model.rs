@@ -80,7 +80,7 @@ fn train_classification(
     let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(dev)?;
     let n_batches = train_data.dim(0)? / meta.batch_size;
     let batch_idxs = (0..n_batches).collect::<Vec<usize>>();
-    for epoch in 1..meta.epochs {
+    for epoch in 1..=meta.epochs {
         let loss = match meta.batch_size {
             1 => train_classification_epoch(&model, &mut opt, &train_data, &train_labels),
             _ => train_classification_batches(
@@ -166,7 +166,7 @@ fn train_regression(
         .to_device(dev)?;
     let n_batches = train_data.dim(0)? / meta.batch_size;
     let batch_idxs = (0..n_batches).collect::<Vec<usize>>();
-    for epoch in 1..meta.epochs {
+    for epoch in 1..=meta.epochs {
         let loss = match meta.batch_size {
             1 => train_regression_epoch(&model, &mut opt, &train_data, &train_labels),
             _ => train_regression_batches(
@@ -191,8 +191,7 @@ fn train_regression_epoch(
     train_labels: &Tensor,
 ) -> anyhow::Result<f32> {
     let logits = &model.forward(train_data).unwrap().flatten_to(1)?;
-    let loss = logits.sub(train_labels)?.sqr()?.mul(0.5)?;
-    let loss = loss.mean(0)?;
+    let loss = logits.sub(train_labels)?.sqr()?.mul(0.5).unwrap().mean(0)?;
     opt.backward_step(&loss)?;
     Ok(loss.to_scalar::<f32>()?)
 }
@@ -209,10 +208,8 @@ fn train_regression_batches(
     for batch_idx in batch_idxs.iter() {
         let data = train_data.narrow(0, batch_idx * batch_size, batch_size)?;
         let labels = train_labels.narrow(0, batch_idx * batch_size, batch_size)?;
-        let data_size = data.dim(0)?;
-        let logits = &model.forward(&data).unwrap().reshape(data_size)?;
-        let loss = logits.sub(&labels)?.sqr()?.mul(0.5)?;
-        let loss = loss.mean(0)?;
+        let logits = &model.forward(&data).unwrap().flatten_to(1)?;
+        let loss = logits.sub(&labels)?.sqr()?.mul(0.5).unwrap().mean(0)?;
         opt.backward_step(&loss)?;
         sum_loss += loss.to_scalar::<f32>()?;
     }

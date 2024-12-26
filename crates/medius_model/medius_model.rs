@@ -217,29 +217,20 @@ fn train_regression_batches(
 }
 fn test_classification(
     model: &Mlp,
-    test_data: &Tensor,
-    test_labels: &Tensor,
+    data: &Tensor,
+    labels: &Tensor,
 ) -> anyhow::Result<f32> {
-    let test_logits = model.forward(test_data)?;
-    let sum_ok = test_logits
-        .argmax(D::Minus1)?
-        .eq(test_labels)?
-        .to_dtype(DType::F32)?
-        .sum_all()?
-        .to_scalar::<f32>()?;
-    let test_accuracy = sum_ok / test_labels.dims1()? as f32;
-    Ok(test_accuracy)
+    let logits = model.forward(data)?;
+    let sum_ok = logits.argmax(D::Minus1)?.eq(labels)?.to_dtype(DType::F32)?
+        .sum_all()?.to_scalar::<f32>()?;
+    let accuracy = sum_ok / labels.dims1()? as f32;
+    Ok(accuracy)
 }
-fn test_regression(model: &Mlp, test_data: &Tensor, test_labels: &Tensor) -> anyhow::Result<f32> {
-    let test_logits = model.forward(test_data).unwrap().flatten_to(1)?;
-    let loss = test_logits
-        .sub(test_labels)?
-        .sqr()?
-        .mul(0.5)
-        .unwrap()
-        .mean(0)?;
-    let test_accuracy = loss.to_vec0::<f32>()?;
-    Ok(test_accuracy)
+fn test_regression(model: &Mlp, data: &Tensor, labels: &Tensor) -> anyhow::Result<f32> {
+    let logits = model.forward(data).unwrap().flatten_to(1)?;
+    let loss = logits.sub(labels)?.sqr()?.mul(0.5).unwrap().mean(0)?;
+    let accuracy = loss.to_scalar::<f32>()?;
+    Ok(accuracy)
 }
 
 pub fn get_model(

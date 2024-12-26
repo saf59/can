@@ -128,6 +128,6 @@ mod tests {
     fn test_name() {
         let meta: Meta = Default::default();
         let name = meta.model_name();
-        assert_eq!(name, "C_40_10_B260_ST");
+        assert_eq!(name, "C_40_10_B260_ST_40");
     }
 }

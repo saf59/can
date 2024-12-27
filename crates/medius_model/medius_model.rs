@@ -73,7 +73,7 @@ fn train_classification(
     varmap: &VarMap,
     model: &Mlp,
 ) -> anyhow::Result<()> {
-    let mut opt = candle_nn::SGD::new(varmap.all_vars(), meta.learning_rate)?;
+    let mut opt = SGD::new(varmap.all_vars(), meta.learning_rate)?;
     let train_data = m.train_data.to_device(dev)?;
     let train_labels = m.train_labels.to_dtype(DType::U32)?.to_device(dev)?;
     let test_data = m.test_data.to_device(dev)?;
@@ -143,7 +143,7 @@ fn train_regression(
     varmap: &VarMap,
     model: &Mlp,
 ) -> anyhow::Result<()> {
-    let mut opt = candle_nn::AdamW::new(
+    let mut opt = AdamW::new(
         varmap.all_vars(),
         ParamsAdamW {
             lr: meta.learning_rate,

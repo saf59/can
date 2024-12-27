@@ -28,10 +28,11 @@ pub fn parse_wav<P: AsRef<Path>>(
     Ok(out)
 }
 
-fn fft_amplitudes(data: &[f32], buf_size: usize) -> Vec<f32> {
+fn fft_amplitudes(raw: &[f32], buf_size: usize) -> Vec<f32> {
     let mut fft_planner = FftPlanner::<f32>::new();
+    let data = align(raw, buf_size);
     let fft = fft_planner.plan_fft_forward(buf_size);
-    let mut buffer = f32_to_complex_vec(data, buf_size);
+    let mut buffer = f32_to_complex_vec(&data, buf_size);
     fft.process(&mut buffer);
     let half = buf_size / 2usize;
     let n: f32 = half as f32;
@@ -42,6 +43,15 @@ fn fft_amplitudes(data: &[f32], buf_size: usize) -> Vec<f32> {
         amplitudes.push(((real + imag).sqrt()) / n);
     }
     amplitudes
+}
+fn align(data: &[f32], buf_size: usize) -> Vec<f32> {
+    if data.len() < buf_size {
+        let mut aligned = vec![0.0; buf_size];
+        aligned[..data.len()].copy_from_slice(data);
+        aligned
+    } else {
+        data[..buf_size].to_vec()
+    }
 }
 
 fn f32_to_complex_vec(data: &[f32], buf_size: usize) -> Vec<Complex<f32>> {

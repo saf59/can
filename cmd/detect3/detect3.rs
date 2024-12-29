@@ -3,7 +3,7 @@ use candle_core::{Tensor, D};
 use candle_nn::VarMap;
 use clap::Parser;
 use medius_meta::{Meta, ModelType};
-use medius_model::{get_model, Model};
+use medius_model::{get_model, show_is_cuda, Model};
 use medius_parser::parse_wav;
 use std::path::Path;
 use std::time::Instant;
@@ -39,6 +39,7 @@ pub fn main() -> anyhow::Result<()> {
         ModelType::Regression => by_regr(&result),
     }?;
     if args.verbose {
+        show_is_cuda();
         println!("result: {:5.2?}", wp);
         println!("{:5.2?}", Instant::now().duration_since(start));
     } else {

@@ -2,12 +2,11 @@ use candle_core::{DType, Device, Result, Tensor, D};
 use candle_nn::{
     loss, ops, AdamW, Linear, Module, Optimizer, ParamsAdamW, VarBuilder, VarMap, SGD,
 };
-use medius_data::Dataset;
+use medius_data::{load_dir, print_dataset_info, Dataset};
 use medius_meta::{Meta, ModelType, DEFAULT_VM};
 use std::fs::create_dir_all;
 use std::ops::Mul;
-use std::path::Path;
-
+use std::path::{Path, PathBuf};
 pub trait Model: Sized {
     fn new(
         vs: VarBuilder,
@@ -18,13 +17,11 @@ pub trait Model: Sized {
     ) -> Result<Self>;
     fn forward(&self, xs: &Tensor) -> Result<Tensor>;
 }
-
 pub struct Mlp {
     ln1: Linear,
     ln2: Linear,
     ln3: Linear,
 }
-
 impl Model for Mlp {
     fn new(
         vs: VarBuilder,
@@ -38,7 +35,6 @@ impl Model for Mlp {
         let ln3 = candle_nn::linear(hidden1, outputs, vs.pp("ln3"))?;
         Ok(Self { ln1, ln2, ln3 })
     }
-
     fn forward(&self, xs: &Tensor) -> Result<Tensor> {
         let xs = self.ln1.forward(xs)?;
         let xs = xs.relu()?;
@@ -47,15 +43,18 @@ impl Model for Mlp {
         self.ln3.forward(&xs)
     }
 }
-pub fn training_loop(m: Dataset, meta: &mut Meta) -> anyhow::Result<()> {
-    let dev = Device::cuda_if_available(0)?;
+pub fn training_loop(datapath:PathBuf, meta: &mut Meta) -> anyhow::Result<()> {
+    let dev = &Device::cuda_if_available(0)?;
+    println!("Device:{:?}",dev);
+    let dataset = load_dir(datapath, meta.train_part,dev)?;
+    print_dataset_info(&dataset);
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();
-    meta.outputs = if meta.model_type == ModelType::Regression { 1 } else { m.labels };
-    let (varmap, model) = get_model(&dev, meta, false, &fill_from_file)?;
+    meta.outputs = if meta.model_type == ModelType::Regression { 1 } else { dataset.labels };
+    let (varmap, model) = get_model(dev, meta, false, &fill_from_file)?;
     match meta.model_type {
-        ModelType::Classification => train_classification(m, meta, &dev, &varmap, &model),
-        ModelType::Regression => train_regression(m, meta, &dev, &varmap, &model),
+        ModelType::Classification => train_classification(dataset, meta, dev, &varmap, &model),
+        ModelType::Regression => train_regression(dataset, meta, dev, &varmap, &model),
     }?;
     println!(
         "\nsaving trained weights to {:}",
@@ -65,7 +64,6 @@ pub fn training_loop(m: Dataset, meta: &mut Meta) -> anyhow::Result<()> {
     let _ = varmap.save(DEFAULT_VM); // only for include_bytes!("../.././models/model.safetensors");
     Ok(())
 }
-
 fn train_classification(
     m: Dataset,
     meta: &mut Meta,
@@ -101,7 +99,6 @@ fn train_classification(
     }
     Ok(())
 }
-
 fn train_classification_epoch(
     model: &&Mlp,
     opt: &mut SGD,
@@ -135,7 +132,6 @@ fn train_classification_batches(
     }
     Ok(sum_loss / n_batches as f32)
 }
-
 fn train_regression(
     m: Dataset,
     meta: &mut Meta,
@@ -232,7 +228,6 @@ fn test_regression(model: &Mlp, data: &Tensor, labels: &Tensor) -> anyhow::Resul
     let accuracy = loss.to_scalar::<f32>()?;
     Ok(accuracy)
 }
-
 pub fn get_model(
     dev: &Device,
     meta: &Meta,
@@ -267,4 +262,16 @@ pub fn fill_from_file(meta: &Meta, verbose: bool, varmap: &mut VarMap) -> anyhow
         varmap.load(model_path)?;
     }
     Ok(())
+}
+#[cfg(test)]
+mod tests {
+    use crate::show_is_cuda;
+    #[test]
+    fn is_cuda() {
+        show_is_cuda()
+    }
+}
+pub fn show_is_cuda() {
+    let device = Device::cuda_if_available(0).unwrap();
+    println!("Device:{:?}",device);
 }

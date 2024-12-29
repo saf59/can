@@ -3,7 +3,6 @@ use std::path::Path;
 use std::process;
 use std::time::Instant;
 
-use medius_data::{load_dir, Dataset};
 use medius_meta::{AlgType, BufSize, Meta, ModelType};
 use medius_model::training_loop;
 /// Command line arguments for the training program
@@ -47,11 +46,10 @@ struct Args {
 pub fn main() -> anyhow::Result<()> {
     let mut meta = meta()?;
     let base: &Path = "./data".as_ref();
-    let m = load_dir(base.join(meta.data_name()), meta.train_part)?;
-    print_dataset_info(&m);
+    let datapath = base.join(meta.data_name());
     let start = Instant::now();
     // Run training loop
-    match training_loop(m, &mut meta) {
+    match training_loop(datapath, &mut meta) {
         Ok(_) => {
             println!("{:5.2?}", Instant::now().duration_since(start));
             meta.save();
@@ -59,13 +57,6 @@ pub fn main() -> anyhow::Result<()> {
         Err(e) => println!("{:?}",e)
     }
     Ok(())
-}
-/// Print information about the dataset
-fn print_dataset_info(m: &Dataset) {
-    print!("train-data: {:?}", m.train_data.shape());
-    print!(", train-labels: {:?}", m.train_labels.shape());
-    print!(", test-data: {:?}", m.test_data.shape());
-    println!(", test-labels: {:?}", m.test_labels.shape());
 }
 /// Load metadata and parse command line arguments
 fn meta() -> anyhow::Result<Meta> {
@@ -118,3 +109,5 @@ fn meta() -> anyhow::Result<Meta> {
     }
     Ok(meta)
 }
+
+

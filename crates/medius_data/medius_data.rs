@@ -16,7 +16,7 @@ pub struct Dataset {
     pub labels: usize,
 }
 
-pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32) -> candle_core::Result<Dataset> {
+pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32,dev: &Device) -> candle_core::Result<Dataset> {
     //let p: &Path = "./".as_ref();
     //println!("in:{:?}",p.canonicalize());
     let y = read_medius_y(dir.as_ref())?;
@@ -39,10 +39,10 @@ pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32) -> candle_core::Result<
         nodes.entry(*n).and_modify(|count| *count += 1).or_insert(1);
     }
     Ok(Dataset {
-        train_data: Tensor::from_vec(train_x, (*train_size, width), &Device::Cpu)?,
-        train_labels: Tensor::from_vec(train_y, *train_size, &Device::Cpu)?,
-        test_data: Tensor::from_vec(test_x, (*test_size, width), &Device::Cpu)?,
-        test_labels: Tensor::from_vec(test_y, *test_size, &Device::Cpu)?,
+        train_data: Tensor::from_vec(train_x, (*train_size, width), dev)?,
+        train_labels: Tensor::from_vec(train_y, *train_size, dev)?,
+        test_data: Tensor::from_vec(test_x, (*test_size, width), dev)?,
+        test_labels: Tensor::from_vec(test_y, *test_size, dev)?,
         labels: nodes.len(),
     })
 }
@@ -108,7 +108,16 @@ mod tests {
     #[test]
     fn test_load_dir() {
         set_root();
-        let dataset = load_dir(BASE, 0.9);
+        let device = Device::cuda_if_available(0).unwrap();
+        let dataset = load_dir(BASE, 0.9,&device);
         println!("{:?}", dataset.unwrap().test_data.shape())
     }
+}
+
+/// Print information about the dataset
+pub fn print_dataset_info(m: &Dataset) {
+    print!("train-data: {:?}", m.train_data.shape());
+    print!(", train-labels: {:?}", m.train_labels.shape());
+    print!(", test-data: {:?}", m.test_data.shape());
+    println!(", test-labels: {:?}", m.test_labels.shape());
 }

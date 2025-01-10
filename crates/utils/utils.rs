@@ -10,3 +10,10 @@ pub fn first_char<T: Debug>(e: &T) -> char {
     let name = format!("{:?}", e);
     name.chars().next().unwrap()
 }
+pub fn enum_name<T: Debug>(e: &T) -> String {
+    let name = format!("_{:?}", e);
+    match name.as_str() {
+        "_Relu" => "".to_string(),
+        _ => name.to_lowercase()
+    }
+}

@@ -1,12 +1,11 @@
 use candle_core::{DType, Device, Result, Tensor, D};
-use candle_nn::{
-    loss, ops, AdamW, Linear, Module, Optimizer, ParamsAdamW, VarBuilder, VarMap, SGD,
-};
+use candle_nn::{loss, ops, AdamW, Linear, Module, Optimizer, ParamsAdamW, VarBuilder, VarMap, SGD};
 use medius_data::{load_dir, print_dataset_info, Dataset};
-use medius_meta::{Meta, ModelType, DEFAULT_VM};
+use medius_meta::{Activation, Meta, ModelType, DEFAULT_VM};
 use std::fs::create_dir_all;
 use std::ops::Mul;
 use std::path::{Path, PathBuf};
+
 pub trait Model: Sized {
     fn new(
         vs: VarBuilder,
@@ -14,13 +13,16 @@ pub trait Model: Sized {
         outputs: usize,
         hidden0: usize,
         hidden1: usize,
+        activation: Activation
     ) -> Result<Self>;
     fn forward(&self, xs: &Tensor) -> Result<Tensor>;
 }
+
 pub struct Mlp {
     ln1: Linear,
     ln2: Linear,
     ln3: Linear,
+    activation: Activation
 }
 impl Model for Mlp {
     fn new(
@@ -29,17 +31,19 @@ impl Model for Mlp {
         outputs: usize,
         hidden0: usize,
         hidden1: usize,
+        activation: Activation
     ) -> Result<Self> {
         let ln1 = candle_nn::linear(inputs, hidden0, vs.pp("ln1"))?;
         let ln2 = candle_nn::linear(hidden0, hidden1, vs.pp("ln2"))?;
         let ln3 = candle_nn::linear(hidden1, outputs, vs.pp("ln3"))?;
-        Ok(Self { ln1, ln2, ln3 })
+        Ok(Self { ln1, ln2, ln3, activation })
     }
     fn forward(&self, xs: &Tensor) -> Result<Tensor> {
         let xs = self.ln1.forward(xs)?;
-        let xs = xs.relu()?;
+        let xs =  self.activation.forward(&xs)?;// xs.relu()?;
         let xs = self.ln2.forward(&xs)?;
-        let xs = xs.relu()?;
+        //let xs = xs.relu()?;
+        let xs =  self.activation.forward(&xs)?;
         self.ln3.forward(&xs)
     }
 }
@@ -246,7 +250,7 @@ pub fn get_model(
             inputs, outputs, meta.hidden0, meta.hidden1
         );
     }
-    let model = Mlp::new(vs.clone(), inputs, outputs, hidden0, hidden1)?;
+    let model = Mlp::new(vs.clone(), inputs, outputs, hidden0, hidden1, meta.activation.clone())?;
     fill(meta, verbose, &mut varmap)?;
     Ok((varmap, model))
 }

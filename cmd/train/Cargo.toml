@@ -7,7 +7,6 @@ license.workspace = true
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
-medius_data = { path = "../../crates/medius_data" }
 medius_model = { path = "../../crates/medius_model" }
 medius_meta = { path = "../../crates/medius_meta" }
 

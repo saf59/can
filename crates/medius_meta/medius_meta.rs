@@ -4,7 +4,9 @@ use std::fs;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::string::ToString;
-use utils::first_char;
+use candle_core::Tensor;
+use candle_nn::ops;
+use utils::{enum_name, first_char};
 
 pub const MODELS_DIR: &str = "./models";
 pub const DEFAULT: &str = "./models/model.meta";
@@ -20,6 +22,7 @@ pub struct Meta {
     pub scaled_frequency: bool,
     // model
     pub model_type: ModelType,
+    pub activation: Activation,
     #[serde(skip)]
     pub epochs: usize,
     pub batch_size: usize,
@@ -40,6 +43,7 @@ impl Default for Meta {
             scaled_frequency: true,
             // Model parameters
             model_type: ModelType::Classification,
+            activation: Activation::Relu,
             epochs: 100,
             batch_size: 40,
             learning_rate: 0.5,
@@ -66,6 +70,37 @@ pub enum AlgType {
 pub enum BufSize {
     Big = 65_536 * 2,
     Small = 65_536,
+}
+#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
+pub enum Activation {
+    Gelu,
+    NewGelu,
+    Relu,
+    Relu2,
+    Relu6,
+    Silu,
+    Sigmoid,
+    HardSigmoid,
+    Swiglu,
+    Swish,
+    HardSwish,
+}
+impl Activation {
+    pub fn forward(&self, xs: &Tensor) -> candle_core::error::Result<Tensor> {
+        match self {
+            Self::Gelu => xs.gelu_erf(),
+            Self::NewGelu => xs.gelu(),
+            Self::Relu => xs.relu(),
+            Self::Relu2 => xs.relu()?.sqr(),
+            Self::Relu6 => xs.clamp(0f32, 6f32),
+            Self::Silu => xs.silu(),
+            Self::Sigmoid => ops::sigmoid(xs),
+            Self::HardSigmoid => ops::hard_sigmoid(xs),
+            Self::Swiglu => ops::swiglu(xs),
+            Self::Swish => xs * ops::sigmoid(xs),
+            Self::HardSwish => xs * ops::hard_sigmoid(xs),
+        }
+    }
 }
 impl Meta {
     /// Saves the metadata to the default and specific file paths
@@ -101,7 +136,8 @@ impl Meta {
         let h1 = &self.hidden1.to_string();
         let sf = if self.scaled_frequency { 'T' } else { 'F' };
         let bcs = &self.batch_size.to_string();
-        format!("{mt}_{h0}_{h1}_{at}{sn}_{bs}{sf}_{bcs}")
+        let act =enum_name(&self.activation);
+        format!("{mt}_{h0}_{h1}_{at}{sn}_{bs}{sf}_{bcs}{act}")
     }
     /// Returns the file path for the metadata file
     pub fn meta_file(&self) -> PathBuf {

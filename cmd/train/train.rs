@@ -2,8 +2,7 @@ use clap::Parser;
 use std::path::Path;
 use std::process;
 use std::time::Instant;
-
-use medius_meta::{AlgType, BufSize, Meta, ModelType};
+use medius_meta::{AlgType, BufSize, Meta, ModelType, Activation};
 use medius_model::training_loop;
 /// Command line arguments for the training program
 #[derive(Parser)]
@@ -26,6 +25,9 @@ struct Args {
     /// Model type
     #[arg(long, value_enum)]
     model_type: Option<ModelType>,
+    /// Activation function, default is Relu
+    #[arg(long, value_enum)]
+    activation: Option<Activation>,
     /// Train epochs [default = 0]
     #[arg(short, long)]
     epochs: Option<usize>,
@@ -78,6 +80,9 @@ fn meta() -> anyhow::Result<Meta> {
     if let Some(model_type) = args.model_type {
         meta.model_type = model_type;
     }
+    if let Some(activation) = args.activation {
+        meta.activation = activation;
+    } else { meta.activation = Activation::Relu } // DEFAULT
     if let Some(epochs) = args.epochs {
         meta.epochs = epochs;
     } else { meta.epochs = 0 } // DEFAULT

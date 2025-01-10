@@ -26,9 +26,9 @@ struct Args {
     #[arg(long, value_enum)]
     model_type: Option<ModelType>,
     /// Activation function, default is Relu
-    #[arg(long, value_enum)]
+    #[arg(short, long, value_enum)]
     activation: Option<Activation>,
-    /// Train epochs [default = 0]
+    /// Train epochs, default = 0
     #[arg(short, long)]
     epochs: Option<usize>,
     /// Train batch size
@@ -63,6 +63,7 @@ pub fn main() -> anyhow::Result<()> {
 /// Load metadata and parse command line arguments
 fn meta() -> anyhow::Result<Meta> {
     let args = Args::parse();
+    // All defaults are from Meta::default() except epochs
     let mut meta = Meta::load_default();
     // Override metadata with command line arguments if provided
     if let Some(n) = args.n {
@@ -82,10 +83,13 @@ fn meta() -> anyhow::Result<Meta> {
     }
     if let Some(activation) = args.activation {
         meta.activation = activation;
-    } else { meta.activation = Activation::Relu } // DEFAULT
+    }
+    // else {  meta.activation = Activation::Relu  } // DEFAULT -> NOT NEEDED
     if let Some(epochs) = args.epochs {
         meta.epochs = epochs;
-    } else { meta.epochs = 0 } // DEFAULT
+    } else {
+        meta.epochs = 0
+    } // DEFAULT
     if let Some(batch_size) = args.batch_size {
         meta.batch_size = batch_size;
     }

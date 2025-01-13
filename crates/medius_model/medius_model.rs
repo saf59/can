@@ -68,6 +68,31 @@ pub fn training_loop(datapath:PathBuf, meta: &mut Meta) -> anyhow::Result<()> {
     let _ = varmap.save(DEFAULT_VM); // only for include_bytes!("../.././models/model.safetensors");
     Ok(())
 }
+
+pub fn test_all(datapath:PathBuf, meta: &mut Meta) -> anyhow::Result<f32> {
+    let dev = &Device::cuda_if_available(0)?;
+    let dataset = load_dir(datapath, meta.train_part,dev)?;
+    meta.outputs = if meta.model_type == ModelType::Regression { 1 } else { dataset.labels };
+    let (_varmap, model) = get_model(dev, meta, false, &fill_from_file)?;
+    let test_data = dataset.test_data.to_device(dev)?;
+    let test_accuracy = match meta.model_type {
+        ModelType::Classification => {
+            let test_labels = dataset.test_labels.to_dtype(DType::U32)?.to_device(dev)?;
+            test_classification(&model, &test_data, &test_labels)
+        },
+        ModelType::Regression => {
+            let test_labels = dataset
+                .train_labels
+                .to_dtype(DType::F32)
+                .unwrap()
+                .mul(-0.1)?
+                .to_device(dev)?;
+            test_regression(&model, &test_data, &test_labels)
+        },
+    }?;
+    Ok(test_accuracy)
+}
+
 fn train_classification(
     m: Dataset,
     meta: &mut Meta,

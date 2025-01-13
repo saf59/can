@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 [workspace]
 members = [
     "cmd/edge", "cmd/itr", "cmd/bm", "cmd/ub", "cmd/setbuff", "cmd/chart1",
-    "cmd/train", "cmd/detect3",
+    "cmd/train", "cmd/detect3", "cmd/test3", "cmd/dur",
     "crates/can_data", "crates/can_utils", "crates/utils",
     "crates/medius_data", "crates/medius_model","crates/medius_meta", "crates/medius_parser",
 ]

@@ -1,0 +1,15 @@
+[package]
+name = "dur"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+clap = { workspace = true }
+clipboard = "0.5.0"
+
+[[bin]]
+path = "./dur.rs"
+name = "dur"
+
+

@@ -74,6 +74,7 @@ fn fill_from_static(_meta: &Meta, _verbose: bool, varmap: &mut VarMap) -> anyhow
     let map = safetensors::SafeTensors::deserialize(buf)?;
     for (k, v) in map.tensors() {
         let _ = varmap.set_one(k,v.load(&dev)?);
+        // v.load(&dev)? ->  v.convert(&dev)?  in 0.5 version, but candle 0.8.2 use load
     }
     Ok(())
 }

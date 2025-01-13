@@ -281,7 +281,8 @@ mod tests {
         set_root();
         let nf = FREQUENCY / F5;
         let buff_size: usize = BufSize::Small as usize;
-        let all = fs::read(SRC.as_ref() as &Path).unwrap();
+        let wav_path:&Path = SRC.as_ref();
+        let all = fs::read(wav_path).unwrap();
         let raw = read_wav(all).unwrap();
         println!("raw   :{:?}..{:?}", raw[0], raw.last().unwrap());
         let useful: Vec<f32> = useful3(&raw);
@@ -301,7 +302,8 @@ mod tests {
         set_root();
         let buf_size: usize = BufSize::Small as usize;
         let start = Instant::now();
-        let out = parse_wav(SRC.as_ref() as &Path, N, FREQUENCY, buf_size).unwrap();
+        let wav_path:&Path = SRC.as_ref();
+        let out = parse_wav(wav_path, N, FREQUENCY, buf_size).unwrap();
         println!(
             "out   :{:?}..{:?} {:5.2?}",
             out[0],

@@ -114,7 +114,8 @@ impl Meta {
     }
     /// Loads the default metadata from the default file path
     pub fn load_default() ->Meta {
-        if !(DEFAULT.as_ref() as &Path).exists() { return Meta::default();}
+        let meta_path:&Path = DEFAULT.as_ref();
+        if !meta_path.exists() { return Meta::default();}
         let buf = fs::read(DEFAULT).unwrap();
         serde_yaml::from_slice(&buf).unwrap()
     }

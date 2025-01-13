@@ -27,7 +27,8 @@ pub fn main() -> anyhow::Result<()> {
     let inputs = meta.n;
     let dev = candle_core::Device::cuda_if_available(0)?;
     // Parse wav file
-    let data = parse_wav(args.wav.as_ref() as &Path, inputs, args.frequency, buff_size)?;
+    let wav_path:&Path = args.wav.as_ref();
+    let data = parse_wav( wav_path, inputs, args.frequency, buff_size)?;
     // Convert data(extracted wav properties) to Tensor
     let data = Tensor::from_vec(data, (1, inputs), &dev)?;
     // Build model and fill it VarMap

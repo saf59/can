@@ -81,7 +81,7 @@ pub enum Activation {
     Silu,
     Sigmoid,
     HardSigmoid,
-    Swiglu,
+//    Swiglu,
     Swish,
     HardSwish,
 }
@@ -96,7 +96,7 @@ impl Activation {
             Self::Silu => xs.silu(),
             Self::Sigmoid => ops::sigmoid(xs),
             Self::HardSigmoid => ops::hard_sigmoid(xs),
-            Self::Swiglu => ops::swiglu(xs),
+           // Self::Swiglu => ops::swiglu(xs),
             Self::Swish => xs * ops::sigmoid(xs),
             Self::HardSwish => xs * ops::hard_sigmoid(xs),
         }

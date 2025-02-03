@@ -1,0 +1,76 @@
+openapi: 3.0.1
+info:
+  title: IS Predict medius detection API
+  description: >-
+    This API provides detection of the laser's operating position based on the audio recorded in a WAV file during operation.
+    
+    
+    The full API specification, formally defined according to the OpenAPI specification (version 3.0.1), is located at /api-docs (see link above).
+    
+    
+    API and SDK documentation is available at
+    **[/openapi-ui](/openapi-ui)**
+    
+    
+    This website provides a user interface that allows you to explore and test the API interactively.
+  termsOfService: http://www.ispredict.com/
+  contact:
+    email: info@ispredict.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  version: 1.0-oas3
+servers:
+  - url: http://localhost:9447
+    description: Generated server url
+tags:
+  - name: detect3
+    description: The detection API
+paths:
+  /detect3:
+    post:
+      tags:
+        - detect3
+      summary: Load wav file and detect working position.
+      operationId: detect3
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - frequency
+                - file
+                - signature
+              type: object
+              properties:
+                frequency:
+                  type: number
+                  format: double
+                  description: Laser frequency
+                  example:  37523.4522
+                file:
+                  type: string
+                  description: WAV file body
+                  format: binary
+                signature:
+                  type: integer
+                  format: int64
+                  description: Request signature
+                  example: 123456728
+      responses:
+        '200':
+          description: Successful response. Returns the requested result.
+          content:
+            text/plain:
+              schema:
+                type: number
+                example: -0.2
+                description: Working position
+        "400":
+          description: Bad request. Frequency is wrong or wav file is wrong.
+        "403":
+          description: Signature is invalid.
+        "422":
+          description: Unprocessable Content.
+        "500":
+            description: Unexpected error.

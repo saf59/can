@@ -1,0 +1,26 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Swagger UI</title>
+    <link id="favicon" rel="shortcut icon" type="image/svg+xml" href="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4NCjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjNtbSIgaGVpZ2h0PSI4N21tIiB2aWV3Qm94PSIwIDAgNjMgODciPg0KCTxnIHN0eWxlPSJmaWxsOiNiMjJmMjYiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEyLDApIj4NCgkJPHBhdGggZD0iTTExLjY2MiA3My44Yy0uMzk3LS4yMTItLjg0Ni0uNjA5LTEuMDA1LS45LS4yNjUtLjUzLS4zOTctMzYuOTM2LS4xMDYtMzcuOTY4LjIzOC0uOSAxLjExMS0xLjI0MyAzLjQxMy0xLjM3NSAyLjAzOC0uMTMzIDIuMTctLjEwNiAyLjk5LjU4MmwuODQ3LjcxNHYzNy44MzVsLS43NjguNzY4Yy0uNzE0LjcxNC0uOTI2Ljc2Ny0yLjcyNS43NjctMS4xOS0uMDI2LTIuMjIyLS4xODUtMi42NDYtLjQyM3pNMTIuNzc0IDI4LjUzYy0zLjYyNS0uNTU2LTYuMjQ1LTEuNzczLTguNDE0LTMuODYzLTEuNTg4LTEuNTA5LTIuNTY3LTIuOTktMy41NDYtNS4yNjYtLjY4Ny0xLjY0LS44Mi0yLjM1NC0uOTI2LTQuNzEtLjEwNS0yLjE0Mi0uMDI2LTMuMDQyLjI5MS0zLjg4OS4yMzktLjYzNS42MDktMS42NC44NDctMi4yNDkuNjYyLTEuNzk5IDIuMDktMy43NTcgMy44NjMtNS4zMThDNi45NzkgMS40MSA4LjIyMy44MDEgMTEuMTA3LjExM2M2LjYxNC0xLjU4NyAxMi44MzIgMS4yNyAxNi40MyA3LjUxNC45OCAxLjcyIDEuNDU2IDQuNDE5IDEuMzIzIDcuNjQ3LS4xMDYgMi42OTktLjE4NSAyLjk2My0xLjIxNyA1LjAyNy0yLjI0OSA0LjU1LTUuNjg4IDcuMTk3LTEwLjM3MSA4LjAxNy0yLjE5Ny4zOTctMy4xNDkuNDIzLTQuNDk4LjIxMXpNNC41NzIgMTQuMDAzYzAtLjktMS4wODUtMi43NTItMS42MTQtMi43NTItLjEzMyAwLS4yMzkuNjM1LS4yMzkgMS40MjkgMCAxLjI0My4xMDYgMS41MDguNjg4IDEuOTg0Ljg3My42ODggMS4xNjUuNTAzIDEuMTY1LS42NjF6bTUuNjg4LTkuNjMxYzEuNjQtMS4xMTEgMy42NTEtMS44NTIgNC45MjEtMS44NTIuMzk3IDAgLjc5NC0uMTA2Ljg3My0uMjM4LjIzOS0uMzctMS44MjUtLjYzNS0zLjIyNy0uNDI0LTIuMzI5LjMxOC01LjcxNSAxLjY5NC01Ljk4IDIuMzgyLS4wOC4yNjQtLjEzMi41MDItLjEwNi41MDIuMzcuMjM5IDEuNDU1LjY2MiAxLjY2Ny42NjIuMTU5LjAyNi45NzktLjQ1IDEuODUyLTEuMDMyeiIvPg0KCTwvZz4NCjwvc3ZnPg==">
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@3/swagger-ui.css">
+</head>
+<body>
+    <div id="swagger-ui"></div>
+	<script src="https://unpkg.com/swagger-ui-dist@3.12.1/swagger-ui-standalone-preset.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@3/swagger-ui-bundle.js"></script>
+    <script>
+        window.onload = function() {
+            SwaggerUIBundle({
+                url: "/api-docs",
+                dom_id: '#swagger-ui',
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                layout: "StandaloneLayout"
+            });
+        };
+    </script>
+</body>
+</html>

@@ -18,8 +18,17 @@ pub fn parse_wav<P: AsRef<Path>>(
     frequency: f32,
     buff_size: usize,
 ) -> anyhow::Result<Vec<f32>> {
-    let nf = frequency / F5;
     let all = fs::read(&path)?;
+    parse_all(&all, n, frequency, buff_size)
+}
+
+pub fn parse_all(
+    all  : &[u8],
+    n: usize,
+    frequency: f32,
+    buff_size: usize,
+) -> anyhow::Result<Vec<f32>> {
+    let nf = frequency / F5;
     let raw = read_wav(all)?;
     let useful: Vec<f32> = useful3(&raw);
     let ampl: Vec<f32> = fft_amplitudes(&useful, buff_size);
@@ -116,8 +125,8 @@ fn build_range_list(tb: f32, n: usize) -> Vec<std::ops::Range<f32>> {
         .map(|i| (i as f32 - 1.0) * step..i as f32 * step)
         .collect()
 }
-fn read_wav(data: Vec<u8>) -> anyhow::Result<Vec<f32>> {
-    let wav: &[u8] = &data;
+fn read_wav(wav: &[u8]) -> anyhow::Result<Vec<f32>> {
+    //let wav: &[u8] = &data;
     let reader = PcmReader::new(wav)?;
     let specs = reader.get_pcm_specs();
     let num_samples = specs.num_samples;
@@ -283,7 +292,7 @@ mod tests {
         let buff_size: usize = BufSize::Small as usize;
         let wav_path:&Path = SRC.as_ref();
         let all = fs::read(wav_path).unwrap();
-        let raw = read_wav(all).unwrap();
+        let raw = read_wav(&all).unwrap();
         println!("raw   :{:?}..{:?}", raw[0], raw.last().unwrap());
         let useful: Vec<f32> = useful3(&raw);
         println!("useful:{:?}..{:?}", useful[0], useful.last().unwrap());

@@ -292,15 +292,3 @@ pub fn fill_from_file(meta: &Meta, verbose: bool, varmap: &mut VarMap) -> anyhow
     }
     Ok(())
 }
-#[cfg(test)]
-mod tests {
-    use crate::show_is_cuda;
-    #[test]
-    fn is_cuda() {
-        show_is_cuda()
-    }
-}
-pub fn show_is_cuda() {
-    let device = Device::cuda_if_available(0).unwrap();
-    println!("Device:{:?}",device);
-}

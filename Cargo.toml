@@ -7,9 +7,10 @@ license = "MIT OR Apache-2.0"
 [workspace]
 members = [
     "cmd/edge", "cmd/itr", "cmd/bm", "cmd/ub", "cmd/setbuff", "cmd/chart1",
-    "cmd/train", "cmd/detect3", "cmd/test3", "cmd/dur",
-    "crates/can_data", "crates/can_utils", "crates/utils",
-    "crates/medius_data", "crates/medius_model","crates/medius_meta", "crates/medius_parser",
+    "cmd/train", "cmd/detect3", "cmd/test3", "cmd/dur", "cmd/medius_server",
+    "crates/can_data", "crates/utils",
+    "crates/medius_data", "crates/medius_utils", "crates/medius_model",
+    "crates/medius_meta", "crates/medius_parser",
 ]
 resolver = "2"
 
@@ -20,7 +21,7 @@ candle-core = "0.8.2"
 candle-nn = "0.8.2"
 clap = { version = "4.5.27", features = ["derive"] }
 #cudarc = { version = "0.12.2", features = ["std", "cublas", "cublaslt", "curand", "driver", "nvrtc", "f16", "cuda-version-from-build-system", "dynamic-linking"], default-features=false }
-rand = "0.8.5"
+rand = "0.9.0"
 chrono = { version="0.4.39", features = ["serde"] }
 serde = { version = "1.0.216", features = ["derive"] }
 serde_json = "1.0.137"

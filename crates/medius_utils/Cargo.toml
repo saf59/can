@@ -1,0 +1,19 @@
+[package]
+name = "medius_utils"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+candle-core = { workspace = true }
+anyhow = { workspace = true }
+candle-nn = { workspace = true }
+medius_model = { path = "../../crates/medius_model" }
+medius_parser = { path = "../../crates/medius_parser" }
+medius_meta = { path = "../../crates/medius_meta" }
+serde_yaml = { workspace = true }
+safetensors = { workspace = true }
+
+[lib]
+path = "medius_utils.rs"
+doctest = false

@@ -3,7 +3,7 @@ extern crate core;
 use candle_core::{Device, Tensor};
 use csv::Reader;
 use rand::seq::SliceRandom;
-use rand::thread_rng;
+use rand::rng;
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
@@ -24,7 +24,7 @@ pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32,dev: &Device) -> candle_
     let size = y.len();
     let width = x.len() / size;
     let mut indexes: Vec<usize> = (0..size).collect();
-    indexes.shuffle(&mut thread_rng()); // randomize indexes
+    indexes.shuffle(&mut rng()); // randomize indexes
     let border: usize = ((size as f32) * train_part) as usize;
     let (train, test) = if train_part < 1.0 {
         (0..border, border..indexes.len())
@@ -94,8 +94,8 @@ fn get_reader(dir: &Path, csv: &str) -> candle_core::Result<Reader<File>> {
 
 #[cfg(test)]
 mod tests {
-    use utils::set_root;
     use super::*;
+    use utils::set_root;
 
     const BASE: &str = "./data/B260_ST";
 

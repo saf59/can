@@ -9,4 +9,8 @@ actix-web = "4.9.0"
 actix-multipart = "0.7.2"
 futures-util = "0.3.31"
 crc32fast = "1.4.2"
-medius_model = { path = "../../crates/medius_model" }
+medius_utils = { path = "../../crates/medius_utils" }
+log = "0.4.25"
+env_logger = "0.11.6"
+#tracing-actix-web = "0.7.15"
+#tracing = "0.1.41"

@@ -21,7 +21,7 @@ info:
     url: https://opensource.org/licenses/MIT
   version: 1.0-oas3
 servers:
-  - url: http://localhost:9447
+  - url: http://localhost:8080
     description: Generated server url
 tags:
   - name: detect3

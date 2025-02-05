@@ -1,8 +1,12 @@
+use std::env;
 use actix_multipart::Multipart;
 use actix_web::middleware::Logger;
-use actix_web::{web, App, Error, HttpResponse, HttpServer};
+use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use futures_util::stream::StreamExt as _;
 use std::net::Ipv4Addr;
+use env_logger::Env;
+use log::info;
+use medius_utils::detect;
 
 // Embedded OpenAPI spec and Swagger UI HTML
 const OPENAPI_YAML: &str = include_str!("../static/openapi.yaml");
@@ -15,17 +19,24 @@ async fn swagger_ui() -> HttpResponse {
         .content_type("text/html")
         .body(SWAGGER_UI_HTML)
 }
-async fn openapi_ui() -> HttpResponse {
+async fn openapi_ui(req: HttpRequest) -> HttpResponse {
+    let runtime = real_body(req, OPENAPI_UI_HTML);
     HttpResponse::Ok()
         .content_type("text/html")
-        .body(OPENAPI_UI_HTML)
+        .body(runtime)
 }
 
 // Handler for OpenAPI spec
-async fn api_docs() -> HttpResponse {
+async fn api_docs(req: HttpRequest) -> HttpResponse {
+    let runtime = real_body(req, OPENAPI_YAML);
     HttpResponse::Ok()
         .content_type("text/yaml")
-        .body(OPENAPI_YAML)
+        .body(runtime)
+}
+fn real_body(http_request: HttpRequest, src: &str) -> String {
+    let info = http_request.connection_info();
+    let runtime = format!("{}://{}", info.scheme(),info.host());
+    src.replace("http://localhost:8080", &runtime)
 }
 // Main detection handler
 async fn detect3(mut payload: Multipart) -> Result<HttpResponse, Error> {
@@ -64,6 +75,9 @@ async fn detect3(mut payload: Multipart) -> Result<HttpResponse, Error> {
                     actix_web::error::ErrorBadRequest(format!("Invalid signature: {}", e))
                 })?;
                 signature = Some(sig);
+                if (sig/137)*137 != sig {
+                    return Err(actix_web::error::ErrorForbidden("Invalid signature"));
+                }
             }
             _ => {}
         }
@@ -74,31 +88,32 @@ async fn detect3(mut payload: Multipart) -> Result<HttpResponse, Error> {
     if file_data.is_empty() {
         return Err(actix_web::error::ErrorBadRequest("Missing file"));
     }
-
-    // Example signature validation
-    if (sig/137)*137 != sig {
-        return Ok(HttpResponse::Forbidden().body("Invalid signature"));
+    if freq < 10000.0 {
+        return Err(actix_web::error::ErrorBadRequest("Frequency is wrong"));
     }
-    let file_sig = crc32fast::hash(&file_data) * 137;
-
-    if (file_sig as i64) != sig {
-        return Ok(HttpResponse::Forbidden().body("Invalid signature"));
+    // Signature validation
+    let file_sig:i64 = (crc32fast::hash(&file_data) as i64) * 137_i64;
+    if file_sig != sig {
+        info!("Frequency: {:?}, file sig: {}, signature: {:?}", &freq,file_sig,&sig);
+        return Err(actix_web::error::ErrorForbidden("Invalid signature"));
     }
-    println!("Frequency: {:?}", &freq);
-    println!("File sig: {}", file_sig);
-    println!("Signature: {:?}", &sig);
-
-    //detect()
-
-    // Process your detection logic here (dummy response)
-    Ok(HttpResponse::Ok().content_type("text/plain").body("-0.2"))
+    let wd = match detect(&file_data, freq as f32, false) {
+        Ok(dist) => dist.to_string(),
+        Err(e) => {
+            info!("Frequency: {:?}, file sig: {}, signature: {:?}", &freq,file_sig,&sig);
+            return Err(actix_web::error::ErrorBadRequest(e.to_string()));
+        }
+    };
+    // info!("Detection result: {}", wd);
+    Ok(HttpResponse::Ok().content_type("text/plain").body(wd))
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
+    let port = env::var("MEDIUS_PORT").unwrap_or_else(|_| "9447".to_string()).parse().unwrap();
     HttpServer::new(|| {
         App::new()
-            .wrap(Logger::default())
             // Register routes
             .service(web::resource("/detect3").route(web::post().to(detect3)))
             .route("/api-docs", web::get().to(api_docs))
@@ -107,8 +122,9 @@ async fn main() -> std::io::Result<()> {
             .route("/", web::get().to(swagger_ui))
             .route("/index.html", web::get().to(swagger_ui))
             .route("/swagger-ui", web::get().to(swagger_ui))
+            .wrap(Logger::default())
     })
-    .bind((Ipv4Addr::UNSPECIFIED, 9447))
+    .bind((Ipv4Addr::UNSPECIFIED, port))
     .unwrap()
     .run()
     .await

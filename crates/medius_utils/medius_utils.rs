@@ -9,7 +9,7 @@ pub fn detect(all: &Vec<u8>, freq: f32, verbose: bool) -> anyhow::Result<f32> {
     let meta = static_meta();
     let buff_size: usize = meta.buff_size.clone() as usize;
     let inputs = meta.n;
-    let dev = candle_core::Device::cuda_if_available(0)?;
+    let dev = Device::cuda_if_available(0)?;
 
     let data = parse_all(all, inputs, freq, buff_size)?;
     // Convert data(extracted wav properties) to Tensor
@@ -47,7 +47,7 @@ fn static_meta() -> Meta {
 }
 /// Fill VarMap from embed
 fn fill_from_static(_meta: &Meta, _verbose: bool, varmap: &mut VarMap) -> anyhow::Result<()> {
-    let dev = candle_core::Device::cuda_if_available(0)?;
+    let dev = Device::cuda_if_available(0)?;
     let buf = include_bytes!("./../../models/model.safetensors");
     let map = safetensors::SafeTensors::deserialize(buf)?;
     for (k, v) in map.tensors() {

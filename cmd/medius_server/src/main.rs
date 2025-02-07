@@ -110,7 +110,7 @@ async fn detect3(mut payload: Multipart) -> Result<HttpResponse, Error> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let port = env::var("MEDIUS_PORT").unwrap_or_else(|_| "9447".to_string()).parse().unwrap();
     HttpServer::new(|| {
         App::new()
@@ -124,8 +124,7 @@ async fn main() -> std::io::Result<()> {
             .route("/swagger-ui", web::get().to(swagger_ui))
             .wrap(Logger::default())
     })
-    .bind((Ipv4Addr::UNSPECIFIED, port))
-    .unwrap()
+    .bind((Ipv4Addr::UNSPECIFIED, port))?
     .run()
     .await
 }

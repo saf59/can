@@ -5,9 +5,9 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-anyhow = { workspace = true }
-candle-core = { workspace = true }
-candle-nn = { workspace = true }
+anyhow.workspace = true
+candle-core.workspace = true
+candle-nn.workspace = true
 #cudarc = { workspace = true, optional = true }
 medius_data = { path = "../../crates/medius_data" }
 medius_meta = { path = "../../crates/medius_meta" }

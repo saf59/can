@@ -1,0 +1,18 @@
+[package]
+name = "bicks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ndarray.workspace = true
+#ndarray = "0.16.1" # { workspace = true }
+num-complex.workspace = true
+rustfft.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+plotly.workspace = true #"0.12.1" #{ workspace = true }
+
+[[bin]]
+path = "./bicks.rs"
+name = "bicks"

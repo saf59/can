@@ -5,8 +5,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-candle-core = { workspace = true }
-candle-nn = { workspace = true }
+candle-core.workspace = true
+candle-nn.workspace = true
 can_data = { path = "../../crates/can_data" }
 can_utils = { path = "../../crates/can_utils" }
 

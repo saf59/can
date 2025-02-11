@@ -5,12 +5,12 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-chrono = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-plotly = "0.12.1"
+plotly.workspace = true
 
 [[bin]]
 path = "./chart1.rs"

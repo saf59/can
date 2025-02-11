@@ -50,7 +50,7 @@ fn main() -> std::io::Result<()> {
     plot.add_trace(real_trace);
     plot.set_layout(layout);
     plot.write_html("out.html");
-    //plot.show();
+    plot.show();
     Ok(())
 }
 

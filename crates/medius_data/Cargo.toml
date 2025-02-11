@@ -5,8 +5,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-candle-core = { workspace = true }
-rand = { workspace = true }
+candle-core.workspace = true
+rand.workspace = true
 utils = { path = "../../crates/utils" }
 csv = "1.3.1"
 

@@ -8,9 +8,10 @@ license = "MIT OR Apache-2.0"
 members = [
     "cmd/edge", "cmd/itr", "cmd/bm", "cmd/ub", "cmd/setbuff", "cmd/chart1",
     "cmd/train", "cmd/detect3", "cmd/test3", "cmd/dur", "cmd/medius_server",
+    "cmd/bicks",
     "crates/can_data", "crates/utils",
     "crates/medius_data", "crates/medius_utils", "crates/medius_model",
-    "crates/medius_meta", "crates/medius_parser",
+    "crates/medius_meta", "crates/medius_parser", "cmd/bicks",
 ]
 resolver = "2"
 
@@ -27,6 +28,10 @@ serde = { version = "1.0.216", features = ["derive"] }
 serde_json = "1.0.137"
 serde_yaml = "0.9"
 safetensors = "=0.4.5" # do not update this version
+rustfft = "6.2.0"
+ndarray = "0.16.1"
+num-complex = "0.4.6"
+plotly = "0.12.1"
 
 
 

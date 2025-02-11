@@ -1,11 +1,11 @@
-use candle_core::{Device, Tensor, D};
 use candle_core::safetensors::Load;
+use candle_core::{Device, Tensor, D};
 use candle_nn::VarMap;
 use medius_meta::{Meta, ModelType};
 use medius_model::{get_model, Model};
 use medius_parser::parse_all;
 
-pub fn detect(all: &Vec<u8>, freq: f32, verbose: bool) -> anyhow::Result<f32> {
+pub fn detect(all: &[u8], freq: f32, verbose: bool) -> anyhow::Result<f32> {
     let meta = static_meta();
     let buff_size: usize = meta.buff_size.clone() as usize;
     let inputs = meta.n;
@@ -32,6 +32,16 @@ fn by_class(logits: &Tensor) -> anyhow::Result<f32> {
     let wp: f32 = (*max.unwrap() as f32) * -0.1;
     Ok(wp)
 }
+// it is not used, but it is same as previous by_class how to extract result
+/*
+fn by_class2(logits: &Tensor) -> anyhow::Result<f32> {
+    let wp: f32 = logits
+        .argmax(D::Minus1)?
+        .to_dtype(DType::F32)?
+        .get(0).map(|x| x.to_scalar::<f32>())??;
+    Ok(wp * -0.1)
+}
+*/
 /// Extract regression result
 fn by_regr(logits: &Tensor) -> anyhow::Result<f32> {
     let wp: f32 = logits

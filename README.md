@@ -1,6 +1,10 @@
 Как работают трансформеры: разбираем математику / Хабр
 https://habr.com/ru/articles/785474/
 
+Упрощенный пример на Rust обучения нейронной сети на основе Candle Framework от Hugging Face / Хабр
+https://habr.com/ru/articles/758658/
+
+
 # ENV
 - CUDA_TOOLKIT_ROOT_DIR = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8"
 - CUDA_PATH = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8"

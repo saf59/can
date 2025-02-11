@@ -117,7 +117,7 @@ fn show(sampling_rate: f32, original_signal: &Vec<f32>) {
     let freqs = [20.0, 30.0, 50.0];
     let x: Vec<f32> = (0..100).map(|x| x as f32).collect();
     let original = Scatter::new(x.clone(), original_signal.clone())
-        .mode(Mode::Lines)
+        .mode(common::Mode::Lines)
         .name("original");
     println!(
         "src  {:?} ->{:?}",

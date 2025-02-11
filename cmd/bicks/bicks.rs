@@ -1,9 +1,9 @@
 ﻿use ndarray::Array1;
 use num_complex::Complex;
-use plotly::common::Mode;
-use plotly::Plot;
-use plotly::Scatter;
 use rustfft::FftPlanner;
+
+#[cfg(target_os = "windows")]
+use plotly::{Plot,Scatter,common::Mode};
 
 fn bandlimited_signal(
     frequencies: &[f32],

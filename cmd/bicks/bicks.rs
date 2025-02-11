@@ -91,11 +91,7 @@ fn show(sampling_rate: f32, original_signal: &[f32]) {
     let original = Scatter::new(x.clone(), original_signal.to_owned())
         .mode(Mode::Lines)
         .name("original");
-    println!(
-        "src  {:?} ->{:?}",
-        original_signal.len(),
-        original_signal.split_at(5).0
-    );
+    println!("src  {:?} ->{:?}", original_signal.len(), original_signal.split_at(5).0);
     plot.add_trace(original);
     for max_frequency in freqs.iter() {
         let reconstructed_signal =
@@ -104,10 +100,7 @@ fn show(sampling_rate: f32, original_signal: &[f32]) {
             .mode(Mode::Lines)
             .name(format!("bicks {:?}", max_frequency));
         plot.add_trace(trace);
-        println!(
-            "bicks {max_frequency} ->{:?}",
-            reconstructed_signal.split_at(5).0
-        );
+        println!("bicks {max_frequency} ->{:?}", reconstructed_signal.split_at(5).0);
     }
     //plot.show();
     plot.write_html("bicks.html");
@@ -115,18 +108,10 @@ fn show(sampling_rate: f32, original_signal: &[f32]) {
 #[cfg(target_os = "android")]
 fn show(sampling_rate: f32, original_signal: &Vec<f32>) {
     let freqs = [20.0, 30.0, 50.0];
-    let x: Vec<f32> = (0..100).map(|x| x as f32).collect();
-    println!(
-        "src  {:?} ->{:?}",
-        original_signal.len(),
-        original_signal.split_at(5).0
-    );
+    println!("src  {:?} ->{:?}", original_signal.len(), original_signal.split_at(5).0);
     for max_frequency in freqs.iter() {
         let reconstructed_signal =
             bicks_reconstruction(&original_signal, sampling_rate, *max_frequency);
-        println!(
-            "bicks {max_frequency} ->{:?}",
-            reconstructed_signal.split_at(5).0
-        );
+        println!("bicks {max_frequency} ->{:?}", reconstructed_signal.split_at(5).0);
     }
 }

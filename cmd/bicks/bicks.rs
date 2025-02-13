@@ -4,6 +4,7 @@ use rustfft::FftPlanner;
 
 #[cfg(target_os = "windows")]
 use plotly::{Plot,Scatter,common::Mode};
+use plotly::common::{Line, LineShape};
 
 fn bandlimited_signal(
     frequencies: &[f32],
@@ -90,6 +91,7 @@ fn show(sampling_rate: f32, original_signal: &[f32]) {
     let mut plot = Plot::new();
     let original = Scatter::new(x.clone(), original_signal.to_owned())
         .mode(Mode::Lines)
+        .line(Line::new().shape(LineShape::Spline))
         .name("original");
     println!("src  {:?} ->{:?}", original_signal.len(), original_signal.split_at(5).0);
     plot.add_trace(original);
@@ -98,6 +100,7 @@ fn show(sampling_rate: f32, original_signal: &[f32]) {
             bicks_reconstruction(original_signal, sampling_rate, *max_frequency);
         let trace = Scatter::new(x.clone(), reconstructed_signal.clone())
             .mode(Mode::Lines)
+            .line(Line::new().shape(LineShape::Spline))
             .name(format!("bicks {:?}", max_frequency));
         plot.add_trace(trace);
         println!("bicks {max_frequency} ->{:?}", reconstructed_signal.split_at(5).0);

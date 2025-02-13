@@ -55,7 +55,7 @@ impl Model for Mlp {
 }
 pub fn training_loop(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<()> {
     let dev = &Device::cuda_if_available(0)?;
-    println!("Device:{:?}", dev);
+    println!("Device:{:?}, {:?}", dev, &meta.small());
     let dataset = load_dir(datapath, meta.train_part, dev)?;
     print_dataset_info(&dataset);
     let binding = meta.model_file();
@@ -119,8 +119,6 @@ fn train_classification(
     let train_labels = m.train_labels.to_dtype(DType::U32)?.to_device(dev)?;
     let test_data = m.test_data.to_device(dev)?;
     let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(dev)?;
-    let n_batches = train_data.dim(0)? / meta.batch_size;
-    let batch_idxs = (0..n_batches).collect::<Vec<usize>>();
     for epoch in 1..=meta.epochs {
         let loss = match meta.batch_size {
             1 => train_classification_epoch(&model, &mut opt, &train_data, &train_labels),
@@ -130,8 +128,6 @@ fn train_classification(
                 &train_data,
                 &train_labels,
                 meta.batch_size,
-                n_batches,
-                &batch_idxs,
             ),
         }?;
         let test_accuracy = test_classification(model, &test_data, &test_labels)?;
@@ -160,20 +156,20 @@ fn train_classification_batches(
     train_data: &Tensor,
     train_labels: &Tensor,
     batch_size: usize,
-    n_batches: usize,
-    batch_idxs: &[usize],
 ) -> anyhow::Result<f32> {
-    let mut sum_loss = 0f32;
-    for batch_idx in batch_idxs.iter() {
-        let data = train_data.narrow(0, batch_idx * batch_size, batch_size)?;
-        let labels = train_labels.narrow(0, batch_idx * batch_size, batch_size)?;
+    let chunk_size:usize = train_data.dims()[0] / batch_size;
+    let train_data_chunks = train_data.chunk(chunk_size,0)?;
+    let train_labels_chunks = train_labels.chunk(chunk_size,0)?;
+
+    let mut f_loss = 0f32;
+    for (data, labels) in train_data_chunks.into_iter().zip(train_labels_chunks) {
         let logits = &model.forward(&data)?;
         let log_sm = ops::log_softmax(logits, D::Minus1)?;
         let loss = loss::nll(&log_sm, &labels)?;
         opt.backward_step(&loss)?;
-        sum_loss += loss.to_scalar::<f32>()?;
+        f_loss = loss.to_scalar::<f32>()?;
     }
-    Ok(sum_loss / n_batches as f32)
+    Ok(f_loss)
 }
 fn train_regression(
     m: Dataset,
@@ -203,20 +199,11 @@ fn train_regression(
         .unwrap()
         .mul(-0.1)?
         .to_device(dev)?;
-    let n_batches = train_data.dim(0)? / meta.batch_size;
-    let batch_idxs = (0..n_batches).collect::<Vec<usize>>();
     for epoch in 1..=meta.epochs {
         let loss = match meta.batch_size {
             1 => train_regression_epoch(&model, &mut opt, &train_data, &train_labels),
-            _ => train_regression_batches(
-                &model,
-                &mut opt,
-                &train_data,
-                &train_labels,
-                meta.batch_size,
-                n_batches,
-                &batch_idxs,
-            ),
+            _ => train_regression_batches(&model, &mut opt, &train_data, &train_labels,
+                                          meta.batch_size),
         }?;
         let test_accuracy = test_regression(model, &test_data, &test_labels)?;
         print!(
@@ -237,26 +224,25 @@ fn train_regression_epoch(
     opt.backward_step(&loss)?;
     Ok(loss.to_scalar::<f32>()?)
 }
+
 fn train_regression_batches(
     model: &&Mlp,
     opt: &mut AdamW,
     train_data: &Tensor,
     train_labels: &Tensor,
     batch_size: usize,
-    n_batches: usize,
-    batch_idxs: &[usize],
 ) -> anyhow::Result<f32> {
-    let mut sum_loss = 0f32;
-    //println!("babatch_size:{:?}, n_batches:{:?} {:?}",batch_size, n_batches,batch_idxs.len());
-    for batch_idx in batch_idxs.iter() {
-        let data = train_data.narrow(0, batch_idx * batch_size, batch_size)?;
-        let labels = train_labels.narrow(0, batch_idx * batch_size, batch_size)?;
+    let chunk_size:usize = train_data.dims()[0] / batch_size;
+    let train_data_chunks = train_data.chunk(chunk_size,0)?;
+    let train_labels_chunks = train_labels.chunk(chunk_size,0)?;
+    let mut f_loss = 0f32;
+    for (data, labels) in train_data_chunks.into_iter().zip(train_labels_chunks) {
         let logits = &model.forward(&data).unwrap().flatten_to(1)?;
         let loss = logits.sub(&labels)?.sqr()?.mul(0.5).unwrap().mean(0)?;
         opt.backward_step(&loss)?;
-        sum_loss += loss.to_scalar::<f32>()?;
+        f_loss = loss.to_scalar::<f32>()?;
     }
-    Ok(sum_loss / n_batches as f32)
+    Ok(f_loss)
 }
 fn test_classification(model: &Mlp, data: &Tensor, labels: &Tensor) -> anyhow::Result<f32> {
     let logits = model.forward(data)?;

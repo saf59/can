@@ -54,6 +54,18 @@ impl Default for Meta {
         }
     }
 }
+impl Meta {
+    pub fn small(&self) -> String {
+        format!("{:?}, {:?}, {}, {}, {}, {}",
+                self.model_type,
+                self.activation,
+                self.epochs,
+                self.batch_size,
+                self.learning_rate,
+                self.train_part
+        )
+    }
+}
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
 pub enum ModelType {
     Regression,

@@ -2,9 +2,9 @@ extern crate core;
 
 use candle_core::{Device, Tensor};
 use csv::Reader;
-use rand::seq::SliceRandom;
 use rand::rng;
-use std::collections::HashMap;
+use rand::seq::SliceRandom;
+use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
 
@@ -13,12 +13,16 @@ pub struct Dataset {
     pub train_labels: Tensor,
     pub test_data: Tensor,
     pub test_labels: Tensor,
-    pub labels: usize,
+}
+impl Dataset {
+    pub fn classes(&self) -> usize {
+        let train_classes: HashSet<_> = self.train_labels.flatten_all().unwrap().to_vec1().unwrap().into_iter().collect();
+        let test_classes: HashSet<_> = self.test_labels.flatten_all().unwrap().to_vec1::<u8>().unwrap().into_iter().collect();
+        train_classes.union(&test_classes).count()
+    }
 }
 
 pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32,dev: &Device) -> candle_core::Result<Dataset> {
-    //let p: &Path = "./".as_ref();
-    //println!("in:{:?}",p.canonicalize());
     let y = read_medius_y(dir.as_ref())?;
     let x = read_medius_x(dir.as_ref())?;
     let size = y.len();
@@ -34,16 +38,11 @@ pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32,dev: &Device) -> candle_
     let (train_size, test_size) = (&train.len(),&test.len());
     let (train_x, train_y) = fill_x_y(train, &x, &y, width);
     let (test_x, test_y) = fill_x_y(test, &x, &y, width);
-    let mut nodes: HashMap<u8, usize> = HashMap::new();
-    for n in y.iter() {
-        nodes.entry(*n).and_modify(|count| *count += 1).or_insert(1);
-    }
     Ok(Dataset {
         train_data: Tensor::from_vec(train_x, (*train_size, width), dev)?,
         train_labels: Tensor::from_vec(train_y, *train_size, dev)?,
         test_data: Tensor::from_vec(test_x, (*test_size, width), dev)?,
         test_labels: Tensor::from_vec(test_y, *test_size, dev)?,
-        labels: nodes.len(),
     })
 }
 fn fill_x_y(
@@ -109,8 +108,8 @@ mod tests {
     fn test_load_dir() {
         set_root();
         let device = Device::cuda_if_available(0).unwrap();
-        let dataset = load_dir(BASE, 0.9,&device);
-        println!("{:?}", dataset.unwrap().test_data.shape())
+        let dataset = load_dir(BASE, 0.9,&device).unwrap();
+        println!("{:?}-> {:?}", &dataset.test_data.shape(),&dataset.classes());
     }
 }
 

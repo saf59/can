@@ -3,7 +3,7 @@ use candle_nn::{
     loss, ops, AdamW, Linear, Module, Optimizer, ParamsAdamW, VarBuilder, VarMap, SGD,
 };
 use medius_data::{load_dir, print_dataset_info, Dataset};
-use medius_meta::{Activation, Meta, ModelType, DEFAULT_VM};
+pub(crate) use medius_meta::{Activation, Meta, ModelType, DEFAULT_VM, ModelType::{Regression, Classification}};
 use std::fs::create_dir_all;
 use std::ops::Mul;
 use std::path::{Path, PathBuf};
@@ -60,15 +60,11 @@ pub fn training_loop(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<()> {
     print_dataset_info(&dataset);
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();
-    meta.outputs = if meta.model_type == ModelType::Regression {
-        1
-    } else {
-        dataset.labels
-    };
+    meta.outputs = if meta.model_type == Regression { 1 } else { dataset.classes() };
     let (varmap, model) = get_model(dev, meta, false, &fill_from_file)?;
     match meta.model_type {
-        ModelType::Classification => train_classification(dataset, meta, dev, &varmap, &model),
-        ModelType::Regression => train_regression(dataset, meta, dev, &varmap, &model),
+        Classification => train_classification(dataset, meta, dev, &varmap, &model),
+        Regression => train_regression(dataset, meta, dev, &varmap, &model),
     }?;
     println!(
         "\nsaving trained weights to {:}",
@@ -82,11 +78,7 @@ pub fn training_loop(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<()> {
 pub fn test_all(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<f32> {
     let dev = &Device::cuda_if_available(0)?;
     let dataset = load_dir(datapath, meta.train_part, dev)?;
-    meta.outputs = if meta.model_type == ModelType::Regression {
-        1
-    } else {
-        dataset.labels
-    };
+    meta.outputs = if meta.model_type == ModelType::Regression { 1 } else { dataset.classes() };
     let (_varmap, model) = get_model(dev, meta, false, &fill_from_file)?;
     let test_data = dataset.test_data.to_device(dev)?;
     let test_accuracy = match meta.model_type {

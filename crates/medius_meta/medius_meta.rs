@@ -9,10 +9,11 @@ use candle_nn::ops;
 use utils::{enum_name, first_char};
 
 pub const MODELS_DIR: &str = "./models";
-pub const DEFAULT: &str = "./models/model.meta";
-pub const DEFAULT_VM: &str = "./models/model.safetensors";
 const META_NAME: &str = "model.meta";
 const MODEL_NAME: &str = "model.safetensors";
+pub const DEFAULT: &str = "./models/model.meta";
+pub const DEFAULT_VM: &str = "./models/model.safetensors";
+
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq,Debug)]
 pub struct Meta {
     // data && parse

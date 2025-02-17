@@ -1,8 +1,8 @@
+use std::collections::HashMap;
 use candle_core::cpu::erf::erf;
 use pacmog::PcmReader;
 use rustfft::num_complex::Complex;
 use rustfft::FftPlanner;
-use std::collections::HashMap;
 use std::fs;
 #[allow(unused_imports)]
 use std::path::Path;
@@ -43,15 +43,13 @@ fn fft_amplitudes(raw: &[f32], buf_size: usize) -> Vec<f32> {
     let fft = fft_planner.plan_fft_forward(buf_size);
     let mut buffer = f32_to_complex_vec(&data, buf_size);
     fft.process(&mut buffer);
-    let half = buf_size / 2usize;
-    let n: f32 = half as f32;
-    let mut amplitudes: Vec<f32> = Vec::with_capacity(half);
-    for item in buffer.iter().take(half) {
+    let half = buf_size / 2;
+    let n = half as f32;
+    buffer.iter().take(half).map(|item| {
         let real = item.re.powi(2);
         let imag = item.im.powi(2);
-        amplitudes.push(((real + imag).sqrt()) / n);
-    }
-    amplitudes
+        ((real + imag).sqrt()) / n
+    }).collect()
 }
 fn align(data: &[f32], buf_size: usize) -> Vec<f32> {
     if data.len() < buf_size {
@@ -62,18 +60,8 @@ fn align(data: &[f32], buf_size: usize) -> Vec<f32> {
         data[..buf_size].to_vec()
     }
 }
-
 fn f32_to_complex_vec(data: &[f32], buf_size: usize) -> Vec<Complex<f32>> {
-    let mut complex_data = Vec::with_capacity(buf_size);
-    let max = data.len();
-    for (i, item) in data.iter().enumerate().take(buf_size) {
-        if i < max {
-            complex_data.push(Complex::new(*item, 0.0))
-        } else {
-            complex_data.push(Complex::new(0.0, 0.0))
-        };
-    }
-    complex_data
+    data.iter().take(buf_size).map(|&item| Complex::new(item, 0.0)).collect()
 }
 
 fn weighted5_one(row: &[f32], n: usize, f_rangelist: &[std::ops::Range<f32>], nf: f32) -> Vec<f32> {
@@ -225,9 +213,11 @@ fn useful3(raw: &[f32]) -> Vec<f32> {
         .find(|(_, v)| *v > gm)
         .map(|(i, _)| smoothed_diff.len() - i - 1)
         .unwrap_or(smoothed_diff.len() - 1);
+    //let _first = smoothed_diff.iter().position(|&v| v > gm).unwrap_or(0);
+    //let _last = smoothed_diff.iter().rposition(|&v| v > gm).unwrap_or(smoothed_diff.len() - 1);
 
     // Slice the original data
-    raw[first..last + 1].to_vec() // Include last element
+    raw[first..=last].to_vec() // Include last element
 }
 
 struct SimpleMovingAverage {
@@ -275,8 +265,8 @@ impl SimpleMovingAverage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Instant;
     use medius_meta::BufSize;
+    use std::time::Instant;
     use utils::set_root;
 
     #[allow(clippy::excessive_precision)]
@@ -300,7 +290,14 @@ mod tests {
         let ampl: Vec<f32> = fft_amplitudes(&useful, buff_size);
         println!("ampl  :{:?}..{:?}", ampl[0], ampl.last().unwrap());
         let range_list = build_range_list(TOP, N);
+/*        println!("{:?}", &ampl);
+        println!("{:?}", N);
+        println!("{:?}", &range_list);
+        println!("{:?}", nf);
+*/
         let out = weighted5_one(&ampl, N, &range_list, nf);
+
+
         println!("out   :{:?}..{:?}", out[0], out.last().unwrap());
         assert!((0.17772603 - out[0]).abs() < 1e-9);
         assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-8);
@@ -322,4 +319,5 @@ mod tests {
         assert!((0.17772603 - out[0]).abs() < 1e-8);
         assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-8);
     }
+
 }

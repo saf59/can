@@ -3,7 +3,7 @@ use candle_nn::{
     loss, ops, AdamW, Linear, Module, Optimizer, ParamsAdamW, VarBuilder, VarMap, SGD,
 };
 use medius_data::{load_dir, print_dataset_info, Dataset};
-pub(crate) use medius_meta::{Activation, Meta, ModelType, DEFAULT_VM, ModelType::{Regression, Classification}};
+pub(crate) use medius_meta::{Activation, Meta, ModelType::{Classification, Regression}, DEFAULT_VM};
 use std::fs::create_dir_all;
 use std::ops::Mul;
 use std::path::{Path, PathBuf};
@@ -82,11 +82,11 @@ pub fn test_all(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<f32> {
     let (_varmap, model) = get_model(dev, meta, false, &fill_from_file)?;
     let test_data = dataset.test_data.to_device(dev)?;
     let test_accuracy = match meta.model_type {
-        ModelType::Classification => {
+        Classification => {
             let test_labels = dataset.test_labels.to_dtype(DType::U32)?.to_device(dev)?;
             test_classification(&model, &test_data, &test_labels)
         }
-        ModelType::Regression => {
+        Regression => {
             let test_labels = dataset
                 .train_labels
                 .to_dtype(DType::F32)

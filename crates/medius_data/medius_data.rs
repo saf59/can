@@ -103,7 +103,10 @@ mod tests {
     fn test_x_y() {
         set_root();
         let y = read_medius_x(&Path::new(BASE)).unwrap();
-        println!("{:?},{:?},{:?}", y.len(), y[1], y.last())
+        //println!("{:?},{:?},{:?}", y.len(), y[1], y.last()); // 187200,0.02826519,Some(0.017969258)
+        assert_eq!(y.len(), 187200);
+        assert_eq!(y[1], 0.02826519);
+        assert_eq!(y.last(), Some(&0.017969258));
     }
     #[test]
     fn test_load_dir() {
@@ -111,6 +114,8 @@ mod tests {
         let device = Device::cuda_if_available(0).unwrap();
         let dataset = load_dir(BASE, 0.9,&device).unwrap();
         println!("{:?}-> {:?}", &dataset.test_data.shape(),&dataset.classes(false));
+        assert_eq!(dataset.test_data.shape().dims2().unwrap(), (72, 260));
+        assert_eq!(dataset.classes(false) , 5);
     }
 }
 

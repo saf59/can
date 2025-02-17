@@ -15,7 +15,8 @@ pub struct Dataset {
     pub test_labels: Tensor,
 }
 impl Dataset {
-    pub fn classes(&self) -> usize {
+    pub fn classes(&self, is_regression:bool) -> usize {
+        if is_regression {return 1;}
         let train_classes: HashSet<_> = self.train_labels.flatten_all().unwrap().to_vec1().unwrap().into_iter().collect();
         let test_classes: HashSet<_> = self.test_labels.flatten_all().unwrap().to_vec1::<u8>().unwrap().into_iter().collect();
         train_classes.union(&test_classes).count()
@@ -109,7 +110,7 @@ mod tests {
         set_root();
         let device = Device::cuda_if_available(0).unwrap();
         let dataset = load_dir(BASE, 0.9,&device).unwrap();
-        println!("{:?}-> {:?}", &dataset.test_data.shape(),&dataset.classes());
+        println!("{:?}-> {:?}", &dataset.test_data.shape(),&dataset.classes(false));
     }
 }
 

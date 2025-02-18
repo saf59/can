@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-indicatif = "0.17.9"
+indicatif = "0.17.11"
 sysinfo = "0.33.1"
 
 [[bin]]

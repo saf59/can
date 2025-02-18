@@ -4,6 +4,7 @@ use rustfft::FftPlanner;
 
 #[cfg(target_os = "windows")]
 use plotly::{Plot,Scatter,common::Mode};
+#[cfg(target_os = "windows")]
 use plotly::common::{Line, LineShape};
 
 fn bandlimited_signal(

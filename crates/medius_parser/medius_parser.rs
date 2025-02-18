@@ -1,9 +1,10 @@
-use std::collections::HashMap;
 use candle_core::cpu::erf::erf;
 use pacmog::PcmReader;
 use rustfft::num_complex::Complex;
 use rustfft::FftPlanner;
+use std::collections::HashMap;
 use std::fs;
+
 #[allow(unused_imports)]
 use std::path::Path;
 
@@ -23,7 +24,7 @@ pub fn parse_wav<P: AsRef<Path>>(
 }
 
 pub fn parse_all(
-    all  : &[u8],
+    all: &[u8],
     n: usize,
     frequency: f32,
     buff_size: usize,
@@ -33,7 +34,9 @@ pub fn parse_all(
     let useful: Vec<f32> = useful3(&raw);
     let ampl: Vec<f32> = fft_amplitudes(&useful, buff_size);
     let range_list = build_range_list(TOP, n);
-    let out = weighted5_one(&ampl, n, &range_list, nf);
+    let (median, multiplayer) = median_and_multiplier(&ampl);
+    let norm_row = normalize_array(&ampl, median, multiplayer);
+    let out = weighted5_one(&norm_row, n, &range_list, nf);
     Ok(out)
 }
 
@@ -45,11 +48,15 @@ fn fft_amplitudes(raw: &[f32], buf_size: usize) -> Vec<f32> {
     fft.process(&mut buffer);
     let half = buf_size / 2;
     let n = half as f32;
-    buffer.iter().take(half).map(|item| {
-        let real = item.re.powi(2);
-        let imag = item.im.powi(2);
-        ((real + imag).sqrt()) / n
-    }).collect()
+    buffer
+        .iter()
+        .take(half)
+        .map(|item| {
+            let real = item.re.powi(2);
+            let imag = item.im.powi(2);
+            ((real + imag).sqrt()) / n
+        })
+        .collect()
 }
 fn align(data: &[f32], buf_size: usize) -> Vec<f32> {
     if data.len() < buf_size {
@@ -61,40 +68,38 @@ fn align(data: &[f32], buf_size: usize) -> Vec<f32> {
     }
 }
 fn f32_to_complex_vec(data: &[f32], buf_size: usize) -> Vec<Complex<f32>> {
-    data.iter().take(buf_size).map(|&item| Complex::new(item, 0.0)).collect()
+    data.iter()
+        .take(buf_size)
+        .map(|&item| Complex::new(item, 0.0))
+        .collect()
 }
 
 fn weighted5_one(row: &[f32], n: usize, f_rangelist: &[std::ops::Range<f32>], nf: f32) -> Vec<f32> {
-    let (median, multiplayer) = median_and_multiplier(row);
-    let norm_row = normalize_array(row, median, multiplayer);
-    let mut result = vec![0.0; n]; // Initialize result with zeros
     let freq = frequencies(row.len());
-    //println!("freq  :{:?}..{:?}", freq[0], freq.last().unwrap(), );
-    let max_f = f_rangelist.last().unwrap().end; // Assuming last is Some
+    let max_f = f_rangelist.last().unwrap().end;
 
-    let filtered_data = norm_row
-        .iter()
-        .enumerate()
-        .filter(|(i, _)| freq[*i] / nf < max_f);
-
-    let mut grouped_data: HashMap<usize, Vec<f32>> = HashMap::new();
-    for (i, d) in filtered_data {
-        let range_index = range_index(f_rangelist, freq[i] / nf);
-        grouped_data
-            .entry(range_index)
-            .or_default()
-            .push(*d);
+    let mut grouped_data: HashMap<usize, (f32, usize)> = HashMap::with_capacity(n);
+    for (i, &d) in row.iter().enumerate() {
+        let fi = freq[i] / nf;
+        if fi < max_f {
+            let range_index = range_index(f_rangelist, fi);
+            let entry = grouped_data.entry(range_index).or_insert((0.0, 0));
+            entry.0 += d;
+            entry.1 += 1;
+        }
     }
 
-    for (k, v) in grouped_data.iter() {
-        if *k < n {
-            result[*k] = v.iter().sum::<f32>() / v.len() as f32; // Average
+    let mut result = vec![0.0; n];
+    for (k, (sum, count)) in grouped_data {
+        if k < n {
+            result[k] = sum / count as f32;
         }
     }
 
     result
 }
 
+// Build a list of frequencies with a given window size and sample rate
 fn frequencies(window_size: usize) -> Vec<f32> {
     let k = SAMPLE_RATE as f32 / (window_size as f32 * 2.0);
     (0..window_size).map(|i| i as f32 * k).collect()
@@ -198,23 +203,11 @@ fn useful3(raw: &[f32]) -> Vec<f32> {
     let gm = smoothed_diff.iter().sum::<f32>() / smoothed_diff.len() as f32;
 
     // Find first and last indices above the mean
-    let first = smoothed_diff
-        .clone()
-        .into_iter()
-        .enumerate()
-        .find(|(_, v)| *v > gm)
-        .map(|(i, _)| i)
-        .unwrap_or(0);
+    let first = smoothed_diff.iter().position(|&v| v > gm).unwrap_or(0);
     let last = smoothed_diff
-        .clone()
-        .into_iter()
-        .rev()// reverse the iterator to find the last index
-        .enumerate()
-        .find(|(_, v)| *v > gm)
-        .map(|(i, _)| smoothed_diff.len() - i - 1)
+        .iter()
+        .rposition(|&v| v > gm)
         .unwrap_or(smoothed_diff.len() - 1);
-    //let _first = smoothed_diff.iter().position(|&v| v > gm).unwrap_or(0);
-    //let _last = smoothed_diff.iter().rposition(|&v| v > gm).unwrap_or(smoothed_diff.len() - 1);
 
     // Slice the original data
     raw[first..=last].to_vec() // Include last element
@@ -280,7 +273,7 @@ mod tests {
         set_root();
         let nf = FREQUENCY / F5;
         let buff_size: usize = BufSize::Small as usize;
-        let wav_path:&Path = SRC.as_ref();
+        let wav_path: &Path = SRC.as_ref();
         let all = fs::read(wav_path).unwrap();
         let raw = read_wav(&all).unwrap();
         println!("raw   :{:?}..{:?}", raw[0], raw.last().unwrap());
@@ -290,14 +283,9 @@ mod tests {
         let ampl: Vec<f32> = fft_amplitudes(&useful, buff_size);
         println!("ampl  :{:?}..{:?}", ampl[0], ampl.last().unwrap());
         let range_list = build_range_list(TOP, N);
-/*        println!("{:?}", &ampl);
-        println!("{:?}", N);
-        println!("{:?}", &range_list);
-        println!("{:?}", nf);
-*/
-        let out = weighted5_one(&ampl, N, &range_list, nf);
-
-
+        let (median, multiplayer) = median_and_multiplier(&ampl);
+        let norm_row = normalize_array(&ampl, median, multiplayer);
+        let out = weighted5_one(&norm_row, N, &range_list, nf);
         println!("out   :{:?}..{:?}", out[0], out.last().unwrap());
         assert!((0.17772603 - out[0]).abs() < 1e-9);
         assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-8);
@@ -308,7 +296,7 @@ mod tests {
         set_root();
         let buf_size: usize = BufSize::Small as usize;
         let start = Instant::now();
-        let wav_path:&Path = SRC.as_ref();
+        let wav_path: &Path = SRC.as_ref();
         let out = parse_wav(wav_path, N, FREQUENCY, buf_size).unwrap();
         println!(
             "out   :{:?}..{:?} {:5.2?}",
@@ -320,4 +308,28 @@ mod tests {
         assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-8);
     }
 
+    #[test]
+    fn test_weighted5_one() {
+        let ampl = generate_vec();
+        let n = 10;
+        let range_list = build_range_list(TOP, n);
+        let (median, multiplayer) = median_and_multiplier(&ampl);
+        println!("{median},{multiplayer}");
+        let row = normalize_array(&ampl, median, multiplayer);
+
+        let result = weighted5_one(&row, n, &range_list, 1.0);
+        // since median is 0.5, average of each low group is negative
+        let must_be: [f32; 10] = [
+            -0.5184687, -0.45620948, -0.39448705, -0.3327646, -0.2710421,
+            -0.20931965, -0.14706048, -0.085338004, -0.02361555, 0.038106915,
+        ];
+        println!("{:?}", result);
+        assert_eq!(result, must_be);
+        // Add more assertions based on expected output
+    }
+    fn generate_vec() -> Vec<f32> {
+        let len = 1024;
+        let step = 1.0 / (len - 1) as f32;
+        (0..len).map(|i| i as f32 * step).collect()
+    }
 }

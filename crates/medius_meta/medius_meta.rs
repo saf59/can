@@ -29,13 +29,6 @@ pub struct Meta {
     pub batch_size: usize,
     pub learning_rate: f64,
     pub train_part: f32,
-/*    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub hidden0: Option<usize>,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub hidden1: Option<usize>,
-*/
     pub hidden: Option<String>,
     pub outputs: usize
 }
@@ -55,9 +48,6 @@ impl Default for Meta {
             batch_size: 40,
             learning_rate: 0.5,
             train_part: 0.9,
-    /*        hidden0: None,
-            hidden1: None,
-    */
             hidden: Some("40,10".to_string()),
             outputs: 1,
         }

@@ -37,12 +37,13 @@ impl Model for Mlp {
 
         // Add hidden layers
         for (i, &hidden_size) in hidden.iter().enumerate() {
-            layers.push(candle_nn::linear(prev_size, hidden_size, vs.pp(format!("ln{}", i + 1)))?);
+            // each layer must have unique name like ln1, ln2, ln3...
+            layers.push(candle_nn::linear(prev_size, hidden_size, vs.pp(format!("ln{}", i +1)))?);
             prev_size = hidden_size;
         }
 
         // Add output layer
-        layers.push(candle_nn::linear(prev_size, outputs, vs.pp(format!("ln{}", hidden.len() + 1)))?);
+        layers.push(candle_nn::linear(prev_size, outputs, vs.pp(format!("ln{}", hidden.len() +1)))?);
 
         Ok(Self {
             layers,
@@ -209,7 +210,7 @@ fn train_regression(
         }?;
         let test_accuracy = test_regression(model, &test_data, &test_labels)?;
         print!(
-            "{epoch:5} train loss: {loss:8.6} test acc: {:5.6}% \r",
+            "{epoch:6} train loss: {loss:8.7} test acc: {:8.7}% \r",
             100. * test_accuracy
         );
     }

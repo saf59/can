@@ -53,7 +53,7 @@ fn main() -> std::io::Result<()> {
     plot.show();
     Ok(())
 }
-
+#[cfg(target_os = "windows")]
 fn get_timeseries_data(data_dir: &str, file_name: &str) -> Result<(Vec<DateTime<Utc>>, Vec<f64>), std::io::Error> {
     let mut file_path = String::from(data_dir);
     file_path.push_str(file_name);
@@ -67,7 +67,7 @@ fn get_timeseries_data(data_dir: &str, file_name: &str) -> Result<(Vec<DateTime<
 
     Ok((x, y))
 }
-
+#[cfg(target_os = "windows")]
 fn get_real_data(data_dir: &str, file_name: &str) -> Result<(Vec<DateTime<Utc>>, Vec<f64>), std::io::Error> {
     let mut file_path = String::from(data_dir);
     file_path.push_str(file_name);

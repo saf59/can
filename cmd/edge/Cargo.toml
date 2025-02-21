@@ -11,8 +11,7 @@ can_data = { path = "../../crates/can_data" }
 can_utils = { path = "../../crates/can_utils" }
 
 [features]
-default = ["cuda"]
-cuda = []
+default = []
 
 [[bin]]
 path = "./edge.rs"

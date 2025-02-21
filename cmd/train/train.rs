@@ -1,14 +1,14 @@
 use clap::Parser;
+use medius_meta::{Activation, AlgType, BufSize, Meta, ModelType};
+use medius_model::training_loop;
 use std::path::Path;
 use std::process;
 use std::time::Instant;
-use medius_meta::{AlgType, BufSize, Meta, ModelType, Activation};
-use medius_model::training_loop;
 /// Command line arguments for the training program
 #[derive(Parser)]
 struct Args {
     /// Show defaults and exit
-    #[arg(short, default_value_t=false)]
+    #[arg(short, default_value_t = false)]
     defaults: bool,
     /// Inputs
     #[arg(short)]
@@ -39,10 +39,9 @@ struct Args {
     train_part: Option<f32>,
     #[arg(long)]
     learning_rate: Option<f64>,
+    /// List of hidden layers, separated by commas
     #[arg(long)]
-    hidden0: Option<usize>,
-    #[arg(long)]
-    hidden1: Option<usize>,
+    hidden: Option<String>,
 }
 
 pub fn main() -> anyhow::Result<()> {
@@ -56,7 +55,7 @@ pub fn main() -> anyhow::Result<()> {
             println!("{:5.2?}", Instant::now().duration_since(start));
             meta.save();
         }
-        Err(e) => println!("{:?}",e)
+        Err(e) => println!("{:?}", e),
     }
     Ok(())
 }
@@ -99,24 +98,22 @@ fn meta() -> anyhow::Result<Meta> {
     if let Some(learning_rate) = args.learning_rate {
         meta.learning_rate = learning_rate;
     }
-    if let Some(hidden0) = args.hidden0 {
-        meta.hidden0 = hidden0;
-    }
-    if let Some(hidden1) = args.hidden1 {
-        meta.hidden1 = hidden1;
+    if let Some(hidden) = args.hidden {
+        meta.hidden = Some(hidden);
+    } else {
+        meta.hidden = Some("40,10".to_string());
     }
     // Check if the algorithm type is implemented
     if args.defaults {
-        println!("{:#?}",meta);
+        println!("{:#?}", meta);
         process::exit(0);
     }
     // Check if the algorithm type is implemented
     if meta.alg_type != AlgType::Bin {
         return Err(anyhow::Error::msg(format!(
-            "Algorithm {:#?} is not implemented yet!", meta.alg_type
+            "Algorithm {:#?} is not implemented yet!",
+            meta.alg_type
         )));
     }
     Ok(meta)
 }
-
-

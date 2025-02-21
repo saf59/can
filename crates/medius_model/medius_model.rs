@@ -13,46 +13,55 @@ pub trait Model: Sized {
         vs: VarBuilder,
         inputs: usize,
         outputs: usize,
-        hidden0: usize,
-        hidden1: usize,
+        hidden: &[usize],
         activation: Activation,
     ) -> Result<Self>;
     fn forward(&self, xs: &Tensor) -> Result<Tensor>;
 }
 
 pub struct Mlp {
-    ln1: Linear,
-    ln2: Linear,
-    ln3: Linear,
+    layers: Vec<Linear>,
     activation: Activation,
 }
+
 impl Model for Mlp {
     fn new(
         vs: VarBuilder,
         inputs: usize,
         outputs: usize,
-        hidden0: usize,
-        hidden1: usize,
+        hidden: &[usize],
         activation: Activation,
     ) -> Result<Self> {
-        let ln1 = candle_nn::linear(inputs, hidden0, vs.pp("ln1"))?;
-        let ln2 = candle_nn::linear(hidden0, hidden1, vs.pp("ln2"))?;
-        let ln3 = candle_nn::linear(hidden1, outputs, vs.pp("ln3"))?;
+        let mut layers = Vec::new();
+        let mut prev_size = inputs;
+
+        // Add hidden layers
+        for (i, &hidden_size) in hidden.iter().enumerate() {
+            layers.push(candle_nn::linear(prev_size, hidden_size, vs.pp(format!("ln{}", i + 1)))?);
+            prev_size = hidden_size;
+        }
+
+        // Add output layer
+        layers.push(candle_nn::linear(prev_size, outputs, vs.pp(format!("ln{}", hidden.len() + 1)))?);
+
         Ok(Self {
-            ln1,
-            ln2,
-            ln3,
+            layers,
             activation,
         })
     }
+
     fn forward(&self, xs: &Tensor) -> Result<Tensor> {
-        let xs = self.ln1.forward(xs)?;
-        let xs = self.activation.forward(&xs)?;
-        let xs = self.ln2.forward(&xs)?;
-        let xs = self.activation.forward(&xs)?;
-        self.ln3.forward(&xs)
+        let mut x = xs.clone();
+        // Apply all layers except the last one with activation
+        for layer in &self.layers[..self.layers.len() - 1] {
+            x = layer.forward(&x)?;
+            x = self.activation.forward(&x)?;
+        }
+        // Apply the last layer without activation
+        self.layers.last().unwrap().forward(&x)
     }
 }
+
 pub fn training_loop(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<()> {
     let dev = &Device::cuda_if_available(0)?;
     println!("Device:{:?}, {:?}", dev, &meta.small());
@@ -71,7 +80,7 @@ pub fn training_loop(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<()> {
         model_path.to_string_lossy()
     );
     let _ = varmap.save(model_path);
-    let _ = varmap.save(DEFAULT_VM); // only for include_bytes!("../.././models/model.safetensors");
+    let _ = varmap.save(DEFAULT_VM);
     Ok(())
 }
 
@@ -99,6 +108,7 @@ pub fn test_all(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<f32> {
     Ok(test_accuracy)
 }
 
+// Rest of the training and testing functions remain largely unchanged, just updating types
 fn train_classification(
     m: Dataset,
     meta: &mut Meta,
@@ -253,6 +263,7 @@ fn test_regression(model: &Mlp, data: &Tensor, labels: &Tensor) -> anyhow::Resul
     let accuracy = loss.to_scalar::<f32>()?;
     Ok(accuracy)
 }
+
 pub fn get_model(
     dev: &Device,
     meta: &Meta,
@@ -262,27 +273,27 @@ pub fn get_model(
     let mut varmap = VarMap::new();
     let vs = VarBuilder::from_varmap(&varmap, DType::F32, dev);
     let inputs = meta.n;
-    let hidden0 = meta.hidden0;
-    let hidden1 = meta.hidden1;
     let outputs = meta.outputs;
+    // Extract meta.hidden to slice &[usize]
+    let hidden:Vec<usize> = meta.hidden.as_ref().unwrap().split(',')
+        .map(|x| x.parse().unwrap()).collect();
     if verbose {
         println!(
-            "inputs:{:?},outputs:{:?},hidden:[{:?},{:?}]",
-            inputs, outputs, meta.hidden0, meta.hidden1
+            "inputs:{:?},outputs:{:?},hidden:{:?}",
+            inputs, outputs, hidden
         );
     }
     let model = Mlp::new(
         vs.clone(),
         inputs,
         outputs,
-        hidden0,
-        hidden1,
+        &hidden,
         meta.activation.clone(),
     )?;
     fill(meta, verbose, &mut varmap)?;
     Ok((varmap, model))
 }
-/// Fill VarMap from file
+
 pub fn fill_from_file(meta: &Meta, verbose: bool, varmap: &mut VarMap) -> anyhow::Result<()> {
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();

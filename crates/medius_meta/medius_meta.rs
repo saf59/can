@@ -29,8 +29,14 @@ pub struct Meta {
     pub batch_size: usize,
     pub learning_rate: f64,
     pub train_part: f32,
-    pub hidden0: usize,
-    pub hidden1: usize,
+/*    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hidden0: Option<usize>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hidden1: Option<usize>,
+*/
+    pub hidden: Option<String>,
     pub outputs: usize
 }
 impl Default for Meta {
@@ -49,8 +55,10 @@ impl Default for Meta {
             batch_size: 40,
             learning_rate: 0.5,
             train_part: 0.9,
-            hidden0: 40,
-            hidden1: 10,
+    /*        hidden0: None,
+            hidden1: None,
+    */
+            hidden: Some("40,10".to_string()),
             outputs: 1,
         }
     }
@@ -146,12 +154,14 @@ impl Meta {
         let at = first_char(&self.alg_type);
         let sn = &self.n.to_string();
         let bs = first_char(&self.buff_size);
-        let h0 = &self.hidden0.to_string();
-        let h1 = &self.hidden1.to_string();
+        //let h0 = &self.hidden0.to_string();
+        //let h1 = &self.hidden1.to_string();
+        let h = self.hidden.as_ref().unwrap_or(&"".to_string()).replace(",", "_");
         let sf = if self.scaled_frequency { 'T' } else { 'F' };
         let bcs = &self.batch_size.to_string();
         let act =enum_name(&self.activation);
-        format!("{mt}_{h0}_{h1}_{at}{sn}_{bs}{sf}_{bcs}{act}")
+        //format!("{mt}_{h0}_{h1}_{at}{sn}_{bs}{sf}_{bcs}{act}")
+        format!("{mt}_{h}_{at}{sn}_{bs}{sf}_{bcs}{act}")
     }
     /// Returns the file path for the metadata file
     pub fn meta_file(&self) -> PathBuf {

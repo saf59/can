@@ -109,7 +109,7 @@ fn show(sampling_rate: f32, original_signal: &[f32]) {
     //plot.show();
     plot.write_html("bicks.html");
 }
-#[cfg(target_os = "android")]
+#[cfg(not(target_os = "windows"))]
 fn show(sampling_rate: f32, original_signal: &Vec<f32>) {
     let freqs = [20.0, 30.0, 50.0];
     println!("src  {:?} ->{:?}", original_signal.len(), original_signal.split_at(5).0);

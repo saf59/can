@@ -324,14 +324,14 @@ mod tests {
         let row = normalize_array(&ampl, median, multiplayer);
 
         let result = weighted5_one(&row, n, &range_list, 1.0);
-        // since median is 0.5, average of most low group is negative
+        // since the real median after normalization is 0.0,
+        // the average of most low groups is negative
         let must_be: [f32; 10] = [
             -0.5184687, -0.45620948, -0.39448705, -0.3327646, -0.2710421,
             -0.20931965, -0.14706048, -0.085338004, -0.02361555, 0.038106915,
         ];
         println!("{:?}", result);
         assert_eq!(result, must_be);
-        // Add more assertions based on expected output
     }
     fn generate_vec() -> Vec<f32> {
         let len = 1024;

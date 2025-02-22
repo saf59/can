@@ -271,9 +271,15 @@ mod tests {
     #[test]
     fn test111() {
         set_root();
-        let nf = FREQUENCY / F5;
         let buff_size: usize = BufSize::Small as usize;
         let wav_path: &Path = SRC.as_ref();
+        let out = by_steps(buff_size, wav_path);
+        println!("out   :{:?}..{:?}", out[0], out.last().unwrap());
+        assert!((0.17772603 - out[0]).abs() < 1e-9);
+        assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-8);
+    }
+
+    fn by_steps(buff_size: usize, wav_path: &Path) -> Vec<f32> {
         let all = fs::read(wav_path).unwrap();
         let raw = read_wav(&all).unwrap();
         println!("raw   :{:?}..{:?}", raw[0], raw.last().unwrap());
@@ -285,11 +291,11 @@ mod tests {
         let range_list = build_range_list(TOP, N);
         let (median, multiplayer) = median_and_multiplier(&ampl);
         let norm_row = normalize_array(&ampl, median, multiplayer);
+        let nf = FREQUENCY / F5;
         let out = weighted5_one(&norm_row, N, &range_list, nf);
-        println!("out   :{:?}..{:?}", out[0], out.last().unwrap());
-        assert!((0.17772603 - out[0]).abs() < 1e-9);
-        assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-8);
+        out
     }
+
     /// Check parse_wav result from the test data
     #[test]
     fn test111_parse() {
@@ -318,7 +324,7 @@ mod tests {
         let row = normalize_array(&ampl, median, multiplayer);
 
         let result = weighted5_one(&row, n, &range_list, 1.0);
-        // since median is 0.5, average of each low group is negative
+        // since median is 0.5, average of most low group is negative
         let must_be: [f32; 10] = [
             -0.5184687, -0.45620948, -0.39448705, -0.3327646, -0.2710421,
             -0.20931965, -0.14706048, -0.085338004, -0.02361555, 0.038106915,

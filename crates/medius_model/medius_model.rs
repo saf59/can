@@ -1,9 +1,11 @@
 use candle_core::{DType, Device, Result, Tensor, D};
-use candle_nn::{
-    loss, ops, AdamW, Linear, Module, Optimizer, ParamsAdamW, VarBuilder, VarMap, SGD,
-};
+use candle_nn::{loss, ops, AdamW, Linear, Module, Optimizer, ParamsAdamW, VarBuilder, VarMap};
 use medius_data::{load_dir, print_dataset_info, Dataset};
-pub(crate) use medius_meta::{Activation, Meta, ModelType::{Classification, Regression}, DEFAULT_VM};
+pub(crate) use medius_meta::{
+    Activation, Meta,
+    ModelType::{Classification, Regression},
+    DEFAULT_VM,
+};
 use std::fs::create_dir_all;
 use std::ops::Mul;
 use std::path::{Path, PathBuf};
@@ -38,17 +40,22 @@ impl Model for Mlp {
         // Add hidden layers
         for (i, &hidden_size) in hidden.iter().enumerate() {
             // each layer must have unique name like ln1, ln2, ln3...
-            layers.push(candle_nn::linear(prev_size, hidden_size, vs.pp(format!("ln{}", i +1)))?);
+            layers.push(candle_nn::linear(
+                prev_size,
+                hidden_size,
+                vs.pp(format!("ln{}", i + 1)),
+            )?);
             prev_size = hidden_size;
         }
 
         // Add output layer
-        layers.push(candle_nn::linear(prev_size, outputs, vs.pp(format!("ln{}", hidden.len() +1)))?);
+        layers.push(candle_nn::linear(
+            prev_size,
+            outputs,
+            vs.pp(format!("ln{}", hidden.len() + 1)),
+        )?);
 
-        Ok(Self {
-            layers,
-            activation,
-        })
+        Ok(Self { layers, activation })
     }
 
     fn forward(&self, xs: &Tensor) -> Result<Tensor> {
@@ -70,6 +77,7 @@ pub fn training_loop(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<()> {
     print_dataset_info(&dataset);
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();
+    let _ = check_hidden(meta.hidden.as_ref());
     meta.outputs = dataset.classes(meta.model_type == Regression);
     let (varmap, model) = get_model(dev, meta, false, &fill_from_file)?;
     match meta.model_type {
@@ -117,7 +125,14 @@ fn train_classification(
     varmap: &VarMap,
     model: &Mlp,
 ) -> anyhow::Result<()> {
-    let mut opt = SGD::new(varmap.all_vars(), meta.learning_rate)?;
+    //let mut opt = SGD::new(varmap.all_vars(), meta.learning_rate)?;
+    let mut opt = AdamW::new(
+        varmap.all_vars(),
+        ParamsAdamW {
+            lr: meta.learning_rate,
+            ..Default::default()
+        },
+    )?;
     let train_data = m.train_data.to_device(dev)?;
     let train_labels = m.train_labels.to_dtype(DType::U32)?.to_device(dev)?;
     let test_data = m.test_data.to_device(dev)?;
@@ -143,7 +158,7 @@ fn train_classification(
 }
 fn train_classification_epoch(
     model: &&Mlp,
-    opt: &mut SGD,
+    opt: &mut impl Optimizer,
     train_data: &Tensor,
     train_labels: &Tensor,
 ) -> anyhow::Result<f32> {
@@ -155,24 +170,24 @@ fn train_classification_epoch(
 }
 fn train_classification_batches(
     model: &&Mlp,
-    opt: &mut SGD,
+    opt: &mut impl Optimizer,
     train_data: &Tensor,
     train_labels: &Tensor,
     batch_size: usize,
 ) -> anyhow::Result<f32> {
-    let chunk_size:usize = train_data.dims()[0] / batch_size;
-    let train_data_chunks = train_data.chunk(chunk_size,0)?;
-    let train_labels_chunks = train_labels.chunk(chunk_size,0)?;
+    let chunks: usize = train_data.dims()[0] / batch_size;
+    let train_data_chunks = train_data.chunk(chunks, 0)?;
+    let train_labels_chunks = train_labels.chunk(chunks, 0)?;
 
-    let mut f_loss = 0f32;
+    let mut f_loss = Vec::new();
     for (data, labels) in train_data_chunks.into_iter().zip(train_labels_chunks) {
         let logits = &model.forward(&data)?;
         let log_sm = ops::log_softmax(logits, D::Minus1)?;
         let loss = loss::nll(&log_sm, &labels)?;
         opt.backward_step(&loss)?;
-        f_loss = loss.to_scalar::<f32>()?;
+        f_loss.push(loss.to_scalar::<f32>()?);
     }
-    Ok(f_loss)
+    Ok(f_loss.iter().sum() / chunks as f32)
 }
 fn train_regression(
     m: Dataset,
@@ -205,8 +220,13 @@ fn train_regression(
     for epoch in 1..=meta.epochs {
         let loss = match meta.batch_size {
             1 => train_regression_epoch(&model, &mut opt, &train_data, &train_labels),
-            _ => train_regression_batches(&model, &mut opt, &train_data, &train_labels,
-                                          meta.batch_size),
+            _ => train_regression_batches(
+                &model,
+                &mut opt,
+                &train_data,
+                &train_labels,
+                meta.batch_size,
+            ),
         }?;
         let test_accuracy = test_regression(model, &test_data, &test_labels)?;
         print!(
@@ -235,17 +255,17 @@ fn train_regression_batches(
     train_labels: &Tensor,
     batch_size: usize,
 ) -> anyhow::Result<f32> {
-    let chunk_size:usize = train_data.dims()[0] / batch_size;
-    let train_data_chunks = train_data.chunk(chunk_size,0)?;
-    let train_labels_chunks = train_labels.chunk(chunk_size,0)?;
-    let mut f_loss = 0f32;
+    let chunks: usize = train_data.dims()[0] / batch_size;
+    let train_data_chunks = train_data.chunk(chunks, 0)?;
+    let train_labels_chunks = train_labels.chunk(chunks, 0)?;
+    let mut f_loss= Vec::new();
     for (data, labels) in train_data_chunks.into_iter().zip(train_labels_chunks) {
         let logits = &model.forward(&data).unwrap().flatten_to(1)?;
         let loss = logits.sub(&labels)?.sqr()?.mul(0.5).unwrap().mean(0)?;
         opt.backward_step(&loss)?;
-        f_loss = loss.to_scalar::<f32>()?;
+        f_loss.push(loss.to_scalar::<f32>()?);
     }
-    Ok(f_loss)
+    Ok(f_loss.iter().sum() / chunks as f32)
 }
 fn test_classification(model: &Mlp, data: &Tensor, labels: &Tensor) -> anyhow::Result<f32> {
     let logits = model.forward(data)?;
@@ -276,13 +296,15 @@ pub fn get_model(
     let inputs = meta.n;
     let outputs = meta.outputs;
     // Extract meta.hidden to slice &[usize]
-    let hidden:Vec<usize> = meta.hidden.as_ref().unwrap().split(',')
-        .map(|x| x.parse().unwrap()).collect();
+    let hidden: Vec<usize> = meta
+        .hidden
+        .as_ref()
+        .unwrap()
+        .split(',')
+        .map(|x| x.parse().unwrap())
+        .collect();
     if verbose {
-        println!(
-            "inputs:{:?},outputs:{:?},hidden:{:?}",
-            inputs, outputs, hidden
-        );
+        println!("inputs:{:?},outputs:{:?},hidden:{:?}", inputs, outputs, hidden);
     }
     let model = Mlp::new(
         vs.clone(),
@@ -293,6 +315,14 @@ pub fn get_model(
     )?;
     fill(meta, verbose, &mut varmap)?;
     Ok((varmap, model))
+}
+
+fn check_hidden(hidden: Option<&String>) -> anyhow::Result<()> {
+    let re = regex::Regex::new(r"^\d+(,\d+)*$").unwrap();
+    if hidden.is_none() || hidden.unwrap().is_empty() || !re.is_match(hidden.unwrap()) {
+        return Err(anyhow::anyhow!("hidden layers are not defined"));
+    }
+    Ok(())
 }
 
 pub fn fill_from_file(meta: &Meta, verbose: bool, varmap: &mut VarMap) -> anyhow::Result<()> {

@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 members = [
     "cmd/edge", "cmd/itr", "cmd/bm", "cmd/ub", "cmd/setbuff", "cmd/chart1",
     "cmd/train", "cmd/detect3", "cmd/test3", "cmd/dur", "cmd/medius_server",
-    "cmd/bicks",
+    "cmd/bicks", "cmd/cudac",
     "crates/can_data", "crates/utils",
     "crates/medius_data", "crates/medius_utils", "crates/medius_model",
     "crates/medius_meta", "crates/medius_parser", "cmd/bicks",

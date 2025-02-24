@@ -55,13 +55,14 @@ impl Default for Meta {
 }
 impl Meta {
     pub fn small(&self) -> String {
-        format!("{:?}, {:?}, {}, {}, {}, {}",
+        format!("{:?}, {:?}, {}, {}, {}, {}, {}",
                 self.model_type,
                 self.activation,
                 self.epochs,
                 self.batch_size,
                 self.learning_rate,
-                self.train_part
+                self.train_part,
+                self.hidden.as_ref().unwrap_or(&"None".to_string())
         )
     }
 }

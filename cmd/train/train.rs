@@ -100,8 +100,8 @@ fn meta() -> anyhow::Result<Meta> {
     }
     if let Some(hidden) = args.hidden {
         meta.hidden = Some(hidden);
-    } else {
-        meta.hidden = Some("40,10".to_string());
+    } else if meta.hidden.is_none(){
+            meta.hidden = Some("40,10".to_string());
     }
     // Check if the algorithm type is implemented
     if args.defaults {

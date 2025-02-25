@@ -13,7 +13,7 @@ ECHO Start %NAME%
 echo %1 %2 %3 %hidden:,=_%> %NAME%.csv 
 %CP%dur.exe
 if %1 == c (
-	set rate="0.5"
+	set rate="0.005"
 	echo Train classification %NAME%
 	%CP%train.exe --model-type classification --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden%
 	call :train

@@ -105,12 +105,7 @@ pub fn test_all(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<f32> {
             test_classification(&model, &test_data, &test_labels)
         }
         Regression => {
-            let test_labels = dataset
-                .train_labels
-                .to_dtype(DType::F32)
-                .unwrap()
-                .mul(-0.1)?
-                .to_device(dev)?;
+            let test_labels = labels_to_wp(&dataset.test_labels,dev);
             test_regression(&model, &test_data, &test_labels)
         }
     }?;
@@ -141,12 +136,7 @@ fn train_classification(
         let loss = match meta.batch_size {
             1 => train_classification_epoch(&model, &mut opt, &train_data, &train_labels),
             _ => train_classification_batches(
-                &model,
-                &mut opt,
-                &train_data,
-                &train_labels,
-                meta.batch_size,
-            ),
+                &model, &mut opt, &train_data, &train_labels, meta.batch_size),
         }?;
         let test_accuracy = test_classification(model, &test_data, &test_labels)?;
         print!(
@@ -180,6 +170,7 @@ fn train_classification_batches(
     let train_labels_chunks = train_labels.chunk(chunks, 0)?;
     let len = train_data_chunks.len() as f32;
     let mut total_loss = 0f32;
+    // Iterate over chunks of data and labels
     for (data, labels) in train_data_chunks.into_iter().zip(train_labels_chunks) {
         let logits = &model.forward(&data)?;
         let log_sm = ops::log_softmax(logits, D::Minus1)?;
@@ -204,19 +195,9 @@ fn train_regression(
         },
     )?;
     let train_data = m.train_data.to_device(dev)?;
-    let train_labels = m
-        .train_labels
-        .to_dtype(DType::F32)
-        .unwrap()
-        .mul(-0.1)?
-        .to_device(dev)?;
+    let train_labels = labels_to_wp(&m.train_labels,dev);
     let test_data = m.test_data.to_device(dev)?;
-    let test_labels = m
-        .test_labels
-        .to_dtype(DType::F32)
-        .unwrap()
-        .mul(-0.1)?
-        .to_device(dev)?;
+    let test_labels = labels_to_wp(&m.test_labels,dev);
     for epoch in 1..=meta.epochs {
         let loss = match meta.batch_size {
             1 => train_regression_epoch(&model, &mut opt, &train_data, &train_labels),
@@ -235,6 +216,9 @@ fn train_regression(
         );
     }
     Ok(())
+}
+fn labels_to_wp(labels: &Tensor,dev: &Device) -> Tensor {
+    labels.to_dtype(DType::F32).unwrap().mul(-0.1).unwrap().to_device(dev).unwrap()
 }
 fn train_regression_epoch(
     model: &&Mlp,

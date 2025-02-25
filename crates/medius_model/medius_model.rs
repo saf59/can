@@ -178,16 +178,16 @@ fn train_classification_batches(
     let chunks: usize = train_data.dims()[0] / batch_size;
     let train_data_chunks = train_data.chunk(chunks, 0)?;
     let train_labels_chunks = train_labels.chunk(chunks, 0)?;
-
-    let mut f_loss = Vec::new();
+    let len = train_data_chunks.len() as f32;
+    let mut total_loss = 0f32;
     for (data, labels) in train_data_chunks.into_iter().zip(train_labels_chunks) {
         let logits = &model.forward(&data)?;
         let log_sm = ops::log_softmax(logits, D::Minus1)?;
         let loss = loss::nll(&log_sm, &labels)?;
         opt.backward_step(&loss)?;
-        f_loss.push(loss.to_scalar::<f32>()?);
+        total_loss += loss.to_scalar::<f32>()?;
     }
-    Ok(f_loss.iter().sum() / chunks as f32)
+    Ok(total_loss / len )
 }
 fn train_regression(
     m: Dataset,
@@ -258,14 +258,15 @@ fn train_regression_batches(
     let chunks: usize = train_data.dims()[0] / batch_size;
     let train_data_chunks = train_data.chunk(chunks, 0)?;
     let train_labels_chunks = train_labels.chunk(chunks, 0)?;
-    let mut f_loss= Vec::new();
+    let len = train_data_chunks.len() as f32;
+    let mut total_loss = 0f32;
     for (data, labels) in train_data_chunks.into_iter().zip(train_labels_chunks) {
         let logits = &model.forward(&data).unwrap().flatten_to(1)?;
         let loss = logits.sub(&labels)?.sqr()?.mul(0.5).unwrap().mean(0)?;
         opt.backward_step(&loss)?;
-        f_loss.push(loss.to_scalar::<f32>()?);
+        total_loss += loss.to_scalar::<f32>()?;
     }
-    Ok(f_loss.iter().sum() / chunks as f32)
+    Ok(total_loss / len)
 }
 fn test_classification(model: &Mlp, data: &Tensor, labels: &Tensor) -> anyhow::Result<f32> {
     let logits = model.forward(data)?;

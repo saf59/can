@@ -257,22 +257,26 @@ impl SimpleMovingAverage {
 
 #[cfg(test)]
 mod tests {
+    use std::fs::File;
+    use std::io::{BufRead, Write};
     use super::*;
     use medius_meta::BufSize;
     use std::time::Instant;
+    use rustfft::num_traits::abs;
     use utils::set_root;
 
     #[allow(clippy::excessive_precision)]
     const FREQUENCY: f32 = 37523.4522;
     const N: usize = 260;
-    const SRC: &str = r"test_data/x1_y1.wav";
+    const SRC111: &str = r"test_data/x1_y1.wav";
+    const SRC138: &str = r"test_data/x3_y8.wav";
 
     /// Same as parse_wav but step by step and from the test data
     #[test]
     fn test111() {
         set_root();
         let buff_size: usize = BufSize::Small as usize;
-        let wav_path: &Path = SRC.as_ref();
+        let wav_path: &Path = SRC111.as_ref();
         let out = by_steps(buff_size, wav_path);
         println!("out   :{:?}..{:?}", out[0], out.last().unwrap());
         assert!((0.17772603 - out[0]).abs() < 1e-9);
@@ -298,11 +302,18 @@ mod tests {
 
     /// Check parse_wav result from the test data
     #[test]
-    fn test111_parse() {
+    fn test111_parse() {   // 0.17772536181101378, 2.0898706297083427E-4
+        test_parse(SRC111.as_ref(), 0.17772603, 0.00020901869);
+    }
+    #[test]
+    fn test138_parse() {// 0.015270601911173002, 0.14555550691863411
+        test_parse(SRC138.as_ref(),0.016622879,0.12061991);
+    }
+
+    fn test_parse(wav_path: &Path,first:f32,last:f32) {
         set_root();
         let buf_size: usize = BufSize::Small as usize;
         let start = Instant::now();
-        let wav_path: &Path = SRC.as_ref();
         let out = parse_wav(wav_path, N, FREQUENCY, buf_size).unwrap();
         println!(
             "out   :{:?}..{:?} {:5.2?}",
@@ -310,8 +321,50 @@ mod tests {
             out.last().unwrap(),
             Instant::now().duration_since(start)
         );
-        assert!((0.17772603 - out[0]).abs() < 1e-8);
-        assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-8);
+        assert!((first - out[0]).abs() < 1e-8);
+        assert!((last - out.last().unwrap()).abs() < 1e-8);
+    }
+    #[test]
+    #[ignore]
+    fn build_data() -> anyhow::Result<()> {
+        let src_file = File::open("../../data/src.csv").unwrap();
+        let x_file = File::create("../../data/x.csv").unwrap();
+        let y_file = File::create("../../data/y.csv").unwrap();
+        let src = std::io::BufReader::new(src_file);
+        let mut x = std::io::BufWriter::new(x_file);
+        let mut y = std::io::BufWriter::new(y_file);
+        let buf_size: usize = BufSize::Small as usize;
+        let mut result = 0;
+
+        for line in src.lines() {
+            let line = line?;
+            let parts: Vec<&str> = line.split(',').collect();
+            if parts.len() == 3 {
+                let s = parts[0].to_string();
+                let id = s.chars().nth(41).unwrap_or('_');
+                let freq: f32 = parts[1].parse()?;
+                let wp: f32 = parts[2].parse()?;
+                let out = parse_wav(&s, N, freq, buf_size).unwrap();
+                let row = out.iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",");
+                x.write_all(row.as_bytes())?;
+                x.write_all(b"\n")?;
+                y.write_all(abs(wp / -0.1).to_string().as_bytes())?;
+                y.write_all(b",")?;
+                y.write_all(id.to_string().as_bytes())?;
+                y.write_all(b"\n")?;
+                result = result + 1;
+                print!("{}\r ", result);
+            } else {
+                return Err(anyhow::anyhow!("Invalid CSV format"));
+            }
+        }
+        x.flush()?;
+        y.flush()?;
+        println!("{:?}", result); // 5 min 15 sec
+        Ok(())
     }
 
     #[test]

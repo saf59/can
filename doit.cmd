@@ -5,7 +5,7 @@ SET hidden=%4
 IF NOT DEFINED hidden SET hidden="40,10"
 SET hidden=%hidden:"=%
 set epochs=%5
-IF NOT DEFINED epochs SET "epochs=1000"
+IF NOT DEFINED epochs SET "epochs=1500"
 
 set NAME=%1_%2_%3_%hidden:,=_%
 ECHO Start %NAME%

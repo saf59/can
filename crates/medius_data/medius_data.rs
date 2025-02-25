@@ -117,6 +117,7 @@ mod tests {
         assert_eq!(dataset.test_data.shape().dims2().unwrap(), (72, 260));
         assert_eq!(dataset.classes(false) , 5);
     }
+
 }
 
 /// Print information about the dataset

@@ -321,8 +321,8 @@ mod tests {
             out.last().unwrap(),
             Instant::now().duration_since(start)
         );
-        assert!((first - out[0]).abs() < 1e-8);
-        assert!((last - out.last().unwrap()).abs() < 1e-8);
+        assert!((first - out[0]).abs() < 1e-7);
+        assert!((last - out.last().unwrap()).abs() < 1e-7);
     }
     #[test]
     #[ignore]

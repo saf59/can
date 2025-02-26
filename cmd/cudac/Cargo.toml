@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+[target.'cfg(windows)'.dependencies]
 cuda-driver-sys = "0.3.0"
 
 [[bin]]

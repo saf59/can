@@ -2,7 +2,7 @@
 set RUST_BACKTRACE=1
 set CP=D:\projects\rust\can\target\release\
 SET hidden=%4
-IF NOT DEFINED hidden SET hidden="40,10"
+IF NOT DEFINED hidden SET hidden="100,40,10"
 SET hidden=%hidden:"=%
 set epochs=%5
 IF NOT DEFINED epochs SET "epochs=1500"
@@ -34,7 +34,7 @@ cargo build --release --bin detect3
 %CP%dur.exe
 %CP%detect3 -f 37523.4522 test_data/x1_y1.wav >> %NAME%.csv
 %CP%dur.exe --stop >> %NAME%.csv
-ECHO End %1 %2 %3 %NAME%.csv
+ECHO %NAME%
 
 rem Join %NAME%.csv to one row and add it to the total.csv
 setlocal EnableDelayedExpansion

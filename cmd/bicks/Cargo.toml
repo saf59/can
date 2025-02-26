@@ -11,7 +11,7 @@ num-complex.workspace = true
 rustfft.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-plotly.workspace = true #"0.12.1" #{ workspace = true }
+plotly.workspace = true
 
 [[bin]]
 path = "./bicks.rs"

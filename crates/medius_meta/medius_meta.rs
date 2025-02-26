@@ -131,6 +131,14 @@ impl Meta {
         let buf = fs::read(DEFAULT).unwrap();
         serde_yaml::from_slice(&buf).unwrap()
     }
+    pub fn load(path: &Path) -> anyhow::Result<Meta> {
+        if !path.exists() {
+            return Err(anyhow::anyhow!("File does not exist"));
+        }
+        let buf = fs::read(path.join(META_NAME))?;
+        let meta = serde_yaml::from_slice(&buf)?;
+        Ok(meta)
+    }
     /// Generates a data name based on the metadata
     pub fn data_name(&self) -> String {
         let at = first_char(&self.alg_type);

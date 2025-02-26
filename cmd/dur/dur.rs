@@ -24,7 +24,7 @@ fn main() {
                 println!("{:?}", Duration::from_nanos(duration as u64))
             }
             Err(_) => {
-                println!("No start time found");
+                println!("No_start_time_found");
             }
         }
     } else {

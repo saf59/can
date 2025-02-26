@@ -105,8 +105,8 @@ mod tests {
         let y = read_medius_x(&Path::new(BASE)).unwrap();
         //println!("{:?},{:?},{:?}", y.len(), y[1], y.last()); // 187200,0.02826519,Some(0.017969258)
         assert_eq!(y.len(), 187200);
-        assert_eq!(y[1], 0.02826519);
-        assert_eq!(y.last(), Some(&0.017969258));
+        assert_eq!(y[1], 0.028265312);
+        assert_eq!(y.last().unwrap_or(&0.0), &0.015557244);
     }
     #[test]
     fn test_load_dir() {

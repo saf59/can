@@ -93,7 +93,7 @@ pub fn training_loop(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn test_all(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<f32> {
+pub fn test_all(datapath: PathBuf, meta: &mut Meta,loss:bool) -> anyhow::Result<f32> {
     let dev = &Device::cuda_if_available(0)?;
     let dataset = load_dir(datapath, meta.train_part, dev)?;
     meta.outputs = dataset.classes(meta.model_type == Regression);
@@ -102,11 +102,29 @@ pub fn test_all(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<f32> {
     let test_accuracy = match meta.model_type {
         Classification => {
             let test_labels = dataset.test_labels.to_dtype(DType::U32)?.to_device(dev)?;
-            test_classification2(&model, &test_data, &test_labels)
+            test_classification(&model, &test_data, &test_labels,loss)
         }
         Regression => {
             let test_labels = labels_to_wp(&dataset.test_labels,dev);
-            test_regression(&model, &test_data, &test_labels)
+            test_regression(&model, &test_data, &test_labels,loss)
+        }
+    }?;
+    Ok(test_accuracy)
+}
+pub fn test_less01(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<f32> {
+    let dev = &Device::cuda_if_available(0)?;
+    let dataset = load_dir(datapath, meta.train_part, dev)?;
+    meta.outputs = dataset.classes(meta.model_type == Regression);
+    let (_varmap, model) = get_model(dev, meta, false, &fill_from_file)?;
+    let test_data = dataset.test_data.to_device(dev)?;
+    let test_accuracy = match meta.model_type {
+        Classification => {
+            let test_labels = dataset.test_labels.to_dtype(DType::U32)?.to_device(dev)?;
+            test_classification(&model, &test_data, &test_labels,false)
+        }
+        Regression => {
+            let test_labels = labels_to_wp(&dataset.test_labels,dev);
+            test_regression(&model, &test_data, &test_labels,false)
         }
     }?;
     Ok(test_accuracy)
@@ -138,7 +156,7 @@ fn train_classification(
             _ => train_classification_batches(
                 &model, &mut opt, &train_data, &train_labels, meta.batch_size),
         }?;
-        let test_accuracy = test_classification2(model, &test_data, &test_labels)?;
+        let test_accuracy = test_classification(model, &test_data, &test_labels,false)?;
         print!(
             "{epoch:4} train loss: {loss:8.7} test loss: {:8.7} \r", test_accuracy
         );
@@ -208,7 +226,7 @@ fn train_regression(
                 meta.batch_size,
             ),
         }?;
-        let test_accuracy = test_regression(model, &test_data, &test_labels)?;
+        let test_accuracy = test_regression(model, &test_data, &test_labels,false)?;
         print!(
             "{epoch:6} train loss: {loss:8.7} test loss: {:8.7} \r", test_accuracy
         );
@@ -261,21 +279,38 @@ fn train_regression_batches(
     let accuracy = sum_ok / labels.dims1()? as f32;
     Ok(accuracy)
 }*/
-fn test_classification2(model: &Mlp, data: &Tensor, labels: &Tensor) -> anyhow::Result<f32> {
+fn test_classification(model: &Mlp, data: &Tensor, labels: &Tensor,loss:bool) -> anyhow::Result<f32> {
     let logits = model.forward(data)?;
     let logits = logits.argmax(D::Minus1).unwrap().to_dtype(DType::F32).unwrap().mul(-0.1)?;
-    //println!("src :{:?}", logits.to_vec1::<f32>());
     let labels = labels.to_dtype(DType::F32).unwrap().mul(-0.1)?;
-    //println!("real:{:?}", labels.to_vec1::<f32>());
-    let loss = logits.sub(&labels)?.sqr()?.mul(0.5).unwrap().mean(0)?;
-    let accuracy = loss.to_scalar::<f32>()?;
-    Ok(accuracy)
+    if loss {
+        to_loss(&labels, logits)
+    } else {
+        to_01(&labels, logits)
+    }
 }
-fn test_regression(model: &Mlp, data: &Tensor, labels: &Tensor) -> anyhow::Result<f32> {
+fn test_regression(model: &Mlp, data: &Tensor, labels: &Tensor,loss:bool) -> anyhow::Result<f32> {
     let logits = model.forward(data).unwrap().flatten_to(1)?;
+    if loss {
+        to_loss(labels, logits)
+    } else {
+        to_01(labels, logits)
+    }
+}
+
+fn to_loss(labels: &Tensor, logits: Tensor) -> anyhow::Result<f32> {
     let loss = logits.sub(labels)?.sqr()?.mul(0.5).unwrap().mean(0)?;
     let accuracy = loss.to_scalar::<f32>()?;
     Ok(accuracy)
+}
+
+fn to_01(labels: &Tensor, logits: Tensor) -> anyhow::Result<f32> {
+    let diff = logits.sub(labels)?.abs()?;
+    let within_threshold = diff.le(0.1)?.to_dtype(DType::F32)?;
+    let count_within_threshold = within_threshold.sum_all()?.to_scalar::<f32>()?;
+    let total_count = within_threshold.dims1()? as f32;
+    let percentage = (count_within_threshold / total_count) * 100.0;
+    Ok(percentage)
 }
 
 pub fn get_model(

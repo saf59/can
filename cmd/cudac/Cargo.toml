@@ -4,9 +4,13 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+default = []
+cuda = ["cuda-driver-sys"]
+
 [dependencies]
-[target.'cfg(windows)'.dependencies]
-cuda-driver-sys = "0.3.0"
+#[target.'cfg(windows)'.dependencies]
+cuda-driver-sys = { version = "0.3.0", optional = true}
 
 [[bin]]
 path = "./cudac.rs"

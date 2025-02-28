@@ -1,4 +1,3 @@
-use candle_core::cpu::erf::erf;
 use pacmog::PcmReader;
 use std::collections::HashMap;
 use std::fs;
@@ -7,7 +6,9 @@ use medius_meta::AlgType;
 #[allow(unused_imports)]
 use std::path::Path;
 use utils::fft::fft_amplitudes;
+use utils::mfcc::MFCC;
 use utils::statistics::stat3;
+use utils::{median_and_multiplier, normalize_array};
 
 const SAMPLE_RATE: usize = 192_000;
 #[allow(clippy::excessive_precision)]
@@ -50,20 +51,17 @@ fn parse_bin(n: usize, buff_size: usize, nf: f32, raw: &[f32]) -> anyhow::Result
     let out = weighted5_one(&norm_row, n, &range_list, nf);
     Ok(out)
 }
-fn parse_mfcc(_n: usize, _buff_size: usize, _nf: f32, _raw: &[f32]) -> anyhow::Result<Vec<f32>> {
-    Err(anyhow::Error::msg(
-        "Mfcc alg is non implemented yet!".to_string(),
-    ))
+fn parse_mfcc(n: usize, buff_size: usize, nf: f32, raw: &[f32]) -> anyhow::Result<Vec<f32>> {
+    let useful: Vec<f32> = useful3(raw);
+    let mfcc = MFCC::new(n, 250, SAMPLE_RATE, buff_size, true, false, false);
+    let out = mfcc.calculate_mfcc(&useful, nf, buff_size, buff_size);
+    Ok(out)
 }
 
 fn parse_stat(_n: usize, _buff_size: usize, _nf: f32, raw: &[f32]) -> anyhow::Result<Vec<f32>> {
     let useful: Vec<f32> = useful3(raw);
     stat3(&useful)
-/*    Err(anyhow::Error::msg(
-        "Stat alg is not implemented yet!".to_string(),
-    ))
-*/}
-
+}
 
 fn weighted5_one(row: &[f32], n: usize, f_rangelist: &[std::ops::Range<f32>], nf: f32) -> Vec<f32> {
     let freq = frequencies(row.len());
@@ -130,53 +128,6 @@ fn read_wav(wav: &[u8]) -> anyhow::Result<Vec<f32>> {
         Err(anyhow::Error::msg(format!("A stereo file was expected with a sample rate of {}, but a {} file with a sample rate of {} was received!",
                                        SAMPLE_RATE, mode, specs.sample_rate)))
     }
-}
-
-fn median_and_multiplier(values: &[f32]) -> (f32, f32) {
-    let mut sorted = values.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    let len = values.len();
-    let mid = len / 2;
-
-    let median = if len % 2 == 0 {
-        (sorted[mid - 1] + sorted[mid]) / 2.0
-    } else {
-        sorted[mid]
-    };
-    let centered_data: Vec<f32> = values.iter().map(|v| v - median).collect();
-    let mean: f32 = centered_data.iter().sum::<f32>() / centered_data.len() as f32;
-    let variance: f32 = centered_data
-        .iter()
-        .map(|v| (v - mean).powi(2))
-        .sum::<f32>()
-        / centered_data.len() as f32;
-    let std_dev = variance.sqrt();
-
-    let scale_factor = 1.0 / (2.0 * std_dev);
-    let scaled_data: Vec<f32> = centered_data.iter().map(|v| v * scale_factor).collect();
-
-    let normal_distribution_share: f32 = (1.0 - erf((1.0 / 2.0_f32.sqrt()).into())) as f32;
-    let emissions_share = scaled_data
-        .into_iter()
-        .filter(|v| *v < 0.0 || *v > 1.0)
-        .count() as f32
-        / centered_data.len() as f32;
-
-    let multiplier = if emissions_share <= normal_distribution_share {
-        scale_factor
-    } else {
-        scale_factor * (normal_distribution_share / emissions_share)
-    };
-
-    (median, multiplier)
-}
-fn normalize_array(data: &[f32], median: f32, multiplier: f32) -> Vec<f32> {
-    data.iter()
-        .map(|v| normalize(*v, median, multiplier))
-        .collect()
-}
-fn normalize(value: f32, median: f32, multiplier: f32) -> f32 {
-    (value - median) * multiplier
 }
 
 fn useful3(raw: &[f32]) -> Vec<f32> {
@@ -269,8 +220,8 @@ mod tests {
         let wav_path: &Path = SRC111.as_ref();
         let out = by_steps(buff_size, wav_path);
         println!("out   :{:?}..{:?}", out[0], out.last().unwrap());
-        assert!((0.17772603 - out[0]).abs() < 1e-9);
-        assert!((0.00020901869 - out.last().unwrap()).abs() < 1e-8);
+        assert!((0.17772603 - out[0]).abs() < f32::EPSILON);
+        assert!((0.00020901869 - out.last().unwrap()).abs() < f32::EPSILON);
     }
 
     fn by_steps(buff_size: usize, wav_path: &Path) -> Vec<f32> {
@@ -294,33 +245,39 @@ mod tests {
     #[test]
     fn test111_bin() {
         // 0.17772536181101378, 2.0898706297083427E-4
-        test_parse(SRC111.as_ref(), 0.17772603, 0.00020901869, AlgType::Bin);
+        test_parse(SRC111.as_ref(), N,0.17772603, 0.00020901869, AlgType::Bin);
     }
     #[test]
     fn test111_stat() {
         // 0.0006713867..10.4952965
-        test_parse(SRC111.as_ref(), 0.0006713867, 10.4952965, AlgType::Stat);
+        test_parse(SRC111.as_ref(), N,0.0006713867, 10.4952965, AlgType::Stat);
+    }
+    #[test]
+    fn test111_mfcc() {
+        // -154.79861..0.004439953
+        test_parse(SRC111.as_ref(), 50,-154.79861, 0.004439953, AlgType::Mfcc);
     }
     #[test]
     fn test138_parse() {
         // 0.015270601911173002, 0.14555550691863411
-        test_parse(SRC138.as_ref(), 0.016622879, 0.12061991, AlgType::Bin);
+        test_parse(SRC138.as_ref(), 260,0.016622879, 0.12061991, AlgType::Bin);
     }
 
-    fn test_parse(wav_path: &Path, first: f32, last: f32, alg: AlgType) {
+    fn test_parse(wav_path: &Path, n:usize, first: f32, last: f32, alg: AlgType) {
         set_root();
         let buf_size: usize = BufSize::Small as usize;
         let start = Instant::now();
-        let out = parse_wav(wav_path, N, FREQUENCY, buf_size, alg).unwrap();
+        let out = parse_wav(wav_path, n, FREQUENCY, buf_size, alg).unwrap();
         println!(
-            "out   :{:?}..{:?} {:5.2?}",
+            "out   :{}->{:?}..{:?} {:5.2?}",
+            out.len(),
             out[0],
             out.last().unwrap(),
             Instant::now().duration_since(start)
         );
         //println!("{:?}",&out);
-        assert!((first - out[0]).abs() < 1e-7);
-        assert!((last - out.last().unwrap()).abs() < 1e-7);
+        assert!((first - out[0]).abs() < f32::EPSILON);
+        assert!((last - out.last().unwrap()).abs() < f32::EPSILON);
     }
     #[test]
     #[ignore]

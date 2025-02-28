@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+candle-core.workspace = true
 rustfft.workspace = true
 anyhow.workspace = true
 project-root = "0.2.2"

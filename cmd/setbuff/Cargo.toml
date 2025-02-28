@@ -6,8 +6,7 @@ license.workspace = true
 
 [dependencies]
 clipboard.workspace = true
+
 [[bin]]
 path = "./setbuff.rs"
 name = "setbuff"
-
-

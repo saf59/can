@@ -25,7 +25,7 @@ fn to_amplitudes(buffer: Vec<Complex<f32>>, buf_size: usize) -> Vec<f32> {
 pub fn fft_forward(data: &[f32], buf_size: usize) -> Vec<Complex<f32>> {
     let mut fft_planner = FftPlanner::<f32>::new();
     let fft = fft_planner.plan_fft_forward(buf_size);
-    let mut buffer = f32_to_complex_vec(&data, buf_size);
+    let mut buffer = f32_to_complex_vec(data, buf_size);
     fft.process(&mut buffer);
     buffer
 }

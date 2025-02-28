@@ -1,11 +1,11 @@
 ﻿use ndarray::Array1;
 use num_complex::Complex;
-use rustfft::FftPlanner;
 
 #[cfg(target_os = "windows")]
 use plotly::{Plot,Scatter,common::Mode};
 #[cfg(target_os = "windows")]
 use plotly::common::{Line, LineShape};
+use utils::fft::fft_forward;
 
 fn bandlimited_signal(
     frequencies: &[f32],
@@ -37,10 +37,7 @@ fn bicks_reconstruction(signal: &[f32], sampling_rate: f32, max_frequency: f32) 
         .map(|i| i as f32 / sampling_rate)
         .collect();
     // Calculate the Discrete Fourier Transform (DFT)
-    let mut fft_planner = FftPlanner::new();
-    let fft = fft_planner.plan_fft_forward(num_samples);
-    let mut fft_buffer: Vec<Complex<f32>> = prepare_data_for_fft(signal, signal.len());
-    fft.process(&mut fft_buffer);
+    let fft_buffer = fft_forward(signal, num_samples);
 
     // Extract relevant harmonics
     let mut reconstructed_signal = vec![0.0; num_samples];
@@ -64,13 +61,6 @@ fn bicks_reconstruction(signal: &[f32], sampling_rate: f32, max_frequency: f32) 
     }
     reconstructed_signal
 }
-fn prepare_data_for_fft(data: &[f32], fft_size: usize) -> Vec<Complex<f32>> {
-    let mut complex_data = vec![Complex::new(0.0, 0.0); fft_size];
-    for (i, &sample) in data.iter().enumerate() {
-        complex_data[i] = Complex::new(sample, 0.0);
-    }
-    complex_data
-}
 fn main() {
     // Example usage:
     let sampling_rate = 100.0; // Hz
@@ -82,11 +72,10 @@ fn main() {
     let original_signal = bandlimited_signal(&frequencies, &amplitudes, sampling_rate, duration);
 
     // Reconstruct the signal using BICKS
-    show(sampling_rate, &original_signal);
+    build_html(sampling_rate, &original_signal);
 }
-
 #[cfg(target_os = "windows")]
-fn show(sampling_rate: f32, original_signal: &[f32]) {
+fn build_html(sampling_rate: f32, original_signal: &[f32]) {
     let freqs = [20.0, 30.0, 50.0];
     let x: Vec<f32> = (0..100).map(|x| x as f32).collect();
     let mut plot = Plot::new();

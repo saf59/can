@@ -6,8 +6,7 @@ license.workspace = true
 
 [dependencies]
 clap.workspace = true
-clipboard = "0.5.0"
-
+clipboard.workspace = true
 [[bin]]
 path = "./dur.rs"
 name = "dur"

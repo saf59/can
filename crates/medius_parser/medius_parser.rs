@@ -1,13 +1,12 @@
 use candle_core::cpu::erf::erf;
 use pacmog::PcmReader;
-use rustfft::num_complex::Complex;
-use rustfft::FftPlanner;
 use std::collections::HashMap;
 use std::fs;
 
 use medius_meta::AlgType;
 #[allow(unused_imports)]
 use std::path::Path;
+use utils::fft::fft_amplitudes;
 use utils::statistics::stat3;
 
 const SAMPLE_RATE: usize = 192_000;
@@ -64,39 +63,7 @@ fn parse_stat(_n: usize, _buff_size: usize, _nf: f32, raw: &[f32]) -> anyhow::Re
         "Stat alg is not implemented yet!".to_string(),
     ))
 */}
-fn fft_amplitudes(raw: &[f32], buf_size: usize) -> Vec<f32> {
-    let mut fft_planner = FftPlanner::<f32>::new();
-    let data = align(raw, buf_size);
-    let fft = fft_planner.plan_fft_forward(buf_size);
-    let mut buffer = f32_to_complex_vec(&data, buf_size);
-    fft.process(&mut buffer);
-    let half = buf_size / 2;
-    let n = half as f32;
-    buffer
-        .iter()
-        .take(half)
-        .map(|item| {
-            let real = item.re.powi(2);
-            let imag = item.im.powi(2);
-            ((real + imag).sqrt()) / n
-        })
-        .collect()
-}
-fn align(data: &[f32], buf_size: usize) -> Vec<f32> {
-    if data.len() < buf_size {
-        let mut aligned = vec![0.0; buf_size];
-        aligned[..data.len()].copy_from_slice(data);
-        aligned
-    } else {
-        data[..buf_size].to_vec()
-    }
-}
-fn f32_to_complex_vec(data: &[f32], buf_size: usize) -> Vec<Complex<f32>> {
-    data.iter()
-        .take(buf_size)
-        .map(|&item| Complex::new(item, 0.0))
-        .collect()
-}
+
 
 fn weighted5_one(row: &[f32], n: usize, f_rangelist: &[std::ops::Range<f32>], nf: f32) -> Vec<f32> {
     let freq = frequencies(row.len());
@@ -283,7 +250,6 @@ impl SimpleMovingAverage {
 mod tests {
     use super::*;
     use medius_meta::BufSize;
-    use rustfft::num_traits::abs;
     use std::fs::File;
     use std::io::{BufRead, Write};
     use std::time::Instant;
@@ -385,7 +351,7 @@ mod tests {
                     .join(",");
                 x.write_all(row.as_bytes())?;
                 x.write_all(b"\n")?;
-                y.write_all(abs(wp / -0.1).to_string().as_bytes())?;
+                y.write_all((wp / -0.1).abs().to_string().as_bytes())?;
                 y.write_all(b",")?;
                 y.write_all(id.to_string().as_bytes())?;
                 y.write_all(b"\n")?;

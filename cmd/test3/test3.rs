@@ -20,7 +20,7 @@ pub fn main() -> anyhow::Result<()> {
     meta.train_part = 1.0;
     let loss = args.loss;
     let r#result_type = if loss { "loss" } else { "accuracy" };
-    println!("model_type,alg_type,n,hidden,activation,batch_size,{:?},ms",result_type);
+    println!("model_type,alg_type,n,hidden,activation,batch_size,{},ms",result_type);
     if args.all {
         let path = Path::new("./models");
         let subdirs = list_subdirectories(path)?;

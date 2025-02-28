@@ -1,4 +1,5 @@
 pub mod statistics;
+pub mod fft;
 
 use std::env;
 use std::fmt::Debug;

@@ -6,9 +6,8 @@ license.workspace = true
 
 [dependencies]
 ndarray.workspace = true
-#ndarray = "0.16.1" # { workspace = true }
 num-complex.workspace = true
-rustfft.workspace = true
+utils = { path = "../../crates/utils" }
 
 [target.'cfg(windows)'.dependencies]
 plotly.workspace = true

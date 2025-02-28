@@ -148,8 +148,8 @@ impl Meta {
         format!("{at}{sn}_{bs}{sf}")
     }
     pub fn name_out(&self) -> String {
-        let h = self.hidden.as_ref().unwrap_or(&"".to_string()).replace(",", "_");
-        format!("{:?},{:?},{:?},{:?},{:?},{:?}",&self.model_type,&self.alg_type,&self.n,h,&self.activation,&self.batch_size)
+        let hidden = self.hidden.as_ref().unwrap_or(&"".to_string()).replace(",", "_");
+        format!("{:?},{:?},{:?},{},{:?},{:?}", &self.model_type, &self.alg_type, &self.n, hidden, &self.activation, &self.batch_size)
     }
     /// Generates a model name based on the metadata
     pub fn model_name(&self) -> String {
@@ -157,13 +157,10 @@ impl Meta {
         let at = first_char(&self.alg_type);
         let sn = &self.n.to_string();
         let bs = first_char(&self.buff_size);
-        //let h0 = &self.hidden0.to_string();
-        //let h1 = &self.hidden1.to_string();
         let h = self.hidden.as_ref().unwrap_or(&"".to_string()).replace(",", "_");
         let sf = if self.scaled_frequency { 'T' } else { 'F' };
         let bcs = &self.batch_size.to_string();
         let act =enum_name(&self.activation);
-        //format!("{mt}_{h0}_{h1}_{at}{sn}_{bs}{sf}_{bcs}{act}")
         format!("{mt}_{h}_{at}{sn}_{bs}{sf}_{bcs}{act}")
     }
     /// Returns the file path for the metadata file

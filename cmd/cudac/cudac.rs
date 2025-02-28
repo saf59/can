@@ -1,4 +1,3 @@
-#[cfg(target_os = "windows")]
 fn main() {
 	#[cfg(feature = "cuda")]
     unsafe {

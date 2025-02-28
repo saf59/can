@@ -109,11 +109,13 @@ fn meta() -> anyhow::Result<Meta> {
         process::exit(0);
     }
     // Check if the algorithm type is implemented
+/*
     if meta.alg_type != AlgType::Bin {
         return Err(anyhow::Error::msg(format!(
             "Algorithm {:#?} is not implemented yet!",
             meta.alg_type
         )));
     }
+*/
     Ok(meta)
 }

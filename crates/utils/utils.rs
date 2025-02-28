@@ -1,3 +1,5 @@
+pub mod statistics;
+
 use std::env;
 use std::fmt::Debug;
 

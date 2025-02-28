@@ -158,7 +158,7 @@ fn train_classification(
         }?;
         let test_accuracy = test_classification(model, &test_data, &test_labels,false)?;
         print!(
-            "{epoch:4} train loss: {loss:8.7} test loss: {:8.7} \r", test_accuracy
+            "{epoch:4} train loss: {loss:8.7} test acc: {:5.2}%\r", test_accuracy
         );
     }
     Ok(())
@@ -228,7 +228,7 @@ fn train_regression(
         }?;
         let test_accuracy = test_regression(model, &test_data, &test_labels,false)?;
         print!(
-            "{epoch:6} train loss: {loss:8.7} test loss: {:8.7} \r", test_accuracy
+            "{epoch:6} train loss: {loss:8.7} test acc: {:5.2}%\r", test_accuracy
         );
     }
     Ok(())

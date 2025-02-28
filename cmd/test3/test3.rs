@@ -19,20 +19,23 @@ pub fn main() -> anyhow::Result<()> {
     let mut meta = Meta::load_default();
     meta.train_part = 1.0;
     let loss = args.loss;
+    let r#result_type = if loss { "loss" } else { "accuracy" };
+    println!("model_type,alg_type,n,hidden,activation,batch_size,{:?},ms",result_type);
     if args.all {
         let path = Path::new("./models");
         let subdirs = list_subdirectories(path)?;
         for subdir in subdirs {
-            let meta = Meta::load(&path.join(&subdir));
+            let mut meta = Meta::load(&path.join(&subdir)).unwrap();
             let start = Instant::now();
-            match test_one(&mut meta.unwrap(),loss) {
+            let details = meta.name_out();
+            match test_one(&mut meta,loss) {
                 Ok(test_accuracy) => {
                     let end = Instant::now();
-                    let elapsed = end.duration_since(start);
+                    let elapsed = end.duration_since(start).as_secs_f32() * 1000.0;
                     if args.loss {
-                        println!("{},{},{}", subdir, test_accuracy, elapsed.as_secs_f32());
+                        println!("{},{},{:5.2?}", details, test_accuracy, elapsed);
                     } else {
-                        println!("{},{:5.2?}%,{}", subdir, test_accuracy,elapsed.as_secs_f32());
+                        println!("{},{:5.2?}%,{:5.2?}", details, test_accuracy,elapsed);
                     }
                 }
                 Err(e) => println!("{:?}", e),

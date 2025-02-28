@@ -147,6 +147,10 @@ impl Meta {
         let sf = if self.scaled_frequency { 'T' } else { 'F' };
         format!("{at}{sn}_{bs}{sf}")
     }
+    pub fn name_out(&self) -> String {
+        let h = self.hidden.as_ref().unwrap_or(&"".to_string()).replace(",", "_");
+        format!("{:?},{:?},{:?},{:?},{:?},{:?}",&self.model_type,&self.alg_type,&self.n,h,&self.activation,&self.batch_size)
+    }
     /// Generates a model name based on the metadata
     pub fn model_name(&self) -> String {
         let mt = first_char(&self.model_type);

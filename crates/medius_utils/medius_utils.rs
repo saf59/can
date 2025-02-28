@@ -10,8 +10,8 @@ pub fn detect(all: &[u8], freq: f32, verbose: bool) -> anyhow::Result<f32> {
     let buff_size: usize = meta.buff_size.clone() as usize;
     let inputs = meta.n;
     let dev = Device::cuda_if_available(0)?;
-
-    let data = parse_all(all, inputs, freq, buff_size)?;
+    let alg_type = meta.alg_type.clone();
+    let data = parse_all(all, inputs, freq, buff_size,alg_type)?;
     // Convert data(extracted wav properties) to Tensor
     let data = Tensor::from_vec(data, (1, inputs), &dev)?;
     // Build model and fill it VarMap

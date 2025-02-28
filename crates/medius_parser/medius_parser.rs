@@ -5,8 +5,10 @@ use rustfft::FftPlanner;
 use std::collections::HashMap;
 use std::fs;
 
+use medius_meta::AlgType;
 #[allow(unused_imports)]
 use std::path::Path;
+use utils::statistics::stat3;
 
 const SAMPLE_RATE: usize = 192_000;
 #[allow(clippy::excessive_precision)]
@@ -18,9 +20,10 @@ pub fn parse_wav<P: AsRef<Path>>(
     n: usize,
     frequency: f32,
     buff_size: usize,
+    alg_type: AlgType,
 ) -> anyhow::Result<Vec<f32>> {
     let all = fs::read(&path)?;
-    parse_all(&all, n, frequency, buff_size)
+    parse_all(&all, n, frequency, buff_size, alg_type)
 }
 
 pub fn parse_all(
@@ -28,10 +31,19 @@ pub fn parse_all(
     n: usize,
     frequency: f32,
     buff_size: usize,
+    alg_type: AlgType,
 ) -> anyhow::Result<Vec<f32>> {
     let nf = frequency / F5;
     let raw = read_wav(all)?;
-    let useful: Vec<f32> = useful3(&raw);
+    match alg_type {
+        AlgType::Bin => parse_bin(n, buff_size, nf, &raw),
+        AlgType::Mfcc => parse_mfcc(n, buff_size, nf, &raw),
+        AlgType::Stat => parse_stat(n, buff_size, nf, &raw),
+    }
+}
+
+fn parse_bin(n: usize, buff_size: usize, nf: f32, raw: &[f32]) -> anyhow::Result<Vec<f32>> {
+    let useful: Vec<f32> = useful3(raw);
     let ampl: Vec<f32> = fft_amplitudes(&useful, buff_size);
     let range_list = build_range_list(TOP, n);
     let (median, multiplayer) = median_and_multiplier(&ampl);
@@ -39,7 +51,19 @@ pub fn parse_all(
     let out = weighted5_one(&norm_row, n, &range_list, nf);
     Ok(out)
 }
+fn parse_mfcc(_n: usize, _buff_size: usize, _nf: f32, _raw: &[f32]) -> anyhow::Result<Vec<f32>> {
+    Err(anyhow::Error::msg(
+        "Mfcc alg is non implemented yet!".to_string(),
+    ))
+}
 
+fn parse_stat(_n: usize, _buff_size: usize, _nf: f32, raw: &[f32]) -> anyhow::Result<Vec<f32>> {
+    let useful: Vec<f32> = useful3(raw);
+    stat3(&useful)
+/*    Err(anyhow::Error::msg(
+        "Stat alg is not implemented yet!".to_string(),
+    ))
+*/}
 fn fft_amplitudes(raw: &[f32], buf_size: usize) -> Vec<f32> {
     let mut fft_planner = FftPlanner::<f32>::new();
     let data = align(raw, buf_size);
@@ -257,12 +281,12 @@ impl SimpleMovingAverage {
 
 #[cfg(test)]
 mod tests {
-    use std::fs::File;
-    use std::io::{BufRead, Write};
     use super::*;
     use medius_meta::BufSize;
-    use std::time::Instant;
     use rustfft::num_traits::abs;
+    use std::fs::File;
+    use std::io::{BufRead, Write};
+    use std::time::Instant;
     use utils::set_root;
 
     #[allow(clippy::excessive_precision)]
@@ -302,25 +326,33 @@ mod tests {
 
     /// Check parse_wav result from the test data
     #[test]
-    fn test111_parse() {   // 0.17772536181101378, 2.0898706297083427E-4
-        test_parse(SRC111.as_ref(), 0.17772603, 0.00020901869);
+    fn test111_bin() {
+        // 0.17772536181101378, 2.0898706297083427E-4
+        test_parse(SRC111.as_ref(), 0.17772603, 0.00020901869, AlgType::Bin);
     }
     #[test]
-    fn test138_parse() {// 0.015270601911173002, 0.14555550691863411
-        test_parse(SRC138.as_ref(),0.016622879,0.12061991);
+    fn test111_stat() {
+        // 0.0006713867..10.4952965
+        test_parse(SRC111.as_ref(), 0.0006713867, 10.4952965, AlgType::Stat);
+    }
+    #[test]
+    fn test138_parse() {
+        // 0.015270601911173002, 0.14555550691863411
+        test_parse(SRC138.as_ref(), 0.016622879, 0.12061991, AlgType::Bin);
     }
 
-    fn test_parse(wav_path: &Path,first:f32,last:f32) {
+    fn test_parse(wav_path: &Path, first: f32, last: f32, alg: AlgType) {
         set_root();
         let buf_size: usize = BufSize::Small as usize;
         let start = Instant::now();
-        let out = parse_wav(wav_path, N, FREQUENCY, buf_size).unwrap();
+        let out = parse_wav(wav_path, N, FREQUENCY, buf_size, alg).unwrap();
         println!(
             "out   :{:?}..{:?} {:5.2?}",
             out[0],
             out.last().unwrap(),
             Instant::now().duration_since(start)
         );
+        //println!("{:?}",&out);
         assert!((first - out[0]).abs() < 1e-7);
         assert!((last - out.last().unwrap()).abs() < 1e-7);
     }
@@ -335,6 +367,7 @@ mod tests {
         let mut y = std::io::BufWriter::new(y_file);
         let buf_size: usize = BufSize::Small as usize;
         let mut result = 0;
+        let alg = AlgType::Stat;
 
         for line in src.lines() {
             let line = line?;
@@ -344,8 +377,9 @@ mod tests {
                 let id = s.chars().nth(41).unwrap_or('_');
                 let freq: f32 = parts[1].parse()?;
                 let wp: f32 = parts[2].parse()?;
-                let out = parse_wav(&s, N, freq, buf_size).unwrap();
-                let row = out.iter()
+                let out = parse_wav(&s, N, freq, buf_size, alg.clone()).unwrap();
+                let row = out
+                    .iter()
                     .map(|v| v.to_string())
                     .collect::<Vec<String>>()
                     .join(",");
@@ -380,8 +414,16 @@ mod tests {
         // since the real median after normalization is 0.0,
         // the average of most low groups is negative
         let must_be: [f32; 10] = [
-            -0.5184687, -0.45620948, -0.39448705, -0.3327646, -0.2710421,
-            -0.20931965, -0.14706048, -0.085338004, -0.02361555, 0.038106915,
+            -0.5184687,
+            -0.45620948,
+            -0.39448705,
+            -0.3327646,
+            -0.2710421,
+            -0.20931965,
+            -0.14706048,
+            -0.085338004,
+            -0.02361555,
+            0.038106915,
         ];
         println!("{:?}", result);
         assert_eq!(result, must_be);

@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 project-root = "0.2.2"
+anyhow = "1.0.96"
 
 [lib]
 path = "utils.rs"

@@ -118,26 +118,26 @@ impl MFCC {
             .collect()
     }
 
-    fn dct(&self, log_mel_spectrum: &[Vec<f32>]) -> Vec<f32> {
-        let num_filters = log_mel_spectrum[0].len();
-        let num_frames = log_mel_spectrum.len();
+    fn dct(&self, data: &[Vec<f32>]) -> Vec<f32> {
+        let num_filters = data[0].len();
+        let num_frames = data.len();
         if num_filters == self.num_coefficients {
-            return self.avg_col(log_mel_spectrum);
+            return self.avg_col(data);
         }
-        let mut mfccs = vec![vec![0.0; self.num_coefficients]; num_frames];
+        let mut out = vec![vec![0.0; self.num_coefficients]; num_frames];
         for i in 0..num_frames {
             for k in 0..self.num_coefficients {
                 let mut sum = 0.0;
                 for n in 0..num_filters {
-                    sum += log_mel_spectrum[i][n]
+                    sum += data[i][n]
                         * (std::f32::consts::PI * k as f32 * (2 * n + 1) as f32
                             / (2.0 * num_filters as f32))
                             .cos();
                 }
-                mfccs[i][k] = sum * (2.0 / num_filters as f32).sqrt();
+                out[i][k] = sum * (2.0 / num_filters as f32).sqrt();
             }
         }
-        self.avg_col(&mfccs)
+        self.avg_col(&out)
     }
 
     fn create_mel_filter_banks(&self, samp_rate: f32) -> Vec<Vec<f32>> {

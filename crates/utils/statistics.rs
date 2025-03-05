@@ -25,7 +25,7 @@ pub fn stat3(data: &[f32]) -> anyhow::Result<Vec<f32>> {
         population_skewness(data),
         kurtosis(data),
         rms(data),
-        mad(data), //?
+        mad(data),
         crest(data),
         energy(data),
         entropy(data),

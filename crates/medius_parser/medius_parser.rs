@@ -37,7 +37,7 @@ pub fn parse_all(
     let raw = read_wav(all)?;
     match alg_type {
         AlgType::Bin => parse_bin(n, buff_size, nf, &raw),
-        AlgType::Mfcc => parse_mfcc(n, buff_size, nf, &raw),
+        AlgType::Mfcc => parse_mfcc(n, n, buff_size, nf, &raw),
         AlgType::Stat => parse_stat(n, buff_size, nf, &raw),
     }
 }
@@ -51,9 +51,15 @@ fn parse_bin(n: usize, buff_size: usize, nf: f32, raw: &[f32]) -> anyhow::Result
     let out = weighted5_one(&norm_row, n, &range_list, nf);
     Ok(out)
 }
-fn parse_mfcc(n: usize, buff_size: usize, nf: f32, raw: &[f32]) -> anyhow::Result<Vec<f32>> {
+fn parse_mfcc(
+    n: usize,
+    filters: usize,
+    buff_size: usize,
+    nf: f32,
+    raw: &[f32],
+) -> anyhow::Result<Vec<f32>> {
     let useful: Vec<f32> = useful3(raw);
-    let mfcc = MFCC::new(n, 250, SAMPLE_RATE, buff_size, true, false, false);
+    let mfcc = MFCC::new(n, filters, SAMPLE_RATE, buff_size, true, false, false);
     let out = mfcc.calculate_mfcc(&useful, nf, buff_size, buff_size);
     Ok(out)
 }
@@ -245,25 +251,25 @@ mod tests {
     #[test]
     fn test111_bin() {
         // 0.17772536181101378, 2.0898706297083427E-4
-        test_parse(SRC111.as_ref(), N,0.17772603, 0.00020901869, AlgType::Bin);
+        test_parse(SRC111.as_ref(), N, 0.17772603, 0.00020901869, AlgType::Bin);
     }
     #[test]
     fn test111_stat() {
         // 0.0006713867..10.4952965
-        test_parse(SRC111.as_ref(), N,0.0006713867, 10.4952965, AlgType::Stat);
+        test_parse(SRC111.as_ref(), N, 0.0006713867, 10.4952965, AlgType::Stat);
     }
     #[test]
     fn test111_mfcc() {
-        // -154.79861..0.004439953
-        test_parse(SRC111.as_ref(), 50,-154.79861, 0.004439953, AlgType::Mfcc);
+        // -6.92369..-6.9236784
+        test_parse(SRC111.as_ref(), 250, -6.92369, -6.9236784, AlgType::Mfcc);
     }
     #[test]
     fn test138_parse() {
         // 0.015270601911173002, 0.14555550691863411
-        test_parse(SRC138.as_ref(), 260,0.016622879, 0.12061991, AlgType::Bin);
+        test_parse(SRC138.as_ref(), 260, 0.016622879, 0.12061991, AlgType::Bin);
     }
 
-    fn test_parse(wav_path: &Path, n:usize, first: f32, last: f32, alg: AlgType) {
+    fn test_parse(wav_path: &Path, n: usize, first: f32, last: f32, alg: AlgType) {
         set_root();
         let buf_size: usize = BufSize::Small as usize;
         let start = Instant::now();
@@ -282,6 +288,12 @@ mod tests {
     #[test]
     #[ignore]
     fn build_data() -> anyhow::Result<()> {
+        build_by_alg(AlgType::Mfcc, 250)
+        //build_by_alg(AlgType::Stat,10);
+        //build_by_alg(AlgType::Bin,260);
+    }
+
+    fn build_by_alg(alg: AlgType, n: usize) -> anyhow::Result<()> {
         let src_file = File::open("../../data/src.csv").unwrap();
         let x_file = File::create("../../data/x.csv").unwrap();
         let y_file = File::create("../../data/y.csv").unwrap();
@@ -290,8 +302,6 @@ mod tests {
         let mut y = std::io::BufWriter::new(y_file);
         let buf_size: usize = BufSize::Small as usize;
         let mut result = 0;
-        let alg = AlgType::Stat;
-
         for line in src.lines() {
             let line = line?;
             let parts: Vec<&str> = line.split(',').collect();
@@ -300,7 +310,7 @@ mod tests {
                 let id = s.chars().nth(41).unwrap_or('_');
                 let freq: f32 = parts[1].parse()?;
                 let wp: f32 = parts[2].parse()?;
-                let out = parse_wav(&s, N, freq, buf_size, alg.clone()).unwrap();
+                let out = parse_wav(&s, n, freq, buf_size, alg.clone()).unwrap();
                 let row = out
                     .iter()
                     .map(|v| v.to_string())

@@ -7,9 +7,6 @@ license.workspace = true
 [dependencies]
 medius_data = { path = "../../crates/medius_data" }
 utils = { path = "../../crates/utils" }
-chrono.workspace = true
-serde.workspace = true
-serde_json.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 plotly.workspace = true

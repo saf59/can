@@ -8,6 +8,7 @@ license.workspace = true
 candle-core.workspace = true
 rustfft.workspace = true
 anyhow.workspace = true
+rand.workspace = true
 project-root = "0.2.2"
 
 [lib]

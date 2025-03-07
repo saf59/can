@@ -62,7 +62,7 @@ fn fill_x_y(
     }
     (out_x, out_y)
 }
-fn read_medius_x(dir: &Path) -> candle_core::Result<Vec<f32>> {
+pub fn read_medius_x(dir: &Path) -> candle_core::Result<Vec<f32>> {
     let reader = get_reader(dir, "x.csv")?;
     let data = reader
         .into_records()
@@ -74,7 +74,7 @@ fn read_medius_x(dir: &Path) -> candle_core::Result<Vec<f32>> {
     Ok(data)
 }
 
-fn read_medius_y(dir: &Path) -> candle_core::Result<Vec<u8>> {
+pub fn read_medius_y(dir: &Path) -> candle_core::Result<Vec<u8>> {
     let reader = get_reader(dir, "y.csv")?;
     let data = reader
         .into_records()

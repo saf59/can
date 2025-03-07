@@ -2,6 +2,7 @@ use candle_core::cpu::erf::erf;
 pub mod statistics;
 pub mod fft;
 pub mod mfcc;
+pub mod umap;
 
 use std::env;
 use std::fmt::Debug;

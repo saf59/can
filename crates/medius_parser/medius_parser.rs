@@ -37,7 +37,7 @@ pub fn parse_all(
     let raw = read_wav(all)?;
     match alg_type {
         AlgType::Bin => parse_bin(n, buff_size, nf, &raw),
-        AlgType::Mfcc => parse_mfcc(n, n, buff_size, nf, &raw),
+        AlgType::Mfcc => parse_mfcc(n, 250, buff_size, nf, &raw),
         AlgType::Stat => parse_stat(n, buff_size, nf, &raw),
     }
 }
@@ -260,8 +260,9 @@ mod tests {
     }
     #[test]
     fn test111_mfcc() {
-        // -6.92369..-6.9236784
-        test_parse(SRC111.as_ref(), 250, -6.92369, -6.9236784, AlgType::Mfcc);
+        // 50 Kotlin-154.79848250578078..0.004423994686392349
+        // 50->-154.79861..0.004439953
+        test_parse(SRC111.as_ref(), 50, -154.79861, 0.004439953, AlgType::Mfcc);
     }
     #[test]
     fn test138_parse() {
@@ -288,7 +289,7 @@ mod tests {
     #[test]
     #[ignore]
     fn build_data() -> anyhow::Result<()> {
-        build_by_alg(AlgType::Mfcc, 250)
+        build_by_alg(AlgType::Mfcc, 50)
         //build_by_alg(AlgType::Stat,10);
         //build_by_alg(AlgType::Bin,260);
     }

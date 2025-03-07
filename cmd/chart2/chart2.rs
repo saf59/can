@@ -1,12 +1,11 @@
 #![allow(unused_imports)]
+#![cfg(target_os = "windows")]
 use std::collections::HashMap;
-#[cfg(target_os = "windows")]
 use plotly::{Scatter3D, Layout, common::{Mode,Marker}, Plot,layout::{Axis, LayoutScene}};
 use std::error::Error;
 use medius_data::{read_medius_x, read_medius_y};
 use utils::umap::umap;
 
-#[cfg(target_os = "windows")]
 pub fn plot_3d_scatter(
     x: Vec<f32>,
     y: Vec<f32>,
@@ -63,8 +62,6 @@ pub fn plot_3d_scatter(
     //plot.show();
     Ok(())
 }
-
-#[cfg(target_os = "windows")]
 fn main() -> Result<(), Box<dyn Error>> {
     let dir = "./data/B260_ST";
     //let labels = read_medius_y(dir.as_ref())?;

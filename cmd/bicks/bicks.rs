@@ -1,10 +1,10 @@
-﻿use ndarray::Array1;
+﻿#![cfg(target_os = "windows")]
+use ndarray::Array1;
 use num_complex::Complex;
-
-#[cfg(target_os = "windows")]
-use plotly::{Plot,Scatter,common::Mode};
-#[cfg(target_os = "windows")]
-use plotly::common::{Line, LineShape};
+use plotly::{
+    common::{Line, LineShape, Mode},
+    Plot, Scatter,
+};
 use utils::fft::fft_forward;
 
 fn bandlimited_signal(
@@ -74,7 +74,6 @@ fn main() {
     // Reconstruct the signal using BICKS
     build_html(sampling_rate, &original_signal);
 }
-#[cfg(target_os = "windows")]
 fn build_html(sampling_rate: f32, original_signal: &[f32]) {
     let freqs = [20.0, 30.0, 50.0];
     let x: Vec<f32> = (0..100).map(|x| x as f32).collect();
@@ -83,7 +82,11 @@ fn build_html(sampling_rate: f32, original_signal: &[f32]) {
         .mode(Mode::Lines)
         .line(Line::new().shape(LineShape::Spline))
         .name("original");
-    println!("src  {:?} ->{:?}", original_signal.len(), original_signal.split_at(5).0);
+    println!(
+        "src  {:?} ->{:?}",
+        original_signal.len(),
+        original_signal.split_at(5).0
+    );
     plot.add_trace(original);
     for max_frequency in freqs.iter() {
         let reconstructed_signal =
@@ -93,18 +96,11 @@ fn build_html(sampling_rate: f32, original_signal: &[f32]) {
             .line(Line::new().shape(LineShape::Spline))
             .name(format!("bicks {:?}", max_frequency));
         plot.add_trace(trace);
-        println!("bicks {max_frequency} ->{:?}", reconstructed_signal.split_at(5).0);
+        println!(
+            "bicks {max_frequency} ->{:?}",
+            reconstructed_signal.split_at(5).0
+        );
     }
     //plot.show();
     plot.write_html("bicks.html");
-}
-#[cfg(not(target_os = "windows"))]
-fn build_html(sampling_rate: f32, original_signal: &Vec<f32>) {
-    let freqs = [20.0, 30.0, 50.0];
-    println!("src  {:?} ->{:?}", original_signal.len(), original_signal.split_at(5).0);
-    for max_frequency in freqs.iter() {
-        let reconstructed_signal =
-            bicks_reconstruction(&original_signal, sampling_rate, *max_frequency);
-        println!("bicks {max_frequency} ->{:?}", reconstructed_signal.split_at(5).0);
-    }
 }

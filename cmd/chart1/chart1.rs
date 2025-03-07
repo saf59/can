@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+#![cfg(target_os = "windows")]
 use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -18,14 +19,6 @@ struct Timepoint {
     timestamp: u64,
     value: f64,
 }
-
-#[cfg(not(target_os = "windows"))]
-fn main() -> std::io::Result<()> {
-   println!("It is only foe Windows!");
-    Ok(())
-}
-
-#[cfg(target_os = "windows")]
 fn main() -> std::io::Result<()> {
     let data_dir = "T:/EnerReg/14102024/memo/";
     let h_file = "generation@id=318_L2h.json";
@@ -54,7 +47,6 @@ fn main() -> std::io::Result<()> {
     plot.show();
     Ok(())
 }
-#[cfg(target_os = "windows")]
 fn get_timeseries_data(data_dir: &str, file_name: &str) -> Result<(Vec<DateTime<Utc>>, Vec<f64>), std::io::Error> {
     let mut file_path = String::from(data_dir);
     file_path.push_str(file_name);
@@ -68,7 +60,6 @@ fn get_timeseries_data(data_dir: &str, file_name: &str) -> Result<(Vec<DateTime<
 
     Ok((x, y))
 }
-#[cfg(target_os = "windows")]
 fn get_real_data(data_dir: &str, file_name: &str) -> Result<(Vec<DateTime<Utc>>, Vec<f64>), std::io::Error> {
     let mut file_path = String::from(data_dir);
     file_path.push_str(file_name);
@@ -89,7 +80,6 @@ fn get_real_data(data_dir: &str, file_name: &str) -> Result<(Vec<DateTime<Utc>>,
     Ok((x, y))
 }
 
-#[cfg(target_os = "windows")]
 fn date_time_scatter_trace(name: &str, x_data: &[DateTime<Utc>], y_data: &[f64]) -> Box<dyn plotly::Trace> {
     plotly::Scatter::new(x_data.to_vec(), y_data.to_vec())
         .mode(plotly::common::Mode::Lines)

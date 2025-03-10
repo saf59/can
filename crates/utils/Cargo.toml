@@ -9,7 +9,9 @@ candle-core.workspace = true
 rustfft.workspace = true
 anyhow.workspace = true
 rand.workspace = true
+# ndarray.workspace = true
 project-root = "0.2.2"
+# ndarray-rand = "0.15.0"
 
 [lib]
 path = "utils.rs"

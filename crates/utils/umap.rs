@@ -60,7 +60,6 @@ pub fn umap(
 }
 
 // Helper functions
-
 fn compute_distance_matrix(data: &[Vec<f32>], metric: &str) -> Result<Vec<Vec<f32>>, String> {
     let n = data.len();
     let mut distance_matrix = vec![vec![0.0; n]; n];
@@ -123,6 +122,22 @@ fn compute_global_epsilon(epsilons: &[f32]) -> f32 {
     sorted[mid]
 }
 
+
+fn combine_similarities(
+    local: &[Vec<f32>],
+    global: &[Vec<f32>],
+) -> Vec<Vec<f32>> {
+    let n = local.len();
+    let mut combined = vec![vec![0.0; n]; n];
+
+    for i in 0..n {
+        for j in 0..n {
+            combined[i][j] = local[i][j].min(global[i][j]);
+        }
+    }
+
+    combined
+}
 fn compute_local_similarities(
     distance_matrix: &[Vec<f32>],
     epsilons: &[f32],
@@ -167,23 +182,6 @@ fn compute_global_similarities(
 
     similarities
 }
-
-fn combine_similarities(
-    local: &[Vec<f32>],
-    global: &[Vec<f32>],
-) -> Vec<Vec<f32>> {
-    let n = local.len();
-    let mut combined = vec![vec![0.0; n]; n];
-
-    for i in 0..n {
-        for j in 0..n {
-            combined[i][j] = local[i][j].min(global[i][j]);
-        }
-    }
-
-    combined
-}
-
 fn normalize_probabilities(matrix: &[Vec<f32>]) -> Vec<Vec<f32>> {
     let n = matrix.len();
     let total = matrix.iter().map(|row| row.iter().sum::<f32>()).sum::<f32>();
@@ -199,11 +197,11 @@ fn normalize_probabilities(matrix: &[Vec<f32>]) -> Vec<Vec<f32>> {
 }
 
 fn initialize_embeddings(n: usize, n_components: usize) -> Vec<Vec<f32>> {
-    let mut random:ThreadRng = rand::rng();
+    let mut rng:ThreadRng = rand::rng();
     (0..n)
         .map(|_| {
             (0..n_components)
-                .map(|_| (random.random::<f32>() - 0.5) * 1e-4)
+                .map(|_| (rng.random::<f32>() - 0.5) * 1e-4)
                 .collect()
         })
         .collect()
@@ -214,7 +212,6 @@ fn optimize_embeddings(
     p_matrix: &[Vec<f32>],
     min_dist: f32,
     learning_rate: f32,
-    //distance_matrix: &[Vec<f32>],
 ) -> Vec<Vec<f32>> {
     let n = embeddings.len();
     let n_components = embeddings[0].len();
@@ -236,12 +233,7 @@ fn optimize_embeddings(
 
             let grad_part = 4.0 * delta * (1.0 / (1.0 + d_low.powi(2)));
 
-/*            for c in 0..n_components {
-                gradients[i][c] += grad_part * direction[c];
-                gradients[j][c] -= grad_part * direction[c];
-            }
-*/
-            for (c,dir) in direction.iter().enumerate().take(n_components) {
+            for (c, dir) in direction.iter().enumerate().take(n_components) {
                 gradients[i][c] += grad_part * dir;
                 gradients[j][c] -= grad_part * dir;
             }

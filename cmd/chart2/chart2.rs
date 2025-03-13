@@ -8,6 +8,7 @@ use plotly::{
 };
 use std::collections::HashMap;
 use std::error::Error;
+use utils::t_sne::tsne;
 use utils::umap::umap;
 
 pub fn plot_3d_scatter(
@@ -64,11 +65,22 @@ pub fn plot_3d_scatter(
     Ok(())
 }
 fn main() -> Result<(), Box<dyn Error>> {
-    let dir = "./data/B260_ST";
+    //let dir = "./data/B260_ST";
+    let dir = "./data/S10_SF";
+    let data_type = dir.split('/').last().unwrap();
+    let low_type ="tsne";
+    let out_name = format!("chart_{}_{}.html",low_type, data_type);
     //let labels = read_medius_y(dir.as_ref())?;
     let raw = read_medius_x(dir.as_ref())?;
-    let data: Vec<Vec<f32>> = raw.chunks(260).map(|x| x.to_vec()).collect();
-    let result = umap(&data, 40, 3, 0.5, 10, 0.8, "euclidean").unwrap();
+    let width = raw.len()/720;
+    let data: Vec<Vec<f32>> = raw.chunks(width).map(|x| x.to_vec()).collect();
+    let result = match low_type {
+        "tsne" => tsne(&data, 3, 30.0, 200.0, 0.1,  1000),
+        "umap" => umap(&data, 70, 3, 2.0, 1000, 0.8, "euclidean").unwrap(),
+        _ => panic!("Unknown method"),
+    };
+    //    umap(&data, 70, 3, 2.0, 1000, 0.8, "euclidean").unwrap();
+    //let result = tsne(&data, 3, 30.0, 200.0, 0.1,  1000);
     let x = result.iter().map(|x| x[0]).collect();
     let y = result.iter().map(|x| x[1]).collect();
     let z = result.iter().map(|x| x[2]).collect();
@@ -76,7 +88,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     //let labels:Vec<String> = labels.iter().map(|x| ((*x as f32) * -0.1 ).to_string()).collect();
     // samples
     let labels = samples(9, 80);
-    plot_3d_scatter(x, y, z, labels, "chart2.html")?;
+    plot_3d_scatter(x, y, z, labels, &out_name)?;
     Ok(())
 }
 fn samples(n: usize, width: usize) -> Vec<String> {

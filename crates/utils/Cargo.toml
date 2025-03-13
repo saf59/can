@@ -11,6 +11,7 @@ anyhow.workspace = true
 rand.workspace = true
 # ndarray.workspace = true
 project-root = "0.2.2"
+rand_distr = "0.5.1"
 # ndarray-rand = "0.15.0"
 
 [lib]

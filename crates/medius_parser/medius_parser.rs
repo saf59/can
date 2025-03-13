@@ -243,8 +243,8 @@ mod tests {
         let (median, multiplayer) = median_and_multiplier(&ampl);
         let norm_row = normalize_array(&ampl, median, multiplayer);
         let nf = FREQUENCY / F5;
-        let out = weighted5_one(&norm_row, N, &range_list, nf);
-        out
+        
+        weighted5_one(&norm_row, N, &range_list, nf)
     }
 
     /// Check parse_wav result from the test data
@@ -323,7 +323,7 @@ mod tests {
                 y.write_all(b",")?;
                 y.write_all(id.to_string().as_bytes())?;
                 y.write_all(b"\n")?;
-                result = result + 1;
+                result += 1;
                 print!("{}\r ", result);
             } else {
                 return Err(anyhow::anyhow!("Invalid CSV format"));

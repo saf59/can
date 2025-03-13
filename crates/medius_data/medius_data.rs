@@ -92,6 +92,14 @@ fn get_reader(dir: &Path, csv: &str) -> candle_core::Result<Reader<File>> {
     Ok(reader)
 }
 
+/// Print information about the dataset
+pub fn print_dataset_info(m: &Dataset) {
+    print!("train-data: {:?}", m.train_data.shape());
+    print!(", train-labels: {:?}", m.train_labels.shape());
+    print!(", test-data: {:?}", m.test_data.shape());
+    println!(", test-labels: {:?}", m.test_labels.shape());
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,7 +110,7 @@ mod tests {
     #[test]
     fn test_x_y() {
         set_root();
-        let y = read_medius_x(&Path::new(BASE)).unwrap();
+        let y = read_medius_x(Path::new(BASE)).unwrap();
         //println!("{:?},{:?},{:?}", y.len(), y[1], y.last()); // 187200,0.02826519,Some(0.017969258)
         assert_eq!(y.len(), 187200);
         assert_eq!(y[1], 0.028265312);
@@ -118,12 +126,4 @@ mod tests {
         assert_eq!(dataset.classes(false) , 5);
     }
 
-}
-
-/// Print information about the dataset
-pub fn print_dataset_info(m: &Dataset) {
-    print!("train-data: {:?}", m.train_data.shape());
-    print!(", train-labels: {:?}", m.train_labels.shape());
-    print!(", test-data: {:?}", m.test_data.shape());
-    println!(", test-labels: {:?}", m.test_labels.shape());
 }

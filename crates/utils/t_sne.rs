@@ -2,7 +2,7 @@
 
 // DS
 //QwQ + DS_main
-fn compute_squared_distances(data: &Vec<Vec<f32>>) -> Vec<Vec<f32>> {
+fn compute_squared_distances(data: &[Vec<f32>]) -> Vec<Vec<f32>> {
     let n = data.len();
     let mut distances = vec![vec![0.0; n]; n];
     for i in 0..n {
@@ -55,8 +55,56 @@ fn find_sigma(distances_i: &[f32], target_entropy: f32, max_iter: usize) -> f32 
     }
     best_sigma
 }
+fn compute_p_matrix(data: &[Vec<f32>], perplexity: f32) -> Vec<Vec<f32>> {
+    let n = data.len();
+    let distances = compute_squared_distances(data);
+    let target_entropy = perplexity.ln();
+    let mut p_joint = vec![vec![0.0; n]; n];
 
-fn compute_p_matrix(data: &Vec<Vec<f32>>, perplexity: f32) -> Vec<Vec<f32>> {
+    data.iter().enumerate().for_each(|(i, _)| {
+        let distances_i: Vec<f32> = (0..n).filter(|&j| j != i).map(|j| distances[i][j]).collect();
+        let sigma_i = find_sigma(&distances_i, target_entropy, 200);
+
+        let sum_p: f32 = (0..n)
+            .filter(|&j| j != i)
+            .map(|j| (-distances[i][j] / (2.0 * sigma_i.powi(2))).exp())
+            .sum();
+
+        let sum_p_recip = 1.0 / sum_p;
+        (0..n).for_each(|j| {
+            if i != j {
+                let exp_val = (-distances[i][j] / (2.0 * sigma_i.powi(2))).exp();
+                p_joint[i][j] = exp_val * sum_p_recip;
+            } else {
+                p_joint[i][j] = 0.0;
+            }
+        });
+    });
+
+    let mut p_sym = vec![vec![0.0; n]; n];
+    let n_f32 = n as f32;
+    p_joint.iter().enumerate().for_each(|(i, row)| {
+        row.iter().enumerate().for_each(|(j, &p)| {
+            if i != j {
+                p_sym[i][j] = (p + p_joint[j][i]) / (2.0 * n_f32);
+            }
+        });
+    });
+
+    let epsilon = 1e-12;
+    let sum_p_sym: f32 = p_sym.iter().flatten().filter(|&&p| p > 0.0).sum();
+    p_sym.iter_mut().for_each(|row| {
+        row.iter_mut().for_each(|p| {
+            if *p > 0.0 {
+                *p = (*p + epsilon) / sum_p_sym;
+            }
+        });
+    });
+
+    p_sym
+}
+/*
+fn compute_p_matrix(data: &[Vec<f32>], perplexity: f32) -> Vec<Vec<f32>> {
     let n = data.len();
     let distances = compute_squared_distances(data);
     let target_entropy = perplexity.ln();
@@ -117,6 +165,7 @@ fn compute_p_matrix(data: &Vec<Vec<f32>>, perplexity: f32) -> Vec<Vec<f32>> {
 
     p_sym
 }
+*/
 
 fn initialize_y(n: usize, n_components: usize) -> Vec<Vec<f32>> {
     let normal = Normal::new(0.0, 1e-4).unwrap();
@@ -127,8 +176,8 @@ fn initialize_y(n: usize, n_components: usize) -> Vec<Vec<f32>> {
 }
 
 fn run_tsne(
-    p_sym: &Vec<Vec<f32>>,
-    y: &mut Vec<Vec<f32>>,
+    p_sym: &[Vec<f32>],
+    y: &mut [Vec<f32>],
     n_components: usize,
     learning_rate: f32,
     momentum: f32,
@@ -193,7 +242,7 @@ fn run_tsne(
 }
 
 pub fn tsne(
-    data: &Vec<Vec<f32>>,
+    data: &[Vec<f32>],
     n_components: usize,
     perplexity: f32,
     learning_rate: f32,

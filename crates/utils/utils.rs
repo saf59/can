@@ -1,4 +1,4 @@
-use candle_core::cpu::erf::erf;
+//use candle_core::cpu::erf::erf;
 pub mod statistics;
 pub mod fft;
 pub mod mfcc;
@@ -48,7 +48,7 @@ pub fn median_and_multiplier(values: &[f32]) -> (f32, f32) {
     let scale_factor = 1.0 / (2.0 * std_dev);
     let scaled_data: Vec<f32> = centered_data.iter().map(|v| v * scale_factor).collect();
 
-    let normal_distribution_share: f32 = (1.0 - erf((1.0 / 2.0_f32.sqrt()).into())) as f32;
+    let normal_distribution_share: f32 = (1.0 - 0.3173105) as f32;
     let emissions_share = scaled_data
         .into_iter()
         .filter(|v| *v < 0.0 || *v > 1.0)
@@ -63,6 +63,7 @@ pub fn median_and_multiplier(values: &[f32]) -> (f32, f32) {
 
     (median, multiplier)
 }
+
 pub fn normalize_array(data: &[f32], median: f32, multiplier: f32) -> Vec<f32> {
     data.iter()
         .map(|v| normalize(*v, median, multiplier))

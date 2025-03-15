@@ -5,13 +5,12 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-candle-core.workspace = true
 rustfft.workspace = true
 anyhow.workspace = true
 rand.workspace = true
+rand_distr.workspace = true
 # ndarray.workspace = true
 project-root = "0.2.2"
-rand_distr = "0.5.1"
 # ndarray-rand = "0.15.0"
 
 [lib]

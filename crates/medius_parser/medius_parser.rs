@@ -359,7 +359,6 @@ mod tests {
             -0.02361555,
             0.038106915,
         ];
-        println!("{:?}", result);
         assert_eq!(result, must_be);
     }
     fn generate_vec() -> Vec<f32> {

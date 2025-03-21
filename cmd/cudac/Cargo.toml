@@ -8,8 +8,8 @@ license.workspace = true
 # cuda = ["cuda-driver-sys", "candle-core", "candle-core/cuda"]
 
 [dependencies]
-candle-core = { workspace = true, optional = true }
-cuda-driver-sys = { version = "0.3.0", optional = true }
+candle-core = { version = "0.8.4", optional = true, default-features = false }
+cuda-driver-sys = { version = "0.3.0", optional = true, default-features = false }
 
 [[bin]]
 path = "./cudac.rs"

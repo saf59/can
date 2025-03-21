@@ -43,7 +43,7 @@ fn main() -> std::io::Result<()> {
     plot.add_trace(h_trace);
     plot.add_trace(real_trace);
     plot.set_layout(layout);
-    plot.write_html("chart1.html");
+    plot.write_html("charts/chart1.html");
     plot.show();
     Ok(())
 }

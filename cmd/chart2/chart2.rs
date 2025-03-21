@@ -69,7 +69,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let dir = "./data/S10_SF";
     let data_type = dir.split('/').last().unwrap();
     let low_type ="tsne";
-    let out_name = format!("chart_{}_{}.html",low_type, data_type);
+    let out_name = format!("charts/chart_{}_{}.html",low_type, data_type);
     //let labels = read_medius_y(dir.as_ref())?;
     let raw = read_medius_x(dir.as_ref())?;
     let width = raw.len()/720;

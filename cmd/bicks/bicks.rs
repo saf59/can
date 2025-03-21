@@ -102,5 +102,5 @@ fn build_html(sampling_rate: f32, original_signal: &[f32]) {
         );
     }
     //plot.show();
-    plot.write_html("bicks.html");
+    plot.write_html("charts/bicks.html");
 }

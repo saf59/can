@@ -22,18 +22,26 @@ fn action(device: &Device) -> Result<(), Box<dyn Error>> {
     let wq2 = Tensor::from_slice(&[1., 0., 1., 0., 1., 0., 1., 0., 0., 0., 1., 1.], (4, 3), device)?;
 
     let embedding = Tensor::from_slice(&[1., 3., 3., 5., 2.84, 3.99, 4., 6.], (2, 4), device)?;
-
+    // Only for debug && print
     prepare(&embedding, &wk1, &wv1, &wq1, device)?;
+
     let attention1 = attention(&embedding, &wk1, &wv1, &wq1, device)?;
     let attention2 = attention(&embedding, &wk2, &wv2, &wq2, device)?;
     pv("attention1", &attention1);
     pv("attention2", &attention2);
     // 4.3.5  attentions = np.concatenate([attention1, attention2], axis=1)
+    // Multi-head(X) = Concat(head₁, ..., headₙ)⋅W⁰
     let attentions = Tensor::cat(&[attention1, attention2], 1)?;
     pv("attentions", &attentions);
     Ok(())
 }
+// https://telegra.ph/Transformer-09-13-15
+// Attention(Q,K,V) = softmax(QKᵀ/√dₖ)⋅V
+// Задача - по Q и K понять насколько насколько документ релевантен (какой  V выбирать).
 fn attention(x: &Tensor, wk: &Tensor, wv: &Tensor, wq: &Tensor, device: &Device) -> Result<Tensor, Box<dyn Error>> {
+    // Q - запрос, K - краткая сводка по документу и V - сам документ.
+    // Получим матрицы Q, K и V путем перемножения X (входных данных) на соответствующие
+    // матрицы весов  Wq, Wk и Wv соответственно:
     let k = x.matmul(wk)?;
     let v = x.matmul(wv)?;
     let q = x.matmul(wq)?;

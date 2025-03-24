@@ -9,10 +9,14 @@ rustfft.workspace = true
 anyhow.workspace = true
 rand.workspace = true
 rand_distr.workspace = true
-# ndarray.workspace = true
+#ndarray.workspace = true
 project-root = "0.2.2"
-# ndarray-rand = "0.15.0"
+#ndarray-rand.workspace = true
+#petal-neighbors = "0.1"
 
 [lib]
 path = "utils.rs"
 doctest = false
+
+[dev-dependencies]
+#approx = "0.5"

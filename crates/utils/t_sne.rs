@@ -146,10 +146,10 @@ fn run_tsne(
                 }
             }
         }
-        for i in 0..n {
-            for j in 0..n {
+        for (i, row) in q.iter_mut().enumerate().take(n) {
+            for (j, q_val) in row.iter_mut().enumerate().take(n) {
                 if i != j {
-                    q[i][j] /= sum_q;
+                    *q_val /= sum_q;
                 }
             }
         }

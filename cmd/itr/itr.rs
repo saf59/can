@@ -36,7 +36,7 @@ fn action(device: &Device) -> Result<(), Box<dyn Error>> {
     // 3 выбрано произвольно, но использование слишком малого размера внимания уменьшит точность модели
     // Каждая матрица будет преобразовывать четырёхмерные эмбеддинги
     // в трёхмерные ключи (K), значения (V) и запросы (Q).
-    let (wk1, wv1, wq1) = kvq1(device)?;
+    let (wk1, wv1, wq1) = kvq1(device)?; // статичечкий пример из статьи
     let (wk2, wv2, wq2) = kvq2(device)?;
 
     // Only for debug && print
@@ -95,60 +95,6 @@ fn attention(
     let scores = softmax(&scores);
     Ok(scores.matmul(&v)?)
 }
-
-fn kvq2(device: &Device) -> Result<(Tensor, Tensor, Tensor), Box<dyn Error>> {
-    let wk2 = Tensor::from_slice(&[0., 1., 1., 1., 0., 1., 1., 1., 0., 0., 1., 0.],
-                                 (4, 3), device)?;
-    let wv2 = Tensor::from_slice(&[1., 0., 0., 0., 1., 1., 0., 0., 1., 1., 0., 0.],
-                                 (4, 3), device)?;
-    let wq2 = Tensor::from_slice(&[1., 0., 1., 0., 1., 0., 1., 0., 0., 0., 1., 1.],
-                                 (4, 3), device)?;
-    Ok((wk2, wv2, wq2))
-}
-
-fn kvq1(device: &Device) -> Result<(Tensor, Tensor, Tensor), Box<dyn Error>> {
-    let wk1 = Tensor::from_slice(&[1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0.],
-                                 (4, 3), device)?;
-    let wv1 = Tensor::from_slice(&[0., 1., 1., 1., 0., 0., 1., 0., 1., 0., 1., 0.],
-                                 (4, 3), device)?;
-    let wq1 = Tensor::from_slice(&[0., 0., 0., 1., 1., 0., 0., 0., 1., 1., 0., 0.],
-                                 (4, 3), device)?;
-    Ok((wk1, wv1, wq1))
-}
-
-fn w0(device: &Device) -> Tensor {
-    Tensor::from_slice(
-        &[
-            0.79445237,
-            0.1081456,
-            0.27411536,
-            0.78394531,
-            0.29081936,
-            -0.36187258,
-            -0.32312791,
-            -0.48530339,
-            -0.36702934,
-            -0.76471963,
-            -0.88058366,
-            -1.73713022,
-            -0.02305587,
-            -0.64315981,
-            -0.68306653,
-            -1.25393866,
-            0.29077448,
-            -0.04121674,
-            0.01509932,
-            0.13149906,
-            0.57451867,
-            -0.08895355,
-            0.02190485,
-            0.24535932,
-        ],
-        (6, 4),
-        device,
-    )
-    .unwrap()
-}
 fn pv(prefix: &str, tensor: &Tensor) {
     match tensor.rank() {
         1 => println!("{}: {:.2?}", prefix, tensor.to_vec1::<f64>().unwrap()),
@@ -188,4 +134,35 @@ fn prepare(
     let a1 = sm.matmul(v1)?;
     println!("a1:{:.2?}", &a1.to_vec2::<f64>()?);
     Ok(())
+}
+
+#[rustfmt::skip]
+fn kvq1(device: &Device) -> Result<(Tensor, Tensor, Tensor), Box<dyn Error>> {
+    let wk1 = Tensor::from_slice(&[1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0.],
+        (4, 3),device)?;
+    let wv1 = Tensor::from_slice(&[0., 1., 1., 1., 0., 0., 1., 0., 1., 0., 1., 0.],
+        (4, 3),device)?;
+    let wq1 = Tensor::from_slice(&[0., 0., 0., 1., 1., 0., 0., 0., 1., 1., 0., 0.],
+        (4, 3),device)?;
+    Ok((wk1, wv1, wq1))
+}
+#[rustfmt::skip]
+fn kvq2(device: &Device) -> Result<(Tensor, Tensor, Tensor), Box<dyn Error>> {
+    let wk2 = Tensor::from_slice(&[0., 1., 1., 1., 0., 1., 1., 1., 0., 0., 1., 0.],
+        (4, 3),device)?;
+    let wv2 = Tensor::from_slice(&[1., 0., 0., 0., 1., 1., 0., 0., 1., 1., 0., 0.],
+        (4, 3),device)?;
+    let wq2 = Tensor::from_slice(&[1., 0., 1., 0., 1., 0., 1., 0., 0., 0., 1., 1.],
+        (4, 3),device)?;
+    Ok((wk2, wv2, wq2))
+}
+#[rustfmt::skip]
+fn w0(device: &Device) -> Tensor {
+    Tensor::from_slice(&[
+        0.79445237,0.1081456,0.27411536,0.78394531,
+        0.29081936,-0.36187258,-0.32312791,-0.48530339,
+        -0.36702934,-0.76471963,-0.88058366,-1.73713022,
+        -0.02305587,-0.64315981,-0.68306653,-1.25393866,
+        0.29077448,-0.04121674,0.01509932,0.13149906,
+        0.57451867,-0.08895355,0.02190485,0.24535932,],(6, 4),device).unwrap()
 }

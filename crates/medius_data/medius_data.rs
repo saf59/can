@@ -84,7 +84,7 @@ pub fn read_medius_y(dir: &Path) -> candle_core::Result<Vec<u8>> {
         .collect();
     Ok(data)
 }
-fn get_reader(dir: &Path, csv: &str) -> candle_core::Result<Reader<File>> {
+pub fn get_reader(dir: &Path, csv: &str) -> candle_core::Result<Reader<File>> {
     let x_entry = File::open(dir.join(csv))?;
     let reader = csv::ReaderBuilder::new()
         .has_headers(false)

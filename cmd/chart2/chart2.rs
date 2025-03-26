@@ -64,33 +64,40 @@ pub fn plot_3d_scatter(
     //plot.show();
     Ok(())
 }
+
 fn main() -> Result<(), Box<dyn Error>> {
     //let dir = "./data/B260_ST";
-    let dir = "./data/S10_SF";
+    //let dir = "./data/S10_SF";
+    let dir = "./charts/data/ready1";
+    //let low_type ="umap";
+    let low_type ="ready1";
     let data_type = dir.split('/').last().unwrap();
-    let low_type ="tsne";
-    let out_name = format!("charts/chart_{}_{}.html",low_type, data_type);
-    //let labels = read_medius_y(dir.as_ref())?;
-    let raw = read_medius_x(dir.as_ref())?;
-    let width = raw.len()/720;
-    let data: Vec<Vec<f32>> = raw.chunks(width).map(|x| x.to_vec()).collect();
-    let result = match low_type {
-        "tsne" => tsne(&data, 3, 30.0, 200.0, 0.1,  1000),
-        "umap" => umap(&data, 70, 3, 2.0, 1000, 0.8, "euclidean").unwrap(),
-        _ => panic!("Unknown method"),
-    };
-    //    umap(&data, 70, 3, 2.0, 1000, 0.8, "euclidean").unwrap();
-    //let result = tsne(&data, 3, 30.0, 200.0, 0.1,  1000);
+    let out_name = format!("charts/chart_{}_{}.html", low_type, data_type);
+    let result = get_data(dir, low_type)?;
     let x = result.iter().map(|x| x[0]).collect();
     let y = result.iter().map(|x| x[1]).collect();
     let z = result.iter().map(|x| x[2]).collect();
     // working positions
-    //let labels:Vec<String> = labels.iter().map(|x| ((*x as f32) * -0.1 ).to_string()).collect();
+    // let labels:Vec<String> = read_medius_y(dir.as_ref())?.iter().map(|x| ((*x as f32) * -0.1 ).to_string()).collect();
     // samples
     let labels = samples(9, 80);
     plot_3d_scatter(x, y, z, labels, &out_name)?;
     Ok(())
 }
+
+fn get_data(dir: &str, low_type: &str) -> Result<Vec<Vec<f32>>, Box<dyn Error>> {
+//    let src = dir.replace("/data",format!("/charts/{}",low_type).as_str());
+    let raw = read_medius_x(dir.as_ref())?;
+    let width = raw.len() / 720;
+    let data: Vec<Vec<f32>> = raw.chunks(width).map(|x| x.to_vec()).collect();
+    let result = match low_type {
+        "tsne" => tsne(&data, 3, 30.0, 200.0, 0.1, 1000),
+        "umap" => umap(&data, 9, 3, 1.0, 100, 0.1, "euclidean").unwrap(),
+        _ => data,
+    };
+    Ok(result)
+}
+
 fn samples(n: usize, width: usize) -> Vec<String> {
     let mut out = Vec::new();
     for i in 1..=n {

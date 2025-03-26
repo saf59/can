@@ -68,7 +68,7 @@ fn action(device: &Device) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 // https://telegra.ph/Transformer-09-13-15
-// Attention(Q,K,V) = softmax(QKᵀ/√dₖ)⋅V
+// Attention(Q,K,V) = softmax(QKᵀ/√dₖ)⋅V  // тут ᵀ == транспонированная
 // Задача - по Q и K понять насколько насколько документ релевантен (какой  V выбирать).
 fn attention(
     x: &Tensor,
@@ -79,17 +79,17 @@ fn attention(
 ) -> Result<Tensor, Box<dyn Error>> {
     // Q - запрос, K - краткая сводка по документу и V - сам документ.
     // Получим матрицы Q, K и V путем перемножения X (входных данных) на соответствующие
-    // матрицы весов  Wq, Wk и Wv соответственно:
+    // матрицы весов (размер 4x3) Wq, Wk и Wv соответственно:
     let k = x.matmul(wk)?;
     let v = x.matmul(wv)?;
     let q = x.matmul(wq)?;
 
     //let scores = q.matmul(&k.transpose(0, 1).unwrap())?;
-    let scores = q.matmul(&k.t().unwrap())?;
     // 4.3.2  scores = np.dot(q, k.T) / np.sqrt(d_k) // но только для больших размерностей
-    // let sq3 = Tensor::from_slice(&[3.0_f64.sqrt()], 1, device)?;
-    // если размерность маленькая, то пример покажет кривой результат, поэтому
-    // в статье заменено на scores / 30
+    // let sq3 = Tensor::from_slice(&[3.0_f64.sqrt()], 1, device)?; // == √dₖ ,где dₖ = 3 (см выше)
+    let scores = q.matmul(&k.t().unwrap())?;
+    // если размерность маленькая, то пример покажет кривой результат,
+    // поэтому в статье заменено на scores / 30
     let sq3 = Tensor::from_slice(&[30.0_f64], 1, device)?;
     let scores = scores.broadcast_div(&sq3)?;
     let scores = softmax(&scores);

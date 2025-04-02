@@ -1,4 +1,8 @@
-﻿#![allow(unused_imports)]
+﻿#![cfg(target_os = "windows")]
+#![allow(unused_imports)]
+#[cfg(not(target_os = "windows"))]
+fn main() {}
+
 use ndarray::Array1;
 use num_complex::Complex;
 use plotly::{
@@ -61,9 +65,6 @@ fn bicks_reconstruction(signal: &[f32], sampling_rate: f32, max_frequency: f32) 
     }
     reconstructed_signal
 }
-#[cfg(not(target_os = "windows"))]
-fn main() {}
-#[cfg(target_os = "windows")]
 fn main() {
     // Example usage:
     let sampling_rate = 100.0; // Hz

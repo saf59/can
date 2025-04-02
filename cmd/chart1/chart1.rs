@@ -1,4 +1,8 @@
+#![cfg(target_os = "windows")]
 #![allow(unused_imports)]
+#[cfg(not(target_os = "windows"))]
+fn main() {}
+
 use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -20,9 +24,6 @@ struct Timepoint {
 }
 
 
-#[cfg(not(target_os = "windows"))]
-fn main() {}
-#[cfg(target_os = "windows")]
 fn main() -> std::io::Result<()> {
     let data_dir = "T:/EnerReg/14102024/memo/";
     let h_file = "generation@id=318_L2h.json";

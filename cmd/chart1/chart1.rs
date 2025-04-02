@@ -1,8 +1,8 @@
+//#[cfg(not(target_os = "windows"))]
+//fn main() {}
+
 #![cfg(target_os = "windows")]
 #![allow(unused_imports)]
-#[cfg(not(target_os = "windows"))]
-fn main() {}
-
 use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs::File;

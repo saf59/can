@@ -1,5 +1,4 @@
 #![cfg(target_os = "windows")]
-#![allow(unused_imports)]
 use medius_data::read_medius_x;
 use plotly::{
     common::{Marker, Mode},

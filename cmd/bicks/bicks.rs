@@ -1,5 +1,4 @@
 ﻿#![cfg(target_os = "windows")]
-#![allow(unused_imports)]
 use ndarray::Array1;
 use num_complex::Complex;
 use plotly::{

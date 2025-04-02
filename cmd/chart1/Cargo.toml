@@ -12,8 +12,12 @@ serde_json.workspace = true
 [target.'cfg(windows)'.dependencies]
 plotly.workspace = true
 
+[features]
+# Define a feature that represents Windows support
+os_windows = []
+
 [[bin]]
 path = "./chart1.rs"
 name = "chart1"
-
+required-features = ["os_windows"]
 

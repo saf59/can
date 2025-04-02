@@ -11,8 +11,11 @@ utils = { path = "../../crates/utils" }
 [target.'cfg(windows)'.dependencies]
 plotly.workspace = true
 
+[features]
+# Define a feature that represents Windows support
+os_windows = []
+
 [[bin]]
 path = "./chart2.rs"
 name = "chart2"
-
-
+required-features = ["os_windows"]

@@ -1,6 +1,3 @@
-//#[cfg(not(target_os = "windows"))]
-//fn main() {}
-
 #![cfg(target_os = "windows")]
 #![allow(unused_imports)]
 use chrono::{DateTime, TimeZone, Utc};

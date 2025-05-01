@@ -75,6 +75,7 @@ pub enum ModelType {
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
 pub enum AlgType {
     Bin,
+    BinN,
     Mfcc,
     Stat,
 }

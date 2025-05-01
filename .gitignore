@@ -1,3 +1,5 @@
 /target
+/models
+/charts
 /checkpoint.safetensors
-/*.cmd
+/test_data/4*.wav

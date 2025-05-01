@@ -11,6 +11,7 @@ use utils::statistics::stat3;
 use utils::{median_and_multiplier, normalize_array};
 
 const SAMPLE_RATE: usize = 192_000;
+const SAMPLE_RATE_F32: f32 = SAMPLE_RATE as f32;
 #[allow(clippy::excessive_precision)]
 const F5: f32 = 37523.4522;
 const TOP: f32 = 54000.0;
@@ -37,9 +38,49 @@ pub fn parse_all(
     let raw = read_wav(all)?;
     match alg_type {
         AlgType::Bin => parse_bin(n, buff_size, nf, &raw),
+        AlgType::BinN => parse_bin_n(n, &raw),
         AlgType::Mfcc => parse_mfcc(n, 250, buff_size, nf, &raw),
         AlgType::Stat => parse_stat(n, buff_size, nf, &raw),
     }
+}
+fn parse_bin_n(n: usize, raw: &[f32]) -> anyhow::Result<Vec<f32>> {
+    let peaks = all_peaks(raw, 4000);
+    let pulses: Vec<Vec<f32>> = peaks
+        .iter()
+        .map(|p| impuls(raw, *p))
+        .collect::<Vec<Vec<f32>>>();
+    let ampls: Vec<Vec<f32>> = pulses
+        .iter()
+        .map(|pulse| fft_amplitudes(pulse, 4096))
+        .collect::<Vec<Vec<f32>>>();
+    let bins = ampls
+        .iter()
+        .map(|ampl| bin(ampl, n))
+        .collect::<Vec<Vec<f32>>>();
+    let avg_by_bins = column_averages(&bins);
+    Ok(avg_by_bins)
+}
+
+fn avg(data: Vec<f32>) -> f32 {
+    if data.is_empty() {
+        0.0
+    } else {
+        data.iter().sum::<f32>() / data.len() as f32
+    }
+}
+
+fn column_averages(data: &[Vec<f32>]) -> Vec<f32> {
+    if data.is_empty() {
+        return vec![];
+    }
+    let cols = data[0].len();
+    let rows = data.len();
+    (0..cols)
+        .map(|col| {
+            let sum: f32 = data.iter().map(|row| row[col]).sum();
+            sum / rows as f32
+        })
+        .collect()
 }
 
 fn parse_bin(n: usize, buff_size: usize, nf: f32, raw: &[f32]) -> anyhow::Result<Vec<f32>> {
@@ -114,11 +155,14 @@ fn build_range_list(tb: f32, n: usize) -> Vec<std::ops::Range<f32>> {
         .collect()
 }
 fn read_wav(wav: &[u8]) -> anyhow::Result<Vec<f32>> {
+   read_wav_ch(wav,2) 
+}
+fn read_wav_ch(wav: &[u8],channels:u16) -> anyhow::Result<Vec<f32>> {
     //let wav: &[u8] = &data;
     let reader = PcmReader::new(wav)?;
     let specs = reader.get_pcm_specs();
     let num_samples = specs.num_samples;
-    if specs.sample_rate as usize == SAMPLE_RATE && specs.num_channels == 2 {
+    if specs.sample_rate as usize == SAMPLE_RATE && specs.num_channels == channels {
         let channel = 0;
         let mut data: Vec<f32> = Vec::with_capacity(num_samples as usize);
         for sample in 0..num_samples {
@@ -126,12 +170,12 @@ fn read_wav(wav: &[u8]) -> anyhow::Result<Vec<f32>> {
         }
         Ok(data)
     } else {
-        let mode = if specs.num_channels == 1 {
-            "mono"
+        let (mode, must) = if specs.num_channels == 1 {
+            ("mono","stereo") 
         } else {
-            "stereo"
+            ("stereo","mono")
         };
-        Err(anyhow::Error::msg(format!("A stereo file was expected with a sample rate of {}, but a {} file with a sample rate of {} was received!",
+        Err(anyhow::Error::msg(format!("A {must} file was expected with a sample rate of {}, but a {} file with a sample rate of {} was received!",
                                        SAMPLE_RATE, mode, specs.sample_rate)))
     }
 }
@@ -159,6 +203,87 @@ fn useful3(raw: &[f32]) -> Vec<f32> {
 
     // Slice the original data
     raw[first..=last].to_vec() // Include last element
+}
+
+fn bin(data: &[f32], n: usize) -> Vec<f32> {
+    let (part, left) = left_part(n);
+    let size = ((SAMPLE_RATE_F32 / 2.0 + left) / part).ceil() as usize;
+    let mut result: Vec<Vec<f32>> = vec![Vec::new(); size];
+    let k = SAMPLE_RATE_F32 / (data.len() as f32 * 2.0);
+
+    for (i, &v) in data.iter().enumerate() {
+        let f = i as f32 * k;
+        let bin = ((f + left) / part) as usize;
+        if bin < result.len() {
+            result[bin].push(v);
+        }
+    }
+    result.into_iter().map(avg).collect()
+}
+
+fn left_part(n: usize) -> (f32, f32) {
+    let nn = ((n as f32) / 10.0).round();
+    let part = 10_000.0 / nn;
+    let left = part / 2.0;
+    (part, left)
+}
+
+fn all_peaks(data: &[f32], n_after: usize) -> Vec<usize> {
+    let abs_data: Vec<f32> = data.iter().map(|x| x.abs()).collect();
+    let (mean, std) = mean_and_std(&abs_data);
+    let top = mean + std * 3.0;
+    let mut i = 0;
+    let mut peaks = Vec::new();
+    while i < data.len() {
+        if data[i] > top {
+            peaks.push(i);
+            i += n_after;
+        } else {
+            i += 1;
+        }
+    }
+    peaks
+}
+
+// Helper function to compute mean and standard deviation
+fn mean_and_std(data: &[f32]) -> (f32, f32) {
+    let mean = data.iter().sum::<f32>() / data.len() as f32;
+    let var = data.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / data.len() as f32;
+    (mean, var.sqrt())
+}
+
+fn impuls(data: &[f32], peak: usize) -> Vec<f32> {
+    // Calculate mean of positive values in the range [peak, peak+1000)
+    let mean: f32 = data
+        .iter()
+        .skip(peak)
+        .take(1000)
+        .filter(|&&x| x > 0.0)
+        .copied()
+        .sum::<f32>()
+        / data
+            .iter()
+            .skip(peak)
+            .take(1000)
+            .filter(|&&x| x > 0.0)
+            .count()
+            .max(1) as f32;
+
+    let last = back_search(data, peak, mean);
+    // Slice from (peak-2)..=last, handling bounds
+    let start = peak.saturating_sub(2);
+    let end = last + 1; // inclusive range
+    data.get(start..end).unwrap_or(&[]).to_vec()
+}
+
+fn back_search(data: &[f32], peak: usize, border: f32) -> usize {
+    let start = peak + 4096 - 2;
+    for i in (peak..=start).rev() {
+        if i < data.len() && data[i] > border {
+            return i;
+        }
+    }
+    peak.saturating_sub(1)
 }
 
 struct SimpleMovingAverage {
@@ -217,7 +342,49 @@ mod tests {
     const N: usize = 260;
     const SRC111: &str = r"test_data/x1_y1.wav";
     const SRC138: &str = r"test_data/x3_y8.wav";
+    const SRCRAW: &str = r"test_data/458a3473-ad9a-4c0a-8a2e-7b3a8e634ae6.wav";
+    const SRCRAW0: &str = r"test_data/0_0.wav";
+    #[test]
+    #[ignore]
+    fn test_raw_to_bin11() {
+        let wav_path: &Path = SRCRAW.as_ref();
+        #[rustfmt::skip]
+        let real = vec![5.911860917803424E-4,6.021952318536949E-4,0.002478469863316676,0.0012678770817552653,0.001978414186916477,9.065647494689863E-4,0.0014978400835920765,7.194771713650385E-4,9.831714068336763E-4,8.784834119679141E-4,1.527001078154108E-4];
+        test_to_bin11(wav_path, real,2);
+    }
+    #[test]
+    fn test_interim_to_bin11() {
+        let wav_path: &Path = SRCRAW0.as_ref();
+        #[rustfmt::skip]
+        let real = vec![0.00087014644, 0.00075164676, 0.002676331, 0.001098881, 0.0022909078, 0.00084123365, 0.0017334798, 0.00078802824, 0.001121256, 0.0008936477, 0.00022057218];
+        test_to_bin11(wav_path, real,1);
+    }
 
+    fn test_to_bin11(wav_path: &Path, real: Vec<f32>,channels:u16) {
+        set_root();
+        let all = fs::read(wav_path).unwrap();
+        let raw = read_wav_ch(&all,channels).unwrap();
+        let data = parse_bin_n(11, &raw).unwrap();
+        //println!("data  :{:?}", data);
+        assert_eq!(data.len(), real.len());
+        for i in 0..data.len() {
+            assert!((real[i] - data[i]).abs() < f32::EPSILON);
+        }
+    }
+    // for correctness of the *bin_n left and part detection
+    #[test]
+    fn test_left_part() {
+        test_one_left_part(11,5_000.0, 10_000.0);
+        test_one_left_part(20,5_000.0 / 2.0 , 10_000.0 /2.0);
+        test_one_left_part(30,5_000.0 / 3.0 , 10_000.0 /3.0);
+        test_one_left_part(39,5_000.0 / 4.0 , 10_000.0 /4.0);
+        test_one_left_part(49,5_000.0 / 5.0 , 10_000.0 /5.0);
+    }
+    fn test_one_left_part(n: usize,real_left: f32,real_part: f32) {
+        let (part, left) = left_part(n);
+        assert!((real_part - part).abs() < f32::EPSILON);
+        assert!((real_left - left).abs() < f32::EPSILON);
+    }
     /// Same as parse_wav but step by step and from the test data
     #[test]
     fn test111() {
@@ -243,7 +410,7 @@ mod tests {
         let (median, multiplayer) = median_and_multiplier(&ampl);
         let norm_row = normalize_array(&ampl, median, multiplayer);
         let nf = FREQUENCY / F5;
-        
+
         weighted5_one(&norm_row, N, &range_list, nf)
     }
 
@@ -295,9 +462,9 @@ mod tests {
     }
 
     fn build_by_alg(alg: AlgType, n: usize) -> anyhow::Result<()> {
-        let src_file = File::open("../../data/src.csv").unwrap();
-        let x_file = File::create("../../data/x.csv").unwrap();
-        let y_file = File::create("../../data/y.csv").unwrap();
+        let src_file = File::open("../../data/src.csv")?;
+        let x_file = File::create("../../data/x.csv")?;
+        let y_file = File::create("../../data/y.csv")?;
         let src = std::io::BufReader::new(src_file);
         let mut x = std::io::BufWriter::new(x_file);
         let mut y = std::io::BufWriter::new(y_file);
@@ -311,7 +478,7 @@ mod tests {
                 let id = s.chars().nth(41).unwrap_or('_');
                 let freq: f32 = parts[1].parse()?;
                 let wp: f32 = parts[2].parse()?;
-                let out = parse_wav(&s, n, freq, buf_size, alg.clone()).unwrap();
+                let out = parse_wav(&s, n, freq, buf_size, alg.clone())?;
                 let row = out
                     .iter()
                     .map(|v| v.to_string())

@@ -6,7 +6,7 @@ license.workspace = true
 
 [dependencies]
 indicatif = "0.17.11"
-sysinfo = "0.34.0"
+sysinfo = "0.35.0"
 
 [[bin]]
 path = "./bm.rs"

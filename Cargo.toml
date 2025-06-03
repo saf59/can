@@ -13,7 +13,7 @@ members = [
     "cmd/dur", "cmd/medius_server", "cmd/bicks",
     "crates/medius_data", "crates/medius_utils", "crates/medius_model",
     "crates/medius_meta", "crates/medius_parser", "crates/can_data",
-    "crates/utils",
+    "crates/utils", "crates/ho",
 ]
 resolver = "2"
 

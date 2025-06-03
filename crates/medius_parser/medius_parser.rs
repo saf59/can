@@ -41,6 +41,7 @@ pub fn parse_all(
         AlgType::BinN => parse_bin_n(n, &raw),
         AlgType::Mfcc => parse_mfcc(n, 250, buff_size, nf, &raw),
         AlgType::Stat => parse_stat(n, buff_size, nf, &raw),
+        AlgType::HO => todo!(),
     }
 }
 fn parse_bin_n(n: usize, raw: &[f32]) -> anyhow::Result<Vec<f32>> {
@@ -349,7 +350,7 @@ mod tests {
     fn test_raw_to_bin11() {
         let wav_path: &Path = SRCRAW.as_ref();
         #[rustfmt::skip]
-        let real = vec![5.911860917803424E-4,6.021952318536949E-4,0.002478469863316676,0.0012678770817552653,0.001978414186916477,9.065647494689863E-4,0.0014978400835920765,7.194771713650385E-4,9.831714068336763E-4,8.784834119679141E-4,1.527001078154108E-4];
+        let real = vec![5.911_861E-4,6.021_952E-4,0.002_478_469_9,0.001_267_877,0.001_978_414_1,9.065_647_6E-4,0.001_497_84,7.194_772E-4,9.831_714E-4,8.784_834E-4,1.527_001_1E-4];
         test_to_bin11(wav_path, real,2);
     }
     #[test]

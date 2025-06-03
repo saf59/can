@@ -78,6 +78,7 @@ pub enum AlgType {
     BinN,
     Mfcc,
     Stat,
+    HO,
 }
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
 pub enum BufSize {

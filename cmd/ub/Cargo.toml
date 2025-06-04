@@ -7,8 +7,8 @@ license.workspace = true
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
-crossbeam-channel = "0.5.14"
-ctrlc = "3.4.5"
+crossbeam-channel = "0.5.15"
+ctrlc = "3.4.7"
 
 [[bin]]
 path = "./ub.rs"

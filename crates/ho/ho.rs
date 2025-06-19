@@ -151,7 +151,7 @@ impl HigherOrderMomentsAnalyzer {
         fft.process(&mut buffer);
 
         buffer
-*/      utils::fft::fft_forward(&input, input.len())
+*/      utils::fft::fft_forward(input, input.len())
     }
 
     /// Compute Power Spectral Density from windowed signal using rustfft

@@ -1,12 +1,11 @@
 use anyhow::Error;
 use candle_core::{Device, Tensor, D};
-use medius_meta::{fill_from_static, static_meta, AlgType, Meta, ModelType};
+use medius_meta::{fill_from_static, AlgType, Meta, ModelType};
 use medius_model::{get_model, Model};
 use medius_parser::{parse_all, parse_hom, read_wav};
 use utils::{column_averages, default_mm, normalize_row_columns};
 
-pub fn detect(all: &[u8], freq: f32, verbose: bool, joined:bool) -> anyhow::Result<f32> {
-    let meta = static_meta();
+pub fn detect(meta:Meta,all: &[u8], freq: f32, verbose: bool, joined:bool) -> anyhow::Result<f32> {
     let buff_size: usize = meta.buff_size.clone() as usize;
     let inputs = meta.n;
     let dev = Device::cuda_if_available(0)?;
@@ -20,8 +19,8 @@ pub fn detect(all: &[u8], freq: f32, verbose: bool, joined:bool) -> anyhow::Resu
     }
 }
 
-fn detect_by_many_vectors(verbose: bool, joined: bool, meta: &Meta, inputs: usize, dev: &Device, raw: &Vec<f32>) -> anyhow::Result<f32>{
-    let hom_data = parse_hom(&raw)?;
+fn detect_by_many_vectors(verbose: bool, joined: bool, meta: &Meta, inputs: usize, dev: &Device, raw: &[f32]) -> anyhow::Result<f32>{
+    let hom_data = parse_hom(raw)?;
     let (medians, multiplier) = default_mm();
     if joined {
         // If joined, we use the same function as for all
@@ -29,17 +28,17 @@ fn detect_by_many_vectors(verbose: bool, joined: bool, meta: &Meta, inputs: usiz
         if meta.flag {
            avg = normalize_row_columns(&avg, &medians, &multiplier);
         }
-        detect_by_single_vec(verbose, &meta, inputs, &dev, &avg)
+        detect_by_single_vec(verbose, meta, inputs, dev, &avg)
     } else {
         // If not joined, we use the special function for hom
         let results = hom_data.iter().map(|h| {
             let hn = if meta.flag {
                 // If flag is true, we normalize the data
-                normalize_row_columns(&h, &medians, &multiplier)
+                normalize_row_columns(h, &medians, &multiplier)
             } else {
                 h.to_vec()
             };
-            detect_by_single_vec(verbose, &meta, inputs, &dev, &hn)
+            detect_by_single_vec(verbose, meta, inputs, dev, &hn)
         }).collect::<Result<Vec<_>, Error>>()?;
         Ok(most_frequent_value(&results).unwrap_or(0.0))
     }
@@ -57,9 +56,9 @@ fn most_frequent_value(values: &[f32]) -> anyhow::Result<f32> {
 }
 fn detect_by_single_vec(verbose: bool, meta: &Meta, inputs: usize, dev: &Device, data: &[f32]) -> anyhow::Result<f32> {
     // Convert data(extracted wav properties) to Tensor
-    let data = Tensor::from_vec(data.to_vec(), (1, inputs), &dev)?;
+    let data = Tensor::from_vec(data.to_vec(), (1, inputs), dev)?;
     // Build model and fill it VarMap
-    let (_vm, model) = get_model(&dev, &meta, verbose, &fill_from_static)?;
+    let (_vm, model) = get_model(dev, meta, verbose, &fill_from_static)?;
     let result = model.forward(&data)?;
     // Extract wp from result by model type
     let wp = match meta.model_type {

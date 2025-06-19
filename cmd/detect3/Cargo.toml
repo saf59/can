@@ -8,6 +8,7 @@ license.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 medius_utils = { path = "../../crates/medius_utils" }
+medius_meta = { path = "../../crates/medius_meta" }
 
 [[bin]]
 path = "./detect3.rs"

@@ -161,13 +161,13 @@ pub fn write_csv_strings<P: AsRef<Path>>(data: &Vec<String>, path: &P) -> Result
     Ok(())
 }
 
-pub fn vecvecf32_to_vecstring(data: &Vec<Vec<f32>>) -> Vec<String> {
+pub fn vecvecf32_to_vecstring(data: &[Vec<f32>]) -> Vec<String> {
     data.iter()
         .map(|row| row.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(","))
         .collect()
 }
 
-pub fn vecstring_to_vecvecf32(data: &Vec<String>) -> Result<Vec<Vec<f32>>> {
+pub fn vecstring_to_vecvecf32(data: &[String]) -> Result<Vec<Vec<f32>>> {
     data.iter()
         .enumerate()
         .map(|(i, line)| {
@@ -187,11 +187,11 @@ pub fn read_csv_strings<P: AsRef<Path>>(path: P) -> Result<Vec<String>> {
     Ok(data)
 }
 
-pub fn vecusize_to_vecstring(data: &Vec<usize>) -> Vec<String> {
+pub fn vecusize_to_vecstring(data: &[usize]) -> Vec<String> {
     data.iter().map(|v| v.to_string()).collect()
 }
 
-pub fn vecstring_to_vecusize(data: &Vec<String>) -> Result<Vec<usize>> {
+pub fn vecstring_to_vecusize(data: &[String]) -> Result<Vec<usize>> {
     data.iter()
         .enumerate()
         .map(|(i, s)| s.trim().parse::<usize>().with_context(|| format!("Parse error '{}' on line {}", s, i + 1)))

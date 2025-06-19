@@ -29,7 +29,7 @@ fn main() {
     let mut y: Vec<usize> = Vec::new();
     let mut x_raw: Vec<Vec<f32>> = Vec::new();
     let mut y_raw: Vec<usize> = Vec::new();
-    for (_path, group) in &grouped {
+    for group in grouped.values() {
         // println!("Group path: {}", path);
         let mut x_group: Vec<Vec<f32>> = Vec::new();
         let mut y_group: usize = 0;
@@ -88,9 +88,9 @@ fn main() {
     write_csv_strings(&norm_strings, &"data/H34_ST/norm.csv").unwrap();
 }
 
-fn save_to_csv(x: &mut Vec<Vec<f32>>, y: &mut Vec<usize>, dir: &Path) {
-    let x_strings = vecvecf32_to_vecstring(&x);
-    let y_strings = vecusize_to_vecstring(&y);
+fn save_to_csv(x: &mut [Vec<f32>], y: &mut [usize], dir: &Path) {
+    let x_strings = vecvecf32_to_vecstring(x);
+    let y_strings = vecusize_to_vecstring(y);
     ensure_dir_exists(dir).unwrap();
     write_csv_strings(x_strings.as_ref(), &dir.join("x.csv")).unwrap();
     write_csv_strings(y_strings.as_ref(), &dir.join("y.csv")).unwrap();

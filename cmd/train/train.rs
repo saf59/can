@@ -117,13 +117,11 @@ fn meta() -> anyhow::Result<Meta> {
             )));
         }
     */
-    if meta.alg_type == AlgType::HOM {
-        if meta.model_type != ModelType::Classification {
-            return Err(anyhow::Error::msg(format!(
-                "HOM is not implemented for {:#?} and model_type:{:#?}!",
-                meta.alg_type, meta.model_type
-            )));
-        }
+    if meta.alg_type == AlgType::HOM && meta.model_type != ModelType::Classification {
+        return Err(anyhow::Error::msg(format!(
+            "HOM is not implemented for {:#?} and model_type:{:#?}!",
+            meta.alg_type, meta.model_type
+        )));
     }
     Ok(meta)
 }

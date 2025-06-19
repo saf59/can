@@ -3,6 +3,7 @@ use medius_utils::{detect, show_is_cuda};
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
+use medius_meta::static_meta;
 
 /// Command line arguments for the detecting program
 #[derive(Parser)]
@@ -26,7 +27,8 @@ pub fn main() -> anyhow::Result<()> {
     let freq = args.frequency;
     let verbose = args.verbose;
     // Detect wp
-    let wp = detect(&all, freq, verbose, false)?;
+    let meta = static_meta();
+    let wp = detect(meta, &all, freq, verbose, false)?;
     // Show result
     if args.verbose {
         show_is_cuda();

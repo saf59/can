@@ -6,6 +6,7 @@ use futures_util::stream::StreamExt as _;
 use std::net::Ipv4Addr;
 use env_logger::Env;
 use log::info;
+use medius_meta::static_meta;
 use medius_utils::detect;
 
 // Embedded OpenAPI spec and Swagger UI HTML
@@ -97,7 +98,8 @@ async fn detect3(mut payload: Multipart) -> Result<HttpResponse, Error> {
         info!("Frequency: {:?}, file sig: {}, signature: {:?}", &freq,file_sig,&sig);
         return Err(actix_web::error::ErrorForbidden("Invalid signature"));
     }
-    let wd = match detect(&file_data, freq as f32, false,false) {
+    let meta = static_meta();
+    let wd = match detect(meta,&file_data, freq as f32, false,false) {
         Ok(dist) => dist.to_string(),
         Err(e) => {
             info!("Frequency: {:?}, file sig: {}, signature: {:?}", &freq,file_sig,&sig);

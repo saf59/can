@@ -170,7 +170,7 @@ mod tests {
     }
 
     #[test]
-    //#[ignore] // Requires the actual file at the given path
+    #[ignore] // Requires the actual file at the given path
     fn test_read_meta_rows_from_csv() {
         let path = r"W:\data\medius\part3\impulse_meta.csv";
         let rows = read_meta_rows_from_csv(path).unwrap();

@@ -34,3 +34,13 @@ docs for more detail on building and pushing.
 
 ### References
 * [Docker's Rust guide](https://docs.docker.com/language/rust/)
+
+## detect3 ##
+1) каталог models в .dockerignore, иначе собирает очень долго
+2) при билде нужны model.meta model.safetensors, а при тесте x1_y1.wav поэтому копируем их в каталог export
+3) docker build -t detect3 -f Dockerfile_detect3 .
+4) docker run detect3  
+	-0.400
+5) Где то:  
+	docker image save detect3 -o detect3.zip
+6) В архиве будет слой размером около 5M, а в нем еще один, а в нем \usr\bin\detect3 

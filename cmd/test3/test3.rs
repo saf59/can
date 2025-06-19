@@ -1,5 +1,5 @@
 use clap::Parser;
-use medius_meta::Meta;
+use medius_meta::{Accuracy, Meta};
 use medius_model::test_all;
 use std::fs;
 use std::path::Path;
@@ -8,8 +8,8 @@ use std::time::Instant;
 #[derive(Parser)]
 struct Args {
     /// Show loss. Default - show accuracy when different is less than 0.1
-    #[arg(long, default_value_t = false)]
-    loss: bool,
+    #[arg(long, value_enum, default_value_t = Accuracy::Percent)]
+    accuracy: Accuracy,
     /// For all models. Default - only for current model
     #[arg(long, default_value_t = false)]
     all: bool,
@@ -18,21 +18,20 @@ pub fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let mut meta = Meta::load_default();
     meta.train_part = 1.0;
-    let loss = args.loss;
-    let r#result_type = if loss { "loss" } else { "accuracy" };
-    println!("model_type,alg_type,n,hidden,activation,batch_size,{},ms",result_type);
+    let accuracy = args.accuracy;
+    //println!("model_type,alg_type,n,hidden,activation,batch_size,{:#?},ms",accuracy);
     if args.all {
         let path = Path::new("./models");
         let subdirs = list_subdirectories(path)?;
         for subdir in subdirs {
-            let mut meta = Meta::load(&path.join(&subdir)).unwrap();
+            let mut meta = Meta::load(&path.join(&subdir))?;
             let start = Instant::now();
             let details = meta.name_out();
-            match test_one(&mut meta,loss) {
+            match test_one(&mut meta, accuracy.clone()) {
                 Ok(test_accuracy) => {
                     let end = Instant::now();
                     let elapsed = end.duration_since(start).as_secs_f32() * 1000.0;
-                    if args.loss {
+                    if accuracy == Accuracy::Loss {
                         println!("{},{},{:5.2?}", details, test_accuracy, elapsed);
                     } else {
                         println!("{},{:5.2?}%,{:5.2?}", details, test_accuracy,elapsed);
@@ -42,9 +41,9 @@ pub fn main() -> anyhow::Result<()> {
             }
         }
     } else {
-        match test_one(&mut meta,loss) {
+        match test_one(&mut meta, accuracy.clone()) {
             Ok(test_accuracy) => {
-                if args.loss {
+                if accuracy == Accuracy::Loss {
                     println!("{:5.7?}", test_accuracy);
                 } else {
                     println!("{:5.2?}%", test_accuracy);
@@ -55,10 +54,10 @@ pub fn main() -> anyhow::Result<()> {
     }
     Ok(())
 }
-fn test_one(meta: &mut Meta, loss: bool) -> anyhow::Result<f32> {
+fn test_one(meta: &mut Meta, accuracy: Accuracy) -> anyhow::Result<f32> {
     let base: &Path = "./data".as_ref();
     let datapath = base.join(meta.data_name());
-    test_all(datapath, meta, loss)
+    test_all(datapath, meta, accuracy)
 }
 fn list_subdirectories(path: &Path) -> std::io::Result<Vec<String>> {
     let mut subdirs = Vec::new();

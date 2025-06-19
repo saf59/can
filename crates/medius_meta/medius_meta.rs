@@ -4,8 +4,9 @@ use std::fs;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::string::ToString;
-use candle_core::Tensor;
-use candle_nn::ops;
+use candle_core::{Device, Tensor};
+use candle_core::safetensors::Load;
+use candle_nn::{ops, VarMap};
 use utils::{enum_name, first_char};
 
 pub const MODELS_DIR: &str = "./models";
@@ -20,7 +21,7 @@ pub struct Meta {
     pub n: usize,
     pub alg_type: AlgType,
     pub buff_size: BufSize,
-    pub scaled_frequency: bool,
+    pub flag: bool,
     // model
     pub model_type: ModelType,
     pub activation: Activation,
@@ -32,6 +33,22 @@ pub struct Meta {
     pub hidden: Option<String>,
     pub outputs: usize
 }
+/// Get Meta embed resource
+pub fn static_meta() -> Meta {
+    let buf = include_bytes!("./../../models/model.meta");
+    serde_yaml::from_slice(buf).unwrap()
+}
+/// Fill VarMap from embed
+pub fn fill_from_static(_meta: &Meta, _verbose: bool, varmap: &mut VarMap) -> anyhow::Result<()> {
+    let dev = Device::cuda_if_available(0)?;
+    let buf = include_bytes!("./../../models/model.safetensors");
+    let map = ::safetensors::tensor::SafeTensors::deserialize(buf)?;
+    for (k, v) in map.tensors() {
+        let _ = varmap.set_one(k,v.load(&dev)?);
+        // v.load(&dev)? ->  v.convert(&dev)?  in 0.5 version, but candle 0.8.4 use load
+    }
+    Ok(())
+}
 impl Default for Meta {
     /// Provides default values for the `Meta` struct
     fn default() -> Self {
@@ -40,7 +57,7 @@ impl Default for Meta {
             n: 260,
             alg_type: AlgType::Bin,
             buff_size: BufSize::Small,
-            scaled_frequency: true,
+            flag: true,
             // Model parameters
             model_type: ModelType::Classification,
             activation: Activation::Relu,
@@ -78,13 +95,21 @@ pub enum AlgType {
     BinN,
     Mfcc,
     Stat,
-    HO,
+    HOM,
 }
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
 pub enum BufSize {
     Big = 65_536 * 2,
     Small = 65_536,
 }
+
+#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
+pub enum Accuracy {
+    Loss,
+    Percent,
+    Percent01,
+}
+
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
 pub enum Activation {
     Gelu,
@@ -146,7 +171,7 @@ impl Meta {
         let at = first_char(&self.alg_type);
         let sn = &self.n.to_string();
         let bs = first_char(&self.buff_size);
-        let sf = if self.scaled_frequency { 'T' } else { 'F' };
+        let sf = if self.flag { 'T' } else { 'F' };
         format!("{at}{sn}_{bs}{sf}")
     }
     pub fn name_out(&self) -> String {
@@ -160,7 +185,7 @@ impl Meta {
         let sn = &self.n.to_string();
         let bs = first_char(&self.buff_size);
         let h = self.hidden.as_ref().unwrap_or(&"".to_string()).replace(",", "_");
-        let sf = if self.scaled_frequency { 'T' } else { 'F' };
+        let sf = if self.flag { 'T' } else { 'F' };
         let bcs = &self.batch_size.to_string();
         let act =enum_name(&self.activation);
         format!("{mt}_{h}_{at}{sn}_{bs}{sf}_{bcs}{act}")

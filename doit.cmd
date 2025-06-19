@@ -1,26 +1,40 @@
 ﻿@Echo Off
 set RUST_BACKTRACE=1
 set CP=D:\projects\rust\can\target\release\
-SET hidden=%4
-IF NOT DEFINED hidden SET hidden="100,40,10"
-SET hidden=%hidden:"=%
+
+SET N=%4
+IF NOT DEFINED N SET "N=260"
 set epochs=%5
 IF NOT DEFINED epochs SET "epochs=1500"
+SET alg=%6
+IF NOT DEFINED alg SET "alg=bin"
+SET buff=%7
+IF NOT DEFINED buff SET "buff=small"
+SET scaled=%8
+IF NOT DEFINED scaled SET "scaled=true"
 
-set NAME=%1_%2_%3_%hidden:,=_%
+IF NOT DEFINED DETECT SET "DETECT=detect3"
+
+SET hidden=%9
+IF NOT DEFINED hidden SET hidden="100,40,10"
+SET hidden=%hidden:"=%
+
+set NAME=%1_%2_%3_%N%_%alg%_%buff%_%scaled%_%hidden:,=_%
 ECHO Start %NAME%
 
-echo %1 %2 %3 %hidden:,=_%> %NAME%.csv 
+echo %1 %2 %3 %N% %alg% %buff% %scaled% %hidden:,=_%> %NAME%.csv 
+
+rem BUILD
 %CP%dur.exe
+set rate="0.005"
+rem set default meta by -e 0
 if %1 == c (
-	set rate="0.005"
 	echo Train classification %NAME%
-	%CP%train.exe --model-type classification --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden%
+	%CP%train.exe --model-type classification --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden% --alg-type %alg% --buff-size %buff% --flag %scaled% -n %N%
 	call :train
 ) else if %1 == r (
-	set rate="0.005"
 	echo Train regression %NAME%
-	%CP%train.exe --model-type regression --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden%
+	%CP%train.exe --model-type regression --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden% --alg-type %alg% --buff-size %buff% --flag %scaled% -n %N%
 	call :train
 ) else (
     ECHO Bad type "%1" , exit 
@@ -28,12 +42,11 @@ if %1 == c (
     EXIT /B
 )
 %CP%dur.exe --stop >> %NAME%.csv
-%CP%test3 >> %NAME%.csv 
-rem meta MUST be embed to detect3
-cargo build --release --bin detect3
-%CP%dur.exe
-%CP%detect3 -f 37523.4522 test_data/x1_y1.wav >> %NAME%.csv
-%CP%dur.exe --stop >> %NAME%.csv
+
+rem meta MUST be embed to %DETECT%
+cargo build --release --bin %DETECT% --bin test3
+rem CHECK
+call %DETECT%
 ECHO %NAME%
 
 rem Join %NAME%.csv to one row and add it to the total.csv

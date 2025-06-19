@@ -1,14 +1,16 @@
 use pacmog::PcmReader;
 use std::collections::HashMap;
 use std::fs;
-
 use medius_meta::AlgType;
 #[allow(unused_imports)]
 use std::path::Path;
+use ho::HigherOrderMomentsAnalyzer;
 use utils::fft::fft_amplitudes;
 use utils::mfcc::MFCC;
 use utils::statistics::stat3;
 use utils::{median_and_multiplier, normalize_array};
+#[allow(unused_imports)]
+use std::f32::consts::PI;
 
 const SAMPLE_RATE: usize = 192_000;
 const SAMPLE_RATE_F32: f32 = SAMPLE_RATE as f32;
@@ -16,6 +18,7 @@ const SAMPLE_RATE_F32: f32 = SAMPLE_RATE as f32;
 const F5: f32 = 37523.4522;
 const TOP: f32 = 54000.0;
 
+// call only from builder
 pub fn parse_wav<P: AsRef<Path>>(
     path: P,
     n: usize,
@@ -27,6 +30,7 @@ pub fn parse_wav<P: AsRef<Path>>(
     parse_all(&all, n, frequency, buff_size, alg_type)
 }
 
+// call also from medius_utils.detect()
 pub fn parse_all(
     all: &[u8],
     n: usize,
@@ -41,9 +45,64 @@ pub fn parse_all(
         AlgType::BinN => parse_bin_n(n, &raw),
         AlgType::Mfcc => parse_mfcc(n, 250, buff_size, nf, &raw),
         AlgType::Stat => parse_stat(n, buff_size, nf, &raw),
-        AlgType::HO => todo!(),
+        AlgType::HOM => Err(anyhow::anyhow!("HOM algorithm is not implemented yet")),
     }
 }
+
+pub fn parse_hom(raw: &[f32]) -> anyhow::Result<Vec<Vec<f32>>> {
+    let peaks = all_peaks(raw, 4000);
+    let pulses: Vec<Vec<f32>> = peaks
+        .iter()
+        .map(|p| impuls(raw, *p))
+        .collect::<Vec<Vec<f32>>>();
+    let bands = 1;
+    let band_width = 3000.0;
+    let centers = vec![85_000.0];
+    let window = ""; //"hanning";
+    let mut analyzer = HigherOrderMomentsAnalyzer::default();
+    let results: Vec<Vec<f32>> = pulses
+        .iter()
+        .map(|pulse| {
+            hob(pulse, bands, band_width, window, &centers, &mut analyzer)
+        }).collect::<Vec<_>>();
+    Ok(results)
+    // Placeholder for HOM algorithm implementation
+    //Err(anyhow::anyhow!("HOM algorithm is not implemented yet"))
+}
+pub fn hob(
+    data: &[f32],
+    bands: usize,
+    band_width: f32,
+    window: &str,
+    centers: &[f32],
+    analyzer: &mut HigherOrderMomentsAnalyzer,
+) -> Vec<f32> {
+    // Ensure signal is sized to 4096
+    let signal = to_sized(data, 4096);
+
+    // Analyze full spectrum
+    let full_result = analyzer.analyze_full_spectrum(&signal, window);
+    let mut result = analyzer.extract_features_for_ml(&full_result);
+
+    // Get custom frequency bands
+    let custom_bands = analyzer.get_custom_frequency_bands(centers, bands, band_width);
+    //let band_results = analyzer.analyze_frequency_bands(signal, bands, "hanning");
+    let band_results = analyzer.analyze_frequency_bands(&signal, &custom_bands, window);
+
+    for (_band_name, band_result) in band_results {
+        let band_features = analyzer.extract_features_for_ml(&band_result);
+        result.extend(band_features);
+    }
+    result
+}
+// Helper: resize or pad/truncate to 4096
+fn to_sized(data: &[f32], size: usize) -> Vec<f32> {
+    let mut out = vec![0.0; size];
+    let n = data.len().min(size);
+    out[..n].copy_from_slice(&data[..n]);
+    out
+}
+
 fn parse_bin_n(n: usize, raw: &[f32]) -> anyhow::Result<Vec<f32>> {
     let peaks = all_peaks(raw, 4000);
     let pulses: Vec<Vec<f32>> = peaks
@@ -155,10 +214,10 @@ fn build_range_list(tb: f32, n: usize) -> Vec<std::ops::Range<f32>> {
         .map(|i| (i as f32 - 1.0) * step..i as f32 * step)
         .collect()
 }
-fn read_wav(wav: &[u8]) -> anyhow::Result<Vec<f32>> {
-   read_wav_ch(wav,2) 
+pub fn read_wav(wav: &[u8]) -> anyhow::Result<Vec<f32>> {
+    read_wav_ch(wav, 2)
 }
-fn read_wav_ch(wav: &[u8],channels:u16) -> anyhow::Result<Vec<f32>> {
+fn read_wav_ch(wav: &[u8], channels: u16) -> anyhow::Result<Vec<f32>> {
     //let wav: &[u8] = &data;
     let reader = PcmReader::new(wav)?;
     let specs = reader.get_pcm_specs();
@@ -172,9 +231,9 @@ fn read_wav_ch(wav: &[u8],channels:u16) -> anyhow::Result<Vec<f32>> {
         Ok(data)
     } else {
         let (mode, must) = if specs.num_channels == 1 {
-            ("mono","stereo") 
+            ("mono", "stereo")
         } else {
-            ("stereo","mono")
+            ("stereo", "mono")
         };
         Err(anyhow::Error::msg(format!("A {must} file was expected with a sample rate of {}, but a {} file with a sample rate of {} was received!",
                                        SAMPLE_RATE, mode, specs.sample_rate)))
@@ -263,12 +322,12 @@ fn impuls(data: &[f32], peak: usize) -> Vec<f32> {
         .copied()
         .sum::<f32>()
         / data
-            .iter()
-            .skip(peak)
-            .take(1000)
-            .filter(|&&x| x > 0.0)
-            .count()
-            .max(1) as f32;
+        .iter()
+        .skip(peak)
+        .take(1000)
+        .filter(|&&x| x > 0.0)
+        .count()
+        .max(1) as f32;
 
     let last = back_search(data, peak, mean);
     // Slice from (peak-2)..=last, handling bounds
@@ -351,20 +410,20 @@ mod tests {
         let wav_path: &Path = SRCRAW.as_ref();
         #[rustfmt::skip]
         let real = vec![5.911_861E-4,6.021_952E-4,0.002_478_469_9,0.001_267_877,0.001_978_414_1,9.065_647_6E-4,0.001_497_84,7.194_772E-4,9.831_714E-4,8.784_834E-4,1.527_001_1E-4];
-        test_to_bin11(wav_path, real,2);
+        test_to_bin11(wav_path, real, 2);
     }
     #[test]
     fn test_interim_to_bin11() {
         let wav_path: &Path = SRCRAW0.as_ref();
         #[rustfmt::skip]
         let real = vec![0.00087014644, 0.00075164676, 0.002676331, 0.001098881, 0.0022909078, 0.00084123365, 0.0017334798, 0.00078802824, 0.001121256, 0.0008936477, 0.00022057218];
-        test_to_bin11(wav_path, real,1);
+        test_to_bin11(wav_path, real, 1);
     }
 
-    fn test_to_bin11(wav_path: &Path, real: Vec<f32>,channels:u16) {
+    fn test_to_bin11(wav_path: &Path, real: Vec<f32>, channels: u16) {
         set_root();
         let all = fs::read(wav_path).unwrap();
-        let raw = read_wav_ch(&all,channels).unwrap();
+        let raw = read_wav_ch(&all, channels).unwrap();
         let data = parse_bin_n(11, &raw).unwrap();
         //println!("data  :{:?}", data);
         assert_eq!(data.len(), real.len());
@@ -375,13 +434,13 @@ mod tests {
     // for correctness of the *bin_n left and part detection
     #[test]
     fn test_left_part() {
-        test_one_left_part(11,5_000.0, 10_000.0);
-        test_one_left_part(20,5_000.0 / 2.0 , 10_000.0 /2.0);
-        test_one_left_part(30,5_000.0 / 3.0 , 10_000.0 /3.0);
-        test_one_left_part(39,5_000.0 / 4.0 , 10_000.0 /4.0);
-        test_one_left_part(49,5_000.0 / 5.0 , 10_000.0 /5.0);
+        test_one_left_part(11, 5_000.0, 10_000.0);
+        test_one_left_part(20, 5_000.0 / 2.0, 10_000.0 / 2.0);
+        test_one_left_part(30, 5_000.0 / 3.0, 10_000.0 / 3.0);
+        test_one_left_part(39, 5_000.0 / 4.0, 10_000.0 / 4.0);
+        test_one_left_part(49, 5_000.0 / 5.0, 10_000.0 / 5.0);
     }
-    fn test_one_left_part(n: usize,real_left: f32,real_part: f32) {
+    fn test_one_left_part(n: usize, real_left: f32, real_part: f32) {
         let (part, left) = left_part(n);
         assert!((real_part - part).abs() < f32::EPSILON);
         assert!((real_left - left).abs() < f32::EPSILON);
@@ -534,4 +593,76 @@ mod tests {
         let step = 1.0 / (len - 1) as f32;
         (0..len).map(|i| i as f32 * step).collect()
     }
+    #[test]
+    fn test_hob_single_band() {
+        use ho::HigherOrderMomentsAnalyzer;
+
+        let data = sample_hom_signal();
+        let bands = 1;
+        let band_width = 3000.0;
+        let centers = vec![85_000.0];
+        let window = ""; //"hanning";
+        println!("Signal: {:?}..{:?}", data.first(),data.last());
+        // Create analyzer (adjust as needed for your constructor)
+        let mut analyzer = HigherOrderMomentsAnalyzer::default();
+        let result = hob(&data, bands, band_width, window, &centers, &mut analyzer);
+        println!("HOB size: {:?}", result.len());
+        println!("HOB result 1st: {:?}", result[0..17].to_vec());
+        println!("HOB result 2nd: {:?}", result[17..].to_vec());
+    }
+
+    fn sample_hom_signal() -> Vec<f32> {
+        let signal_length = 4096;
+        let sampling_rate = 192000.0;
+        let signal: Vec<f32> = (0..signal_length)
+            .map(|i| {
+                let t = i as f32 / sampling_rate;
+                // Harmonic components
+                let fundamental = (2.0 * PI * 10000.0 * t).sin();
+                let second_harmonic = 0.5 * (2.0 * PI * 20000.0 * t).sin();
+                let third_harmonic = 0.3 * (2.0 * PI * 85000.0 * t).sin();
+                // Nonlinear component (creates interesting higher-order moments)
+                let nonlinear = 0.1 * (2.0 * PI * 10000.0 * t).sin().powf(3.0);
+                fundamental + second_harmonic + third_harmonic + nonlinear //+ noise
+            })
+            .collect();
+        signal
+    }
+    /*
+    #[test]
+    fn test_hob_single_band64() {
+        use ho::HigherOrderMomentsAnalyzer;
+
+        let data = sample_hom_signal64();
+        let bands = 1;
+        let band_width = 3000.0f64;
+        let centers = vec![85_000.0f64];
+        let window = ""; //"hanning";
+        println!("Signal: {:?}..{:?}", data.first(),data.last());
+        // Create analyzer (adjust as needed for your constructor)
+        let mut analyzer = HigherOrderMomentsAnalyzer::default();
+        let result = hob64(&data, bands, band_width, window, &centers, &mut analyzer);
+        println!("HOB size: {:?}", result.len());
+        println!("HOB result 1st: {:?}", result[0..17].to_vec());
+        println!("HOB result 2nd: {:?}", result[17..].to_vec());
+    }
+
+    fn sample_hom_signal64() -> Vec<f64> {
+        let signal_length = 4096;
+        let sampling_rate = 192000.0;
+        let signal: Vec<f64> = (0..signal_length)
+            .map(|i| {
+                let t = i as f32 / sampling_rate;
+                // Harmonic components
+                let fundamental = (2.0 * PI * 10000.0 * t).sin();
+                let second_harmonic = 0.5 * (2.0 * PI * 20000.0 * t).sin();
+                let third_harmonic = 0.3 * (2.0 * PI * 85000.0 * t).sin();
+                // Nonlinear component (creates interesting higher-order moments)
+                let nonlinear = 0.1 * (2.0 * PI * 10000.0 * t).sin().powf(3.0);
+                (fundamental + second_harmonic + third_harmonic + nonlinear) as f64 //+ noise
+            })
+            .collect();
+        signal
+    }
+    */
 }

@@ -19,9 +19,9 @@ struct Args {
     /// Buffer size
     #[arg(long, value_enum)]
     buff_size: Option<BufSize>,
-    /// Use frequency scaling
+    /// Use frequency scaling or normalisation
     #[arg(long)]
-    scaled_frequency: Option<bool>,
+    flag: Option<bool>,
     /// Model type
     #[arg(long, value_enum)]
     model_type: Option<ModelType>,
@@ -55,7 +55,7 @@ pub fn main() -> anyhow::Result<()> {
             println!("{:5.2?}", Instant::now().duration_since(start));
             meta.save();
         }
-        Err(e) => println!("{:?}", e),
+        Err(e) => println!("{:?}!!!", e),
     }
     Ok(())
 }
@@ -74,8 +74,8 @@ fn meta() -> anyhow::Result<Meta> {
     if let Some(buff_size) = args.buff_size {
         meta.buff_size = buff_size;
     }
-    if let Some(scaled_frequency) = args.scaled_frequency {
-        meta.scaled_frequency = scaled_frequency;
+    if let Some(flag) = args.flag {
+        meta.flag = flag;
     }
     if let Some(model_type) = args.model_type {
         meta.model_type = model_type;
@@ -100,8 +100,8 @@ fn meta() -> anyhow::Result<Meta> {
     }
     if let Some(hidden) = args.hidden {
         meta.hidden = Some(hidden);
-    } else if meta.hidden.is_none(){
-            meta.hidden = Some("40,10".to_string());
+    } else if meta.hidden.is_none() {
+        meta.hidden = Some("40,10".to_string());
     }
     // Check if the algorithm type is implemented
     if args.defaults {
@@ -109,13 +109,21 @@ fn meta() -> anyhow::Result<Meta> {
         process::exit(0);
     }
     // Check if the algorithm type is implemented
-/*
-    if meta.alg_type != AlgType::Bin {
-        return Err(anyhow::Error::msg(format!(
-            "Algorithm {:#?} is not implemented yet!",
-            meta.alg_type
-        )));
+    /*
+        if meta.alg_type != AlgType::Bin {
+            return Err(anyhow::Error::msg(format!(
+                "Algorithm {:#?} is not implemented yet!",
+                meta.alg_type
+            )));
+        }
+    */
+    if meta.alg_type == AlgType::HOM {
+        if meta.model_type != ModelType::Classification {
+            return Err(anyhow::Error::msg(format!(
+                "HOM is not implemented for {:#?} and model_type:{:#?}!",
+                meta.alg_type, meta.model_type
+            )));
+        }
     }
-*/
     Ok(meta)
 }

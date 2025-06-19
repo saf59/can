@@ -25,6 +25,7 @@ impl Dataset {
 
 pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32,dev: &Device) -> candle_core::Result<Dataset> {
     let y = read_medius_y(dir.as_ref())?;
+    //parts(&y);
     let x = read_medius_x(dir.as_ref())?;
     let size = y.len();
     let width = x.len() / size;
@@ -38,7 +39,9 @@ pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32,dev: &Device) -> candle_
     };
     let (train_size, test_size) = (&train.len(),&test.len());
     let (train_x, train_y) = fill_x_y(train, &x, &y, width);
+    //parts(&train_y);
     let (test_x, test_y) = fill_x_y(test, &x, &y, width);
+    //parts(&test_y);
     Ok(Dataset {
         train_data: Tensor::from_vec(train_x, (*train_size, width), dev)?,
         train_labels: Tensor::from_vec(train_y, *train_size, dev)?,
@@ -46,6 +49,14 @@ pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32,dev: &Device) -> candle_
         test_labels: Tensor::from_vec(test_y, *test_size, dev)?,
     })
 }
+
+/*
+fn parts(y: &Vec<u8>) {    let i0 = y.iter().filter(|i| **i == 0).count();
+    let i1 = y.iter().filter(|i| **i == 1).count();
+    let i2 = y.iter().filter(|i| **i == 2).count();
+    println!("{:?},{:?},{:?}", i0, i1, i2);
+}
+*/
 fn fill_x_y(
     ind: core::ops::Range<usize>,
     x: &[f32],
@@ -125,5 +136,14 @@ mod tests {
         assert_eq!(dataset.test_data.shape().dims2().unwrap(), (72, 260));
         assert_eq!(dataset.classes(false) , 5);
     }
-
+    #[test]
+    fn test_y() {
+        let y:Vec<u8> = vec![0,0,1,1,1,2,2,2,2];
+        let i0 = y.iter().filter(|i| **i == 0).count();
+        let i1 = y.iter().filter(|i| **i == 1).count();
+        let i2 = y.iter().filter(|i| **i == 2).count();
+        let ty = Tensor::from_vec(y, 9, &Device::Cpu).unwrap();
+        let ity = ty.eq(1.0).expect("REASON").sum_all().unwrap();
+        println!("{:?},{:?},{:?},ty:{:?},ity:{}", i0, i1, i2, ty.shape(), ity);
+    }
 }

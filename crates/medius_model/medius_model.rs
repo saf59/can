@@ -1,6 +1,7 @@
 use candle_core::{DType, Device, Result, Tensor, D};
 use candle_nn::{loss, ops, AdamW, Linear, Module, Optimizer, ParamsAdamW, VarBuilder, VarMap};
 use medius_data::{load_dir, print_dataset_info, Dataset};
+use medius_meta::Accuracy;
 pub(crate) use medius_meta::{
     Activation, Meta,
     ModelType::{Classification, Regression},
@@ -72,7 +73,7 @@ impl Model for Mlp {
 
 pub fn training_loop(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<()> {
     let dev = &Device::cuda_if_available(0)?;
-    println!("Device:{:?}, {:?}", dev, &meta.small());
+    println!("Device:{:?}, {:?}, {:?}", dev, &meta.small() , &datapath);
     let dataset = load_dir(datapath, meta.train_part, dev)?;
     print_dataset_info(&dataset);
     let binding = meta.model_file();
@@ -93,7 +94,7 @@ pub fn training_loop(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn test_all(datapath: PathBuf, meta: &mut Meta,loss:bool) -> anyhow::Result<f32> {
+pub fn test_all(datapath: PathBuf, meta: &mut Meta, accuracy: Accuracy) -> anyhow::Result<f32> {
     let dev = &Device::cuda_if_available(0)?;
     let dataset = load_dir(datapath, meta.train_part, dev)?;
     meta.outputs = dataset.classes(meta.model_type == Regression);
@@ -101,12 +102,13 @@ pub fn test_all(datapath: PathBuf, meta: &mut Meta,loss:bool) -> anyhow::Result<
     let test_data = dataset.test_data.to_device(dev)?;
     let test_accuracy = match meta.model_type {
         Classification => {
-            let test_labels = dataset.test_labels.to_dtype(DType::U32)?.to_device(dev)?;
-            test_classification(&model, &test_data, &test_labels,loss)
+            let test_labels = dataset.test_labels.to_dtype(DType::U32)?;
+            //println!("{:?}", test_labels.eq(0.0)?.to_dtype(DType::F32).unwrap().elem_count());
+            test_classification(&model, &test_data, &test_labels, accuracy)
         }
         Regression => {
-            let test_labels = labels_to_wp(&dataset.test_labels,dev);
-            test_regression(&model, &test_data, &test_labels,loss)
+            let test_labels = labels_to_wp(&dataset.test_labels, dev);
+            test_regression(&model, &test_data, &test_labels, accuracy)
         }
     }?;
     Ok(test_accuracy)
@@ -120,11 +122,11 @@ pub fn test_less01(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<f32> {
     let test_accuracy = match meta.model_type {
         Classification => {
             let test_labels = dataset.test_labels.to_dtype(DType::U32)?.to_device(dev)?;
-            test_classification(&model, &test_data, &test_labels,false)
+            test_classification(&model, &test_data, &test_labels, Accuracy::Percent01)
         }
         Regression => {
-            let test_labels = labels_to_wp(&dataset.test_labels,dev);
-            test_regression(&model, &test_data, &test_labels,false)
+            let test_labels = labels_to_wp(&dataset.test_labels, dev);
+            test_regression(&model, &test_data, &test_labels, Accuracy::Percent01)
         }
     }?;
     Ok(test_accuracy)
@@ -154,11 +156,17 @@ fn train_classification(
         let loss = match meta.batch_size {
             1 => train_classification_epoch(&model, &mut opt, &train_data, &train_labels),
             _ => train_classification_batches(
-                &model, &mut opt, &train_data, &train_labels, meta.batch_size),
+                &model,
+                &mut opt,
+                &train_data,
+                &train_labels,
+                meta.batch_size,
+            ),
         }?;
-        let test_accuracy = test_classification(model, &test_data, &test_labels,false)?;
+        let test_accuracy = test_classification(model, &test_data, &test_labels, Accuracy::Percent01)?;
         print!(
-            "{epoch:4} train loss: {loss:8.7} test acc: {:5.2}%\r", test_accuracy
+            "{epoch:4} train loss: {loss:8.7} test acc: {:5.2}%       \r",
+            test_accuracy
         );
     }
     Ok(())
@@ -195,7 +203,7 @@ fn train_classification_batches(
         opt.backward_step(&loss)?;
         total_loss += loss.to_scalar::<f32>()?;
     }
-    Ok(total_loss / len )
+    Ok(total_loss / len)
 }
 fn train_regression(
     m: Dataset,
@@ -212,9 +220,9 @@ fn train_regression(
         },
     )?;
     let train_data = m.train_data.to_device(dev)?;
-    let train_labels = labels_to_wp(&m.train_labels,dev);
+    let train_labels = labels_to_wp(&m.train_labels, dev);
     let test_data = m.test_data.to_device(dev)?;
-    let test_labels = labels_to_wp(&m.test_labels,dev);
+    let test_labels = labels_to_wp(&m.test_labels, dev);
     for epoch in 1..=meta.epochs {
         let loss = match meta.batch_size {
             1 => train_regression_epoch(&model, &mut opt, &train_data, &train_labels),
@@ -226,15 +234,22 @@ fn train_regression(
                 meta.batch_size,
             ),
         }?;
-        let test_accuracy = test_regression(model, &test_data, &test_labels,false)?;
+        let test_accuracy = test_regression(model, &test_data, &test_labels, Accuracy::Percent01)?;
         print!(
-            "{epoch:6} train loss: {loss:8.7} test acc: {:5.2}%\r", test_accuracy
+            "{epoch:6} train loss: {loss:8.7} test acc: {:5.2}%       \r",
+            test_accuracy
         );
     }
     Ok(())
 }
-fn labels_to_wp(labels: &Tensor,dev: &Device) -> Tensor {
-    labels.to_dtype(DType::F32).unwrap().mul(-0.1).unwrap().to_device(dev).unwrap()
+fn labels_to_wp(labels: &Tensor, dev: &Device) -> Tensor {
+    labels
+        .to_dtype(DType::F32)
+        .unwrap()
+        .mul(-0.1)
+        .unwrap()
+        .to_device(dev)
+        .unwrap()
 }
 fn train_regression_epoch(
     model: &&Mlp,
@@ -279,19 +294,32 @@ fn train_regression_batches(
     let accuracy = sum_ok / labels.dims1()? as f32;
     Ok(accuracy)
 }*/
-fn test_classification(model: &Mlp, data: &Tensor, labels: &Tensor,loss:bool) -> anyhow::Result<f32> {
-    let logits = model.forward(data)?;
-    let logits = logits.argmax(D::Minus1).unwrap().to_dtype(DType::F32).unwrap().mul(-0.1)?;
-    let labels = labels.to_dtype(DType::F32).unwrap().mul(-0.1)?;
-    if loss {
-        to_loss(&labels, logits)
+fn test_classification(
+    model: &Mlp,
+    data: &Tensor,
+    labels: &Tensor,
+    accuracy: Accuracy,
+) -> anyhow::Result<f32> {
+    let logits = model.forward(data)?
+        .argmax(D::Minus1)?;
+    if accuracy == Accuracy::Loss {
+        let logits01 = logits.to_dtype(DType::F32)
+            .unwrap()
+            .mul(-0.1)?; // 0,1,2.... * 0.1
+        let labels01 = labels.to_dtype(DType::F32).unwrap().mul(-0.1)?;
+        to_loss(&labels01, logits01)
     } else {
-        to_01(&labels, logits)
+        to_percent(labels, &logits)
     }
 }
-fn test_regression(model: &Mlp, data: &Tensor, labels: &Tensor,loss:bool) -> anyhow::Result<f32> {
+fn test_regression(
+    model: &Mlp,
+    data: &Tensor,
+    labels: &Tensor,
+    accuracy: Accuracy,
+) -> anyhow::Result<f32> {
     let logits = model.forward(data).unwrap().flatten_to(1)?;
-    if loss {
+    if accuracy == Accuracy::Loss {
         to_loss(labels, logits)
     } else {
         to_01(labels, logits)
@@ -303,12 +331,27 @@ fn to_loss(labels: &Tensor, logits: Tensor) -> anyhow::Result<f32> {
     let accuracy = loss.to_scalar::<f32>()?;
     Ok(accuracy)
 }
+fn to_percent(labels: &Tensor, logits: &Tensor) -> anyhow::Result<f32> {
+    //println!("labels:{:?}, logits:{:?}", labels.dtype(), logits.dtype());
+    //let logits = logits.to_dtype(DType::U8)?;
+    let sum_ok = logits
+        .eq(labels)?
+        .to_dtype(DType::F32)?
+        .sum_all()?
+        .to_scalar::<f32>()?;
+    let percentage = (sum_ok / labels.dims1()? as f32) * 100.0;
+    Ok(percentage)
+}
 
+// candle-examples/examples/mnist-training/main.rs
 fn to_01(labels: &Tensor, logits: Tensor) -> anyhow::Result<f32> {
     let diff = logits.sub(labels)?.abs()?;
     let within_threshold = diff.le(0.1)?.to_dtype(DType::F32)?;
+
     let count_within_threshold = within_threshold.sum_all()?.to_scalar::<f32>()?;
-    let total_count = within_threshold.dims1()? as f32;
+    //println!("logits 0:{:?}", logits.eq(0.0)?.to_dtype(DType::F32)?.sum_all()?.to_scalar::<f32>());
+    //println!("labels 0:{:?}", labels.eq(0.0)?.to_dtype(DType::F32)?.sum_all()?.to_scalar::<f32>());
+    let total_count = labels.dims1()? as f32;
     let percentage = (count_within_threshold / total_count) * 100.0;
     Ok(percentage)
 }
@@ -332,7 +375,10 @@ pub fn get_model(
         .map(|x| x.parse().unwrap())
         .collect();
     if verbose {
-        println!("inputs:{:?},outputs:{:?},hidden:{:?}", inputs, outputs, hidden);
+        println!(
+            "inputs:{:?},outputs:{:?},hidden:{:?}",
+            inputs, outputs, hidden
+        );
     }
     let model = Mlp::new(
         vs.clone(),
@@ -364,4 +410,32 @@ pub fn fill_from_file(meta: &Meta, verbose: bool, varmap: &mut VarMap) -> anyhow
         varmap.load(model_path)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use candle_core::{Device, Tensor};
+
+    #[test]
+    fn test_to_01_basic() {
+        let dev = Device::Cpu;
+        // Labels and logits are close, so all should be within threshold
+        let labels = Tensor::from_vec(vec![0.0, 0.1, 0.2], (3,), &dev).unwrap();
+        let logits = Tensor::from_vec(vec![0.05, 0.15, 0.18], (3,), &dev).unwrap();
+        let result = to_01(&labels, logits).unwrap();
+        // All diffs are <= 0.1, so expect 100%
+        assert!((result - 100.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn test_to_01_partial() {
+        let dev = Device::Cpu;
+        // Only one value is within threshold
+        let labels = Tensor::from_vec(vec![0.0, 0.1, 0.2], (3,), &dev).unwrap();
+        let logits = Tensor::from_vec(vec![0.52, 0.13, 0.54], (3,), &dev).unwrap();
+        let result = to_01(&labels, logits).unwrap();
+        // Only the second value matches, so expect 33.33%
+        assert!((result - 33.3333).abs() < 1e-2);
+    }
 }

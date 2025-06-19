@@ -1,47 +1,86 @@
-use candle_core::safetensors::Load;
+use anyhow::Error;
 use candle_core::{Device, Tensor, D};
-use candle_nn::VarMap;
-use medius_meta::{Meta, ModelType};
+use medius_meta::{fill_from_static, static_meta, AlgType, Meta, ModelType};
 use medius_model::{get_model, Model};
-use medius_parser::parse_all;
+use medius_parser::{parse_all, parse_hom, read_wav};
+use utils::{column_averages, default_mm, normalize_row_columns};
 
-pub fn detect(all: &[u8], freq: f32, verbose: bool) -> anyhow::Result<f32> {
+pub fn detect(all: &[u8], freq: f32, verbose: bool, joined:bool) -> anyhow::Result<f32> {
     let meta = static_meta();
     let buff_size: usize = meta.buff_size.clone() as usize;
     let inputs = meta.n;
     let dev = Device::cuda_if_available(0)?;
     let alg_type = meta.alg_type.clone();
-    let data = parse_all(all, inputs, freq, buff_size,alg_type)?;
+    if alg_type != medius_meta::AlgType::HOM {
+        let data = parse_all(all, inputs, freq, buff_size,alg_type)?;
+        detect_by_single_vec(verbose, &meta, inputs, &dev, &data)
+    } else {
+        let raw = read_wav(all)?;
+        detect_by_many_vectors(verbose, joined, &meta, inputs, &dev, &raw)
+    }
+}
+
+fn detect_by_many_vectors(verbose: bool, joined: bool, meta: &Meta, inputs: usize, dev: &Device, raw: &Vec<f32>) -> anyhow::Result<f32>{
+    let hom_data = parse_hom(&raw)?;
+    let (medians, multiplier) = default_mm();
+    if joined {
+        // If joined, we use the same function as for all
+        let mut avg = column_averages(&hom_data);
+        if meta.flag {
+           avg = normalize_row_columns(&avg, &medians, &multiplier);
+        }
+        detect_by_single_vec(verbose, &meta, inputs, &dev, &avg)
+    } else {
+        // If not joined, we use the special function for hom
+        let results = hom_data.iter().map(|h| {
+            let hn = if meta.flag {
+                // If flag is true, we normalize the data
+                normalize_row_columns(&h, &medians, &multiplier)
+            } else {
+                h.to_vec()
+            };
+            detect_by_single_vec(verbose, &meta, inputs, &dev, &hn)
+        }).collect::<Result<Vec<_>, Error>>()?;
+        Ok(most_frequent_value(&results).unwrap_or(0.0))
+    }
+}
+fn most_frequent_value(values: &[f32]) -> anyhow::Result<f32> {
+    let mut counts = std::collections::HashMap::new();
+    for &v in values {
+        let key = (v * 100.0).round() as i32;
+        *counts.entry(key).or_insert(0) += 1;
+    }
+    let most = counts.into_iter()
+        .max_by_key(|&(_, count)| count)
+        .map(|(value, _)| value as f32 / 100.0);
+    most.ok_or_else(|| anyhow::anyhow!("No values found"))
+}
+fn detect_by_single_vec(verbose: bool, meta: &Meta, inputs: usize, dev: &Device, data: &[f32]) -> anyhow::Result<f32> {
     // Convert data(extracted wav properties) to Tensor
-    let data = Tensor::from_vec(data, (1, inputs), &dev)?;
+    let data = Tensor::from_vec(data.to_vec(), (1, inputs), &dev)?;
     // Build model and fill it VarMap
     let (_vm, model) = get_model(&dev, &meta, verbose, &fill_from_static)?;
     let result = model.forward(&data)?;
     // Extract wp from result by model type
     let wp = match meta.model_type {
-        ModelType::Classification => by_class(&result),
+        ModelType::Classification => by_class(&result, &meta.alg_type),
         ModelType::Regression => by_regr(&result),
     }?;
     Ok(wp)
 }
 
 /// Extract classification result
-fn by_class(logits: &Tensor) -> anyhow::Result<f32> {
+fn by_class(logits: &Tensor,alg_type: &AlgType) -> anyhow::Result<f32> {
     let max = logits.argmax(D::Minus1)?.to_vec1::<u32>()?;
     let max = max.first();
+    if alg_type== &AlgType::HOM {
+        // For HOM, we return the first value as the result
+        return Ok(*max.unwrap_or(&0) as f32);
+    }
     let wp: f32 = (*max.unwrap() as f32) * -0.1;
     Ok(wp)
 }
-// it is not used, but it is same as previous by_class how to extract result
-/*
-fn by_class2(logits: &Tensor) -> anyhow::Result<f32> {
-    let wp: f32 = logits
-        .argmax(D::Minus1)?
-        .to_dtype(DType::F32)?
-        .get(0).map(|x| x.to_scalar::<f32>())??;
-    Ok(wp * -0.1)
-}
-*/
+
 /// Extract regression result
 fn by_regr(logits: &Tensor) -> anyhow::Result<f32> {
     let wp: f32 = logits
@@ -49,22 +88,6 @@ fn by_regr(logits: &Tensor) -> anyhow::Result<f32> {
         .get(0)?
         .to_scalar::<f32>()?;
     Ok(wp)
-}
-/// Get Meta embed resource
-fn static_meta() -> Meta {
-    let buf = include_bytes!("./../../models/model.meta");
-    serde_yaml::from_slice(buf).unwrap()
-}
-/// Fill VarMap from embed
-fn fill_from_static(_meta: &Meta, _verbose: bool, varmap: &mut VarMap) -> anyhow::Result<()> {
-    let dev = Device::cuda_if_available(0)?;
-    let buf = include_bytes!("./../../models/model.safetensors");
-    let map = safetensors::SafeTensors::deserialize(buf)?;
-    for (k, v) in map.tensors() {
-        let _ = varmap.set_one(k,v.load(&dev)?);
-        // v.load(&dev)? ->  v.convert(&dev)?  in 0.5 version, but candle 0.8.4 use load
-    }
-    Ok(())
 }
 
 pub fn show_is_cuda() {

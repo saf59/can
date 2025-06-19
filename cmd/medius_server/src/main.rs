@@ -97,7 +97,7 @@ async fn detect3(mut payload: Multipart) -> Result<HttpResponse, Error> {
         info!("Frequency: {:?}, file sig: {}, signature: {:?}", &freq,file_sig,&sig);
         return Err(actix_web::error::ErrorForbidden("Invalid signature"));
     }
-    let wd = match detect(&file_data, freq as f32, false) {
+    let wd = match detect(&file_data, freq as f32, false,false) {
         Ok(dist) => dist.to_string(),
         Err(e) => {
             info!("Frequency: {:?}, file sig: {}, signature: {:?}", &freq,file_sig,&sig);

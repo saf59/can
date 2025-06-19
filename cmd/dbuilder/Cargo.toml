@@ -1,0 +1,19 @@
+[package]
+name = "dbuilder"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+csv.workspace = true
+serde = { version = "1.0.219", features = ["derive"] }
+anyhow.workspace = true
+indicatif.workspace = true
+medius_parser = { path = "../../crates/medius_parser" }
+ho = { path = "../../crates/ho" }
+utils = { path = "../../crates/utils" }
+
+
+[[bin]]
+path = "./dbuilder.rs"
+name = "dbuilder"

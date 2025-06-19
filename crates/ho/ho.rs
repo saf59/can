@@ -1,8 +1,8 @@
 ﻿use std::collections::HashMap;
 use std::f32::consts::PI;
-
+use rustfft::num_complex::Complex32;
 // External crate dependencies
-use rustfft::{num_complex::Complex32, FftPlanner};
+//use rustfft::{num_complex::Complex32, FftPlanner};
 
 // Remove the custom Complex implementation since we're using rustfft's Complex32
 
@@ -58,8 +58,8 @@ pub struct HigherOrderMomentsAnalyzer {
     n: usize,
     /// Cache for precomputed window functions to avoid recomputation
     window_cache: HashMap<(usize, String), Vec<f32>>,
-    /// FFT planner for efficient Fourier transforms
-    fft_planner: FftPlanner<f32>,
+    // FFT planner for efficient Fourier transforms
+    //fft_planner: FftPlanner<f32>,
 }
 
 impl HigherOrderMomentsAnalyzer {
@@ -73,7 +73,7 @@ impl HigherOrderMomentsAnalyzer {
             sampling_rate,
             n,
             window_cache: HashMap::new(),
-            fft_planner: FftPlanner::new(),
+            //fft_planner: FftPlanner::new(),
         }
     }
 
@@ -121,6 +121,7 @@ impl HigherOrderMomentsAnalyzer {
     /// * `signal` - Input signal samples
     /// * `window_type` - Type of window to apply
     fn apply_window(&mut self, signal: &[f32], window_type: &str) -> Vec<f32> {
+        if window_type.is_empty() { return signal.to_vec(); }
         let window = self.get_window(signal.len(), window_type);
         signal
             .iter()
@@ -138,7 +139,7 @@ impl HigherOrderMomentsAnalyzer {
     /// # Returns
     /// * Complex-valued FFT output with same length as input
     fn compute_fft(&mut self, input: &[f32]) -> Vec<Complex32> {
-        let n = input.len();
+/*        let n = input.len();
 
         // Convert real input to complex format
         let mut buffer: Vec<Complex32> = input.iter().map(|&x| Complex32::new(x, 0.0)).collect();
@@ -150,6 +151,7 @@ impl HigherOrderMomentsAnalyzer {
         fft.process(&mut buffer);
 
         buffer
+*/      utils::fft::fft_forward(&input, input.len())
     }
 
     /// Compute Power Spectral Density from windowed signal using rustfft
@@ -228,12 +230,13 @@ impl HigherOrderMomentsAnalyzer {
                 .filter(|(_, &freq)| freq >= band.start_freq && freq <= band.end_freq)
                 .map(|(i, _)| i)
                 .collect();
-
+            //println!("Analyzing band: {} (from {} {} indices)", band.name, band_indices[0], band_indices.len());
             if !band_indices.is_empty() {
                 // Extract PSD and frequencies for this band
                 let band_psd: Vec<f32> = band_indices.iter().map(|&i| psd[i]).collect();
                 let band_freqs: Vec<f32> = band_indices.iter().map(|&i| frequencies[i]).collect();
-
+                //println!("Band PSD: {:?}", band_psd);
+                //println!("Band freq: {:?}", band_freqs);
                 let result = self.compute_higher_order_moments(&band_psd, &band_freqs);
                 results.insert(band.name.clone(), result);
             }
@@ -319,35 +322,28 @@ impl HigherOrderMomentsAnalyzer {
         } else {
             psd.to_vec()
         };
-
         // Compute raw moments (m_k = sum(p_i * f_i^k))
         let raw_moments = self.compute_raw_moments(&normalized_psd, frequencies, self.n + 1);
         let mean = raw_moments[1]; // First moment is the spectral centroid
-
         // Compute central moments around the mean
         let central_moments = self.compute_central_moments(&normalized_psd, frequencies, mean, 4);
-
         // Compute cumulants from raw moments
         let cumulants = self.compute_cumulants(&raw_moments);
-
         // Extract standard spectral features
         let spectral_mean = mean;
         let spectral_variance = central_moments[2];
-
         // Skewness: normalized third central moment (asymmetry)
         let spectral_skewness = if spectral_variance > 0.0 {
             central_moments[3] / spectral_variance.powf(1.5)
         } else {
             0.0
         };
-
         // Kurtosis: normalized fourth central moment minus 3 (excess kurtosis)
         let spectral_kurtosis = if spectral_variance > 0.0 {
             central_moments[4] / spectral_variance.powf(2.0) - 3.0
         } else {
             0.0
         };
-
         // Spectral flatness: ratio of geometric to arithmetic mean
         let geometric_mean = if normalized_psd.iter().all(|&p| p > 0.0) {
             let log_sum: f32 = normalized_psd.iter().map(|&p| p.ln()).sum();
@@ -355,21 +351,18 @@ impl HigherOrderMomentsAnalyzer {
         } else {
             0.0
         };
-
         let arithmetic_mean: f32 = normalized_psd.iter().sum::<f32>() / normalized_psd.len() as f32;
         let spectral_flatness = if arithmetic_mean > 0.0 {
             geometric_mean / arithmetic_mean
         } else {
             0.0
         };
-
         // Spectral entropy: Shannon entropy of the PSD
         let spectral_entropy: f32 = normalized_psd
             .iter()
             .filter(|&&p| p > 0.0)
             .map(|&p| -p * p.ln())
             .sum();
-
         // Moment ratios for feature extraction (normalized moments)
         let moment_ratios: Vec<f32> = (0..self.n)
             .map(|i| {
@@ -627,39 +620,14 @@ pub fn example_usage() {
 
 #[cfg(test)]
 mod tests {
+//    use realfft::num_complex::{Complex, Complex64};
+//    use realfft::RealFftPlanner;
     use super::*;
 
     /// Test function converted from Kotlin main() - creates synthetic signal and analyzes it
     #[test]
     fn test_higher_order_moments_analysis() {
-        // Create test signal with multiple harmonics and noise
-        let signal_length = 4096;
-        let sampling_rate = 192000.0;
-
-        // Generate complex test signal with:
-        // - Fundamental frequency at 10kHz
-        // - Second harmonic at 20kHz (half amplitude)
-        // - Third harmonic at 30kHz (30% amplitude)
-        // - Nonlinear distortion (creates higher-order moments)
-        // - Gaussian noise
-        let signal: Vec<f32> = (0..signal_length)
-            .map(|i| {
-                let t = i as f32 / sampling_rate;
-
-                // Harmonic components
-                let fundamental = (2.0 * PI * 10000.0 * t).sin();
-                let second_harmonic = 0.5 * (2.0 * PI * 20000.0 * t).sin();
-                let third_harmonic = 0.3 * (2.0 * PI * 30000.0 * t).sin();
-
-                // Add noise (simulated with pseudo-random based on index)
-                // let noise = 0.1 * ((i as f32 * 12.9898).sin() * 43758.5453).fract().signum() * 0.5;
-
-                // Nonlinear component (creates interesting higher-order moments)
-                let nonlinear = 0.1 * (2.0 * PI * 10000.0 * t).sin().powf(3.0);
-
-                fundamental + second_harmonic + third_harmonic + nonlinear //+ noise
-            })
-            .collect();
+        let signal = sample_hom_signal();
 
         // Run comprehensive analysis
         analyze_signal(&signal);
@@ -677,8 +645,38 @@ mod tests {
         assert!(result.spectral_entropy >= 0.0);
         assert!(!result.moment_ratios.is_empty());
         assert!(!result.cumulants.is_empty());
-
+        println!("Analysis result: {:?}", result);
         println!("✅ All tests passed! Analysis completed successfully.");
+        let custom_bands = analyzer.get_custom_frequency_bands(&[85_000.0], 1, 3000.0);
+        //let band_results = analyzer.analyze_frequency_bands(signal, bands, "hanning");
+        let band_results = analyzer.analyze_frequency_bands(&signal, &custom_bands, "hanning");
+        println!("Bands result: {:?}", band_results);
+    }
+
+    fn sample_hom_signal() -> Vec<f32> {
+        // Create test signal with multiple harmonics and noise
+        let signal_length = 4096;
+        let sampling_rate = 192000.0;
+
+        // Generate complex test signal with:
+        // - Fundamental frequency at 10kHz
+        // - Second harmonic at 20kHz (half amplitude)
+        // - Third harmonic at 30kHz (30% amplitude)
+        // - Nonlinear distortion (creates higher-order moments)
+        // - Gaussian noise
+        let signal: Vec<f32> = (0..signal_length)
+            .map(|i| {
+                let t = i as f32 / sampling_rate;
+                // Harmonic components
+                let fundamental = (2.0 * PI * 10000.0 * t).sin();
+                let second_harmonic = 0.5 * (2.0 * PI * 20000.0 * t).sin();
+                let third_harmonic = 0.3 * (2.0 * PI * 30000.0 * t).sin();
+                // Nonlinear component (creates interesting higher-order moments)
+                let nonlinear = 0.1 * (2.0 * PI * 10000.0 * t).sin().powf(3.0);
+                fundamental + second_harmonic + third_harmonic + nonlinear //+ noise
+            })
+            .collect();
+        signal
     }
 
     /// Test individual components of the analyzer
@@ -710,7 +708,6 @@ mod tests {
 
         println!("✅ Component tests passed!");
     }
-
     /// Test feature extraction for ML
     #[test]
     fn test_ml_features() {
@@ -787,7 +784,7 @@ mod tests {
 
         // Custom frequency band analysis
         println!("\n=== Custom Frequency Bands Analysis ===");
-        let custom_bands = analyzer.get_custom_frequency_bands(&[75000.0, 85000.0], 3, 400.0);
+        let custom_bands = analyzer.get_custom_frequency_bands(&[85000.0], 1, 3000.0);
         bands_stat(&mut analyzer, signal, &custom_bands, "hanning");
 
         // Harmonic analysis
@@ -802,5 +799,44 @@ mod tests {
 
         let features_str: Vec<String> = features.iter().map(|&x| format!("{:.4}", x)).collect();
         println!("Features: {}", features_str.join(", "));
+    }
+    
+    // to compare with App4.checkComputeFft()
+    #[test]
+    #[ignore]
+    fn test_compute_fft() {
+        // Test with a simple sine wave, but not 2.0 * PI -> 2.123 * PI
+        let test_signal: Vec<f32> = (0..8)
+            .map(|i| (2.123 * PI * i as f32 / 8.0).sin())
+            .collect();
+        // the same        
+        // [0.0, 0.0980171, 0.195090, 0.290284, 0.382683, 0.4713967, 0.555570 ...
+        //let fft_result = analyzer.compute_fft(&test_signal);
+        // different only Complex.re, and it is very small values
+        let fft_result = utils::fft::fft_forward(&test_signal, test_signal.len());
+        println!("FFT Result:");
+        fft_result.iter().for_each(|c| {
+            println!("{} + {}i", c.re, c.im);
+        });
+        //let size = fft_result.len();
+        println!("amplitudes: {:?})",utils::fft::to_amplitudes(&fft_result,test_signal.len()));
+        println!("phases: {:?})",utils::fft::to_phases(&fft_result,test_signal.len()));
+/*        
+        //     with realfft
+        // make a planner
+        let mut real_planner = RealFftPlanner::<f64>::new();
+        // create a FFT
+        let r2c = real_planner.plan_fft_forward(test_signal.len());
+        // make a dummy real-valued signal (filled with zeros)
+        let mut indata:Vec<f64> = test_signal.into_iter()
+            .map(|x| x as f64).collect();
+        // make a vector for storing the spectrum
+        let mut spectrum = r2c.make_output_vec();
+        // forward transform the signal
+        r2c.process(&mut indata, &mut spectrum).unwrap();
+        spectrum.iter().for_each(|c| {
+            println!("{} + {}i", c.re, c.im);
+        });
+ */
     }
 }

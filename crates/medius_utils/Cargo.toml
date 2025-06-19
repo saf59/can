@@ -13,6 +13,7 @@ safetensors.workspace = true
 medius_model = { path = "../../crates/medius_model" }
 medius_parser = { path = "../../crates/medius_parser" }
 medius_meta = { path = "../../crates/medius_meta" }
+utils = { path = "../../crates/utils" }
 
 [lib]
 path = "medius_utils.rs"

@@ -5,7 +5,9 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+realfft = "3.4.0"
 rustfft.workspace = true
+utils = { path = "../../crates/utils" }
 
 [lib]
 path = "ho.rs"

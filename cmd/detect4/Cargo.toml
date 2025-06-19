@@ -1,0 +1,15 @@
+[package]
+name = "detect4"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+medius_utils = { path = "../../crates/medius_utils" }
+
+[[bin]]
+path = "./detect4.rs"
+name = "detect4"
+

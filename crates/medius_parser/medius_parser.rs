@@ -218,7 +218,7 @@ pub fn read_wav(wav: &[u8]) -> anyhow::Result<Vec<f32>> {
     read_wav_ch(wav, 2)
 }
 fn read_wav_ch(wav: &[u8], channels: u16) -> anyhow::Result<Vec<f32>> {
-    let mut input = &wav[..];
+    let mut input = wav; // &wav[..];
     let reader = PcmReader::new(&mut input)?;
     let specs = reader.get_pcm_specs();
     let num_samples = specs.num_samples;

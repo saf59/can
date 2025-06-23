@@ -1,13 +1,12 @@
-use std::env;
 use actix_multipart::Multipart;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
-use futures_util::stream::StreamExt as _;
-use std::net::Ipv4Addr;
 use env_logger::Env;
+use futures_util::stream::StreamExt as _;
 use log::info;
-use medius_meta::static_meta;
 use medius_utils::detect;
+use std::env;
+use std::net::Ipv4Addr;
 
 // Embedded OpenAPI spec and Swagger UI HTML
 const OPENAPI_YAML: &str = include_str!("../static/openapi.yaml");
@@ -22,21 +21,17 @@ async fn swagger_ui() -> HttpResponse {
 }
 async fn openapi_ui(req: HttpRequest) -> HttpResponse {
     let runtime = real_body(req, OPENAPI_UI_HTML);
-    HttpResponse::Ok()
-        .content_type("text/html")
-        .body(runtime)
+    HttpResponse::Ok().content_type("text/html").body(runtime)
 }
 
 // Handler for OpenAPI spec
 async fn api_docs(req: HttpRequest) -> HttpResponse {
     let runtime = real_body(req, OPENAPI_YAML);
-    HttpResponse::Ok()
-        .content_type("text/yaml")
-        .body(runtime)
+    HttpResponse::Ok().content_type("text/yaml").body(runtime)
 }
 fn real_body(http_request: HttpRequest, src: &str) -> String {
     let info = http_request.connection_info();
-    let runtime = format!("{}://{}", info.scheme(),info.host());
+    let runtime = format!("{}://{}", info.scheme(), info.host());
     src.replace("http://localhost:8080", &runtime)
 }
 // Main detection handler
@@ -76,7 +71,7 @@ async fn detect3(mut payload: Multipart) -> Result<HttpResponse, Error> {
                     actix_web::error::ErrorBadRequest(format!("Invalid signature: {}", e))
                 })?;
                 signature = Some(sig);
-                if (sig/137)*137 != sig {
+                if (sig / 137) * 137 != sig {
                     return Err(actix_web::error::ErrorForbidden("Invalid signature"));
                 }
             }
@@ -93,16 +88,21 @@ async fn detect3(mut payload: Multipart) -> Result<HttpResponse, Error> {
         return Err(actix_web::error::ErrorBadRequest("Frequency is wrong"));
     }
     // Signature validation
-    let file_sig:i64 = (crc32fast::hash(&file_data) as i64) * 137_i64;
+    let file_sig: i64 = (crc32fast::hash(&file_data) as i64) * 137_i64;
     if file_sig != sig {
-        info!("Frequency: {:?}, file sig: {}, signature: {:?}", &freq,file_sig,&sig);
+        info!(
+            "Frequency: {:?}, file sig: {}, signature: {:?}",
+            &freq, file_sig, &sig
+        );
         return Err(actix_web::error::ErrorForbidden("Invalid signature"));
     }
-    let meta = static_meta();
-    let wd = match detect(meta,&file_data, freq as f32, false,false) {
+    let wd = match detect(&file_data, freq as f32, false, false) {
         Ok(dist) => dist.to_string(),
         Err(e) => {
-            info!("Frequency: {:?}, file sig: {}, signature: {:?}", &freq,file_sig,&sig);
+            info!(
+                "Frequency: {:?}, file sig: {}, signature: {:?}",
+                &freq, file_sig, &sig
+            );
             return Err(actix_web::error::ErrorBadRequest(e.to_string()));
         }
     };
@@ -113,7 +113,10 @@ async fn detect3(mut payload: Multipart) -> Result<HttpResponse, Error> {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
-    let port = env::var("MEDIUS_PORT").unwrap_or_else(|_| "9447".to_string()).parse().unwrap();
+    let port = env::var("MEDIUS_PORT")
+        .unwrap_or_else(|_| "9447".to_string())
+        .parse()
+        .unwrap();
     HttpServer::new(|| {
         App::new()
             // Register routes

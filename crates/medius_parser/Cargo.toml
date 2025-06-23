@@ -10,7 +10,7 @@ candle-core.workspace = true
 medius_meta = { path = "../../crates/medius_meta" }
 utils = { path = "../../crates/utils" }
 ho = { path = "../../crates/ho" }
-pacmog = "0.5.0"
+pacmog = "0.6.0"
 
 [lib]
 path = "./medius_parser.rs"

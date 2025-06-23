@@ -3,7 +3,6 @@ use medius_utils::{detect, show_is_cuda};
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
-use medius_meta::static_meta;
 
 /// Command line arguments for the detecting program
 #[derive(Parser)]
@@ -27,8 +26,7 @@ pub fn main() -> anyhow::Result<()> {
     // Parse command line arguments
     let verbose = args.verbose;
     // Detect wp
-    let meta = static_meta();
-    let class =  detect(meta, &all, 0.0, verbose, joined)?;
+    let class =  detect( &all, 0.0, verbose, joined)?;
     // Show result
     if args.verbose {
         show_is_cuda();

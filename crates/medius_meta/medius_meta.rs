@@ -1,12 +1,13 @@
+use candle_core::safetensors::Load;
+use candle_core::{Device, Tensor};
+use candle_nn::{ops, VarMap};
 use clap::ValueEnum;
+use safetensors::SafeTensors;
 use std::fmt::Debug;
 use std::fs;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::string::ToString;
-use candle_core::{Device, Tensor};
-use candle_core::safetensors::Load;
-use candle_nn::{ops, VarMap};
 use utils::{enum_name, first_char};
 
 pub const MODELS_DIR: &str = "./models";
@@ -15,7 +16,7 @@ const MODEL_NAME: &str = "model.safetensors";
 pub const DEFAULT: &str = "./models/model.meta";
 pub const DEFAULT_VM: &str = "./models/model.safetensors";
 
-#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq,Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Debug)]
 pub struct Meta {
     // data && parse
     pub n: usize,
@@ -31,7 +32,7 @@ pub struct Meta {
     pub learning_rate: f64,
     pub train_part: f32,
     pub hidden: Option<String>,
-    pub outputs: usize
+    pub outputs: usize,
 }
 /// Get Meta embed resource
 pub fn static_meta() -> Meta {
@@ -40,15 +41,25 @@ pub fn static_meta() -> Meta {
 }
 /// Fill VarMap from embed
 pub fn fill_from_static(_meta: &Meta, _verbose: bool, varmap: &mut VarMap) -> anyhow::Result<()> {
+    let map = default_static_safetensors();
+    fill_safetensors(varmap, map)?;
+    Ok(())
+}
+
+fn fill_safetensors(varmap: &mut VarMap, map: SafeTensors) -> anyhow::Result<()> {
     let dev = Device::cuda_if_available(0)?;
-    let buf = include_bytes!("./../../models/model.safetensors");
-    let map = ::safetensors::tensor::SafeTensors::deserialize(buf)?;
     for (k, v) in map.tensors() {
-        let _ = varmap.set_one(k,v.load(&dev)?);
+        let _ = varmap.set_one(k, v.load(&dev)?);
         // v.load(&dev)? ->  v.convert(&dev)?  in 0.5 version, but candle 0.8.4 use load
     }
     Ok(())
 }
+
+fn default_static_safetensors() -> SafeTensors<'static> {
+    let buf = include_bytes!("./../../models/model.safetensors");
+    SafeTensors::deserialize(buf).expect("Failed to deserialize static safetensors")
+}
+
 impl Default for Meta {
     /// Provides default values for the `Meta` struct
     fn default() -> Self {
@@ -72,14 +83,15 @@ impl Default for Meta {
 }
 impl Meta {
     pub fn small(&self) -> String {
-        format!("{:?}, {:?}, {}, {}, {}, {}, {}",
-                self.model_type,
-                self.activation,
-                self.epochs,
-                self.batch_size,
-                self.learning_rate,
-                self.train_part,
-                self.hidden.as_ref().unwrap_or(&"None".to_string())
+        format!(
+            "{:?}, {:?}, {}, {}, {}, {}, {}",
+            self.model_type,
+            self.activation,
+            self.epochs,
+            self.batch_size,
+            self.learning_rate,
+            self.train_part,
+            self.hidden.as_ref().unwrap_or(&"None".to_string())
         )
     }
 }
@@ -120,7 +132,7 @@ pub enum Activation {
     Silu,
     Sigmoid,
     HardSigmoid,
-//    Swiglu,
+    //    Swiglu,
     Swish,
     HardSwish,
 }
@@ -135,7 +147,7 @@ impl Activation {
             Self::Silu => xs.silu(),
             Self::Sigmoid => ops::sigmoid(xs),
             Self::HardSigmoid => ops::hard_sigmoid(xs),
-           // Self::Swiglu => ops::swiglu(xs),
+            // Self::Swiglu => ops::swiglu(xs),
             Self::Swish => xs * ops::sigmoid(xs),
             Self::HardSwish => xs * ops::hard_sigmoid(xs),
         }
@@ -152,9 +164,11 @@ impl Meta {
         fs::write(DEFAULT, out_string).expect("Unable to write default meta file");
     }
     /// Loads the default metadata from the default file path
-    pub fn load_default() ->Meta {
-        let meta_path:&Path = DEFAULT.as_ref();
-        if !meta_path.exists() { return Meta::default();}
+    pub fn load_default() -> Meta {
+        let meta_path: &Path = DEFAULT.as_ref();
+        if !meta_path.exists() {
+            return Meta::default();
+        }
         let buf = fs::read(DEFAULT).unwrap();
         serde_yaml::from_slice(&buf).unwrap()
     }
@@ -175,8 +189,15 @@ impl Meta {
         format!("{at}{sn}_{bs}{sf}")
     }
     pub fn name_out(&self) -> String {
-        let hidden = self.hidden.as_ref().unwrap_or(&"".to_string()).replace(",", "_");
-        format!("{:?},{:?},{:?},{},{:?},{:?}", &self.model_type, &self.alg_type, &self.n, hidden, &self.activation, &self.batch_size)
+        let hidden = self
+            .hidden
+            .as_ref()
+            .unwrap_or(&"".to_string())
+            .replace(",", "_");
+        format!(
+            "{:?},{:?},{:?},{},{:?},{:?}",
+            &self.model_type, &self.alg_type, &self.n, hidden, &self.activation, &self.batch_size
+        )
     }
     /// Generates a model name based on the metadata
     pub fn model_name(&self) -> String {
@@ -184,10 +205,14 @@ impl Meta {
         let at = first_char(&self.alg_type);
         let sn = &self.n.to_string();
         let bs = first_char(&self.buff_size);
-        let h = self.hidden.as_ref().unwrap_or(&"".to_string()).replace(",", "_");
+        let h = self
+            .hidden
+            .as_ref()
+            .unwrap_or(&"".to_string())
+            .replace(",", "_");
         let sf = if self.flag { 'T' } else { 'F' };
         let bcs = &self.batch_size.to_string();
-        let act =enum_name(&self.activation);
+        let act = enum_name(&self.activation);
         format!("{mt}_{h}_{at}{sn}_{bs}{sf}_{bcs}{act}")
     }
     /// Returns the file path for the metadata file

@@ -1,4 +1,4 @@
-openapi: 3.0.1
+﻿openapi: 3.0.1
 info:
   title: IS Predict medius detection API
   description: >-
@@ -25,13 +25,16 @@ servers:
     description: Generated server url
 tags:
   - name: detect3
-    description: The detection API
+    description: The detection API for Fraunhofer machinery
+  - name: detect4
+    description: The detection API for Pulsar machinery
 paths:
   /detect3:
     post:
       tags:
         - detect3
-      summary: Load wav file and detect working position.
+      summary: Load wav file and detect working position for Fraunhofer machinery.
+      description: Detects laser working position from uploaded WAV file. Only for Fraunhofer machinery.
       operationId: detect3
       requestBody:
         content:
@@ -68,6 +71,48 @@ paths:
                 description: Working position
         "400":
           description: Bad request. Frequency is wrong or wav file is wrong.
+        "403":
+          description: Signature is invalid.
+        "422":
+          description: Unprocessable Content.
+        "500":
+            description: Unexpected error.
+  /detect4:
+    post:
+      tags:
+        - detect4
+      summary: Load wav file and detect working position for Pulsar machinery.
+      description: Detects laser working position from uploaded WAV file. Only for Pulsar machinery. Frequency is auto-detected.
+      operationId: detect4
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - file
+                - signature
+              type: object
+              properties:
+                file:
+                  type: string
+                  description: WAV file body
+                  format: binary
+                signature:
+                  type: integer
+                  format: int64
+                  description: Request signature
+                  example: 123456728
+      responses:
+        '200':
+          description: Successful response. Returns the requested result.
+          content:
+            text/plain:
+              schema:
+                type: number
+                example: -0.2
+                description: Working position
+        "400":
+          description: Bad request. WAV file is wrong.
         "403":
           description: Signature is invalid.
         "422":

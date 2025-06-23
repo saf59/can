@@ -1,11 +1,12 @@
 use anyhow::Error;
 use candle_core::{Device, Tensor, D};
-use medius_meta::{fill_from_static, AlgType, Meta, ModelType};
+use medius_meta::{fill_from_static, static_meta, AlgType, Meta, ModelType};
 use medius_model::{get_model, Model};
 use medius_parser::{parse_all, parse_hom, read_wav};
 use utils::{column_averages, default_mm, normalize_row_columns};
 
-pub fn detect(meta:Meta,all: &[u8], freq: f32, verbose: bool, joined:bool) -> anyhow::Result<f32> {
+pub fn detect(all: &[u8], freq: f32, verbose: bool, joined:bool) -> anyhow::Result<f32> {
+    let meta = static_meta();
     let buff_size: usize = meta.buff_size.clone() as usize;
     let inputs = meta.n;
     let dev = Device::cuda_if_available(0)?;

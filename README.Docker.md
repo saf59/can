@@ -27,6 +27,8 @@ Then, push it to your registry, e.g.
 '''
 docker login
 docker tag can-server alsh/meds
+or
+docker tag meds alsh/meds
 docker push alsh/meds
 
 Consult Docker's [getting started](https://docs.docker.com/go/get-started-sharing/)

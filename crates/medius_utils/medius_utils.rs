@@ -1,28 +1,10 @@
 use anyhow::Error;
 use candle_core::{Device, Tensor, D};
 use candle_nn::VarMap;
-use medius_meta::{fill_from_static, static_meta, fill_safetensors,meta_from_ba,safetensors_from_ba, AlgType, Meta, ModelType};
+use medius_meta::{fill_safetensors,meta_from_ba,safetensors_from_ba, AlgType, Meta, ModelType};
 use medius_model::{get_model, Model};
 use medius_parser::{parse_all, parse_hom, read_wav};
 use utils::{column_averages, default_mm, normalize_row_columns};
-
-pub fn detect(all: &[u8], freq: f32, verbose: bool, joined: bool) -> anyhow::Result<f32> {
-    let meta = static_meta();
-    let buff_size: usize = meta.buff_size.clone() as usize;
-    let inputs = meta.n;
-    let dev = Device::cuda_if_available(0)?;
-    let alg_type = meta.alg_type.clone();
-    let fill: &dyn Fn(&Meta, bool, &mut VarMap) -> anyhow::Result<()> = &fill_from_static;
-
-    if alg_type != medius_meta::AlgType::HOM {
-        let data = parse_all(all, inputs, freq, buff_size, alg_type)?;
-        detect_by_single_vec(verbose, &meta, inputs, &dev, &data, fill)
-    } else {
-        let raw = read_wav(all)?;
-        detect_by_many_vectors(verbose, joined, &meta, inputs, &dev, &raw, fill)
-    }
-}
-
 pub fn detect_by(
     all: &[u8],
     freq: f32,

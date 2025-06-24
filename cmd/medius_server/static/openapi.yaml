@@ -25,9 +25,9 @@ servers:
     description: Generated server url
 tags:
   - name: detect3
-    description: The detection API for Fraunhofer machinery
+    description: The working position detection API
   - name: detect4
-    description: The detection API for Pulsar machinery
+    description: The focus|below|above class detection API
 paths:
   /detect3:
     post:
@@ -81,8 +81,8 @@ paths:
     post:
       tags:
         - detect4
-      summary: Load wav file and detect working position for Pulsar machinery.
-      description: Detects laser working position from uploaded WAV file. Only for Pulsar machinery. Frequency is auto-detected.
+      summary: Load wav file and detect working position class.
+      description: Detects working position class (focus|below|above == 0|1|2) from uploaded WAV file. 
       operationId: detect4
       requestBody:
         content:
@@ -109,8 +109,8 @@ paths:
             text/plain:
               schema:
                 type: number
-                example: -0.2
-                description: Working position
+                example: 2
+                description: Class = 0 - focus, 1 - below, 2 - above
         "400":
           description: Bad request. WAV file is wrong.
         "403":

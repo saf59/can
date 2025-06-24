@@ -1,10 +1,11 @@
+use crate::Version::{Detect3, Detect4};
 use actix_multipart::Multipart;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use env_logger::Env;
 use futures_util::stream::StreamExt as _;
 use log::info;
-use medius_utils::detect;
+use medius_utils::detect_by;
 use std::env;
 use std::net::Ipv4Addr;
 
@@ -12,6 +13,13 @@ use std::net::Ipv4Addr;
 const OPENAPI_YAML: &str = include_str!("../static/openapi.yaml");
 const SWAGGER_UI_HTML: &str = include_str!("../static/swagger_ui.html");
 const OPENAPI_UI_HTML: &str = include_str!("../static/openapi_ui.html");
+
+const LLMS: &str = include_str!("../static/llms.txt");
+
+enum Version {
+    Detect3,
+    Detect4,
+}
 
 // Handler for Swagger UI
 async fn swagger_ui() -> HttpResponse {
@@ -35,7 +43,13 @@ fn real_body(http_request: HttpRequest, src: &str) -> String {
     src.replace("http://localhost:8080", &runtime)
 }
 // Main detection handler
-async fn detect3(mut payload: Multipart) -> Result<HttpResponse, Error> {
+async fn detect3(payload: Multipart) -> Result<HttpResponse, Error> {
+    detect(payload, Detect3).await
+}
+async fn detect4(payload: Multipart) -> Result<HttpResponse, Error> {
+    detect(payload, Detect4).await
+}
+async fn detect(mut payload: Multipart, version: Version) -> Result<HttpResponse, Error> {
     let mut frequency = None;
     let mut file_data = Vec::new();
     let mut signature = None;
@@ -79,7 +93,12 @@ async fn detect3(mut payload: Multipart) -> Result<HttpResponse, Error> {
         }
     }
     // Validate required fields
-    let freq = frequency.ok_or(actix_web::error::ErrorBadRequest("Missing frequency"))?;
+    // Validate required fields
+    let freq = if matches!(version, Detect3) {
+        frequency.ok_or(actix_web::error::ErrorBadRequest("Missing frequency"))?
+    } else {
+        10000.0
+    };
     let sig = signature.ok_or(actix_web::error::ErrorBadRequest("Missing signature"))?;
     if file_data.is_empty() {
         return Err(actix_web::error::ErrorBadRequest("Missing file"));
@@ -96,7 +115,20 @@ async fn detect3(mut payload: Multipart) -> Result<HttpResponse, Error> {
         );
         return Err(actix_web::error::ErrorForbidden("Invalid signature"));
     }
-    let wd = match detect(&file_data, freq as f32, false, false) {
+    let (meta_ba, safetensors_ba) = match version {
+        Detect3 => detect3_model(),
+        Detect4 => detect4_model(),
+    };
+    // Detect wp
+    let wd = match detect_by(
+        &file_data,
+        freq as f32,
+        false,
+        true,
+        meta_ba,
+        safetensors_ba,
+    ) {
+        //let wd = match detect(&file_data, freq as f32, false, false) {
         Ok(dist) => dist.to_string(),
         Err(e) => {
             info!(
@@ -108,6 +140,23 @@ async fn detect3(mut payload: Multipart) -> Result<HttpResponse, Error> {
     };
     // info!("Detection result: {}", wd);
     Ok(HttpResponse::Ok().content_type("text/plain").body(wd))
+}
+fn detect4_model() -> (&'static[u8], &'static[u8]) {
+    (
+        include_bytes!("../../../models/C_100_40_10_H34_ST_100/model.meta"),
+        include_bytes!("../../../models/C_100_40_10_H34_ST_100/model.safetensors")
+    )
+}
+fn detect3_model() -> (&'static[u8], &'static[u8]) {
+    (
+        include_bytes!("../../../models/R_100_40_10_B260_ST_1/model.meta"),
+        include_bytes!("../../../models/R_100_40_10_B260_ST_1/model.safetensors"),
+    )
+}
+async fn llms() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("text/html")
+        .body(LLMS)
 }
 
 #[actix_web::main]
@@ -121,12 +170,14 @@ async fn main() -> std::io::Result<()> {
         App::new()
             // Register routes
             .service(web::resource("/detect3").route(web::post().to(detect3)))
+            .service(web::resource("/detect4").route(web::post().to(detect4)))
             .route("/api-docs", web::get().to(api_docs))
             .route("/openapi-ui", web::get().to(openapi_ui))
             // Swagger UI
             .route("/", web::get().to(swagger_ui))
             .route("/index.html", web::get().to(swagger_ui))
             .route("/swagger-ui", web::get().to(swagger_ui))
+            .route("/llms.txt", web::get().to(llms))
             .wrap(Logger::default())
     })
     .bind((Ipv4Addr::UNSPECIFIED, port))?

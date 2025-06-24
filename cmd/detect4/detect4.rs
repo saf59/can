@@ -1,5 +1,5 @@
 use clap::Parser;
-use medius_utils::{detect, show_is_cuda};
+use medius_utils::{detect_by, show_is_cuda};
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
@@ -25,8 +25,11 @@ pub fn main() -> anyhow::Result<()> {
     let all = fs::read(wav_path)?;
     // Parse command line arguments
     let verbose = args.verbose;
+    let meta_ba = include_bytes!("./../../models/model.meta");
+    let safetensors_ba = include_bytes!("./../../models/model.safetensors");
     // Detect wp
-    let class =  detect( &all, 0.0, verbose, joined)?;
+    //let wp = detect( &all, freq, verbose, false)?;
+    let class = detect_by( &all, 0.0, verbose, joined,meta_ba,safetensors_ba)?;
     // Show result
     if args.verbose {
         show_is_cuda();

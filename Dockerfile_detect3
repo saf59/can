@@ -1,0 +1,30 @@
+ARG APP_NAME=detect3
+
+FROM bitnami/rust:latest AS build
+ARG APP_NAME
+WORKDIR /app
+
+COPY . .
+RUN mkdir models
+COPY ./export ./models/
+RUN cargo build --release --bin test3 --bin detect3
+
+
+FROM bitnami/rust:latest AS final
+ARG UID=10001
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/nonexistent" \
+    --shell "/sbin/nologin" \
+    --no-create-home \
+    --uid "${UID}" \
+    appuser
+USER appuser
+
+# Copy the executable from the "build" stage.
+COPY --from=build /app/target/release/detect3 /bin/detect3
+COPY --from=build /app/models/x1_y1.wav ./x1_y1.wav
+
+# What the container should run when it is started.
+CMD ["/bin/detect3", "./x1_y1.wav"]

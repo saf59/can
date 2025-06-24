@@ -1,11 +1,11 @@
-n: 260
-alg_type: Bin
+n: 34
+alg_type: HOM
 buff_size: Small
 flag: true
-model_type: Regression
+model_type: Classification
 activation: Relu
-batch_size: 1
+batch_size: 100
 learning_rate: 5e-6
 train_part: 1.0
 hidden: 100,40,10
-outputs: 1
+outputs: 3

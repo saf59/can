@@ -35,10 +35,6 @@ pub struct Meta {
     pub outputs: usize,
 }
 /// Get Meta embed resource
-pub fn static_meta() -> Meta {
-    let buf = include_bytes!("./../../models/model.meta");
-    serde_yaml::from_slice(buf).unwrap()
-}
 pub fn meta_from_ba(buf: &[u8]) -> anyhow::Result<Meta> {
     serde_yaml::from_slice(buf).map_err(|e| anyhow::anyhow!("Failed to parse Meta: {}", e))
 }
@@ -46,12 +42,6 @@ pub fn safetensors_from_ba<'a>(buf: &'a [u8]) -> anyhow::Result<SafeTensors<'a>>
     SafeTensors::deserialize(buf).map_err(|e| anyhow::anyhow!("Failed to deserialize SafeTensors: {}", e))
 }
 /// Fill VarMap from embed
-pub fn fill_from_static(_meta: &Meta, _verbose: bool, varmap: &mut VarMap) -> anyhow::Result<()> {
-    let map = default_static_safetensors();
-    fill_safetensors(varmap, map)?;
-    Ok(())
-}
-
 pub fn fill_safetensors(varmap: &mut VarMap, map: SafeTensors) -> anyhow::Result<()> {
     let dev = Device::cuda_if_available(0)?;
     for (k, v) in map.tensors() {
@@ -59,11 +49,6 @@ pub fn fill_safetensors(varmap: &mut VarMap, map: SafeTensors) -> anyhow::Result
         // v.load(&dev)? ->  v.convert(&dev)?  in 0.5 version, but candle 0.8.4 use load
     }
     Ok(())
-}
-
-fn default_static_safetensors() -> SafeTensors<'static> {
-    let buf = include_bytes!("./../../models/model.safetensors");
-    SafeTensors::deserialize(buf).expect("Failed to deserialize static safetensors")
 }
 
 impl Default for Meta {

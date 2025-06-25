@@ -12,16 +12,16 @@ struct Args {
     verbose: bool,
     /// Path to stereo *.wav file with sample rate 192_000
     wav: String,
-    /// Joined mode, default is false
-    #[arg(short, default_value_t = false)]
-    joined: bool,
+    //     Joined mode, default is false
+    //    #[arg(short, default_value_t = true)]
+    //    joined: bool,
 }
 pub fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let start = Instant::now();
     // Parse wav file
     let wav_path:&Path = args.wav.as_ref();
-    let joined = args.joined;
+    let joined = true; //args.joined;
     let all = fs::read(wav_path)?;
     // Parse command line arguments
     let verbose = args.verbose;

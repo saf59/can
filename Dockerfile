@@ -18,10 +18,6 @@ WORKDIR /app
 
 # Install host build dependencies.
 RUN apk add --no-cache clang lld musl-dev git python3
-#RUN mkdir models/R_100_40_10_B260_ST_1
-#ADD ./models/R_100_40_10_B260_ST_1 ./models/R_100_40_10_B260_ST_1
-#RUN mkdir models/C_100_40_10_H34_ST_100
-#ADD ./models/C_100_40_10_H34_ST_100 ./models/C_100_40_10_H34_ST_100
 
 # Build the application.
 # Leverage a cache mount to /usr/local/cargo/registry/

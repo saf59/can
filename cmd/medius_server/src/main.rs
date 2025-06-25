@@ -93,7 +93,6 @@ async fn detect(mut payload: Multipart, version: Version) -> Result<HttpResponse
         }
     }
     // Validate required fields
-    // Validate required fields
     let freq = if matches!(version, Detect3) {
         frequency.ok_or(actix_web::error::ErrorBadRequest("Missing frequency"))?
     } else {

@@ -1,0 +1,112 @@
+﻿# IS Predict Medius Detection API
+
+## Overview
+
+The IS Predict medius detection API provides detection of laser operating position based on audio recorded in WAV files during operation. This API analyzes audio data to determine the precise working position of laser equipment.
+
+## Base Information
+
+- **API Version**: 1.0-oas3
+- **Base URL**: http://localhost:8080
+- **OpenAPI Version**: 3.0.1
+- **License**: MIT
+- **Contact**: info@ispredict.com
+- **Terms of Service**: http://www.ispredict.com/
+
+## Authentication
+
+The API uses signature-based authentication. Each request must include a valid signature parameter.
+
+## Endpoints
+
+### POST /detect3 (Fraunhofer Machinery Only)
+
+Detects laser working position from uploaded WAV file for Fraunhofer machinery.
+
+**Request Format**: `multipart/form-data`
+
+**Required Parameters**:
+- `frequency` (number, double): Laser frequency in Hz
+  - Example: `37523.4522`
+- `file` (binary): WAV file containing audio recording
+  - Format: WAV audio file
+- `signature` (integer, int64): Request signature for authentication
+  - Example: `123456728`
+
+**Response Codes**:
+- `200` - Success: Returns working position as a number
+  - Content-Type: `text/plain`
+  - Example response: `-0.2`
+- `400` - Bad Request: Invalid frequency or WAV file format
+- `403` - Forbidden: Invalid signature
+- `422` - Unprocessable Content: Request cannot be processed
+- `500` - Internal Server Error: Unexpected system error
+
+### POST /detect4 (Pulsar Machinery Only)
+
+Detects laser working position from uploaded WAV file for Pulsar machinery. This endpoint does not require frequency parameter as it's automatically determined for Pulsar equipment.
+
+**Request Format**: `multipart/form-data`
+
+**Required Parameters**:
+- `file` (binary): WAV file containing audio recording
+  - Format: WAV audio file
+- `signature` (integer, int64): Request signature for authentication
+  - Example: `123456728`
+
+**Response Codes**:
+- `200` - Success: Returns working position as a number
+  - Content-Type: `text/plain`
+  - Example response: `-0.2`
+- `400` - Bad Request: Invalid WAV file format
+- `403` - Forbidden: Invalid signature
+- `422` - Unprocessable Content: Request cannot be processed
+- `500` - Internal Server Error: Unexpected system error
+
+## Usage Examples
+
+**For Fraunhofer machinery (detect3):**
+```bash
+curl -X POST http://localhost:8080/detect3 \
+  -F "frequency=37523.4522" \
+  -F "file=@audio_recording.wav" \
+  -F "signature=123456728"
+```
+
+**For Pulsar machinery (detect4):**
+```bash
+curl -X POST http://localhost:8080/detect4 \
+  -F "file=@audio_recording.wav" \
+  -F "signature=123456728"
+```
+
+## Response Format
+
+The API returns the detected working position as a plain text number representing the laser's operating position relative to a reference point.
+
+## Error Handling
+
+- Ensure WAV files are properly formatted and contain valid audio data
+- Verify laser frequency values are accurate and within expected ranges
+- Include valid signature for authentication
+- Handle network timeouts and server errors gracefully
+
+## Additional Resources
+
+- Interactive API documentation: `/openapi-ui`
+- Full OpenAPI specification: `/api-docs`
+- SDK documentation available at the base URL
+
+## Integration Notes for LLM Agents
+
+When integrating this API:
+
+1. **Machinery Type Selection**: 
+   - Use `/detect3` for Fraunhofer machinery (requires frequency parameter)
+   - Use `/detect4` for Pulsar machinery
+2. **File Handling**: Ensure proper binary file upload handling for WAV files
+3. **Signature Generation**: Implement signature generation logic based on your authentication method
+4. **Frequency Validation**: For Fraunhofer machines, validate laser frequency values before sending requests
+5. **Error Handling**: Implement robust error handling for all response codes
+6. **Response Parsing**: Parse the plain text numeric response appropriately
+7. **Rate Limiting**: Consider implementing rate limiting for production use

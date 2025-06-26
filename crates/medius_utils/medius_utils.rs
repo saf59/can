@@ -46,9 +46,11 @@ fn detect_by_many_vectors(
     if joined {
         // If joined, we use the same function as for all
         let mut avg = column_averages(&hom_data);
+        println!("avg1: {:?}", avg);
         if meta.flag {
             avg = normalize_row_columns(&avg, &medians, &multiplier);
         }
+        println!("avg2: {:?}", avg);
         detect_by_single_vec(verbose, meta, inputs, dev, &avg, fill)
     } else {
         // If not joined, we use the special function for hom

@@ -19,7 +19,6 @@ pub fn main() -> anyhow::Result<()> {
     let mut meta = Meta::load_default();
     meta.train_part = 1.0;
     let accuracy = args.accuracy;
-    //println!("model_type,alg_type,n,hidden,activation,batch_size,{:#?},ms",accuracy);
     if args.all {
         let path = Path::new("./models");
         let subdirs = list_subdirectories(path)?;

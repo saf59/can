@@ -283,17 +283,7 @@ fn train_regression_batches(
     }
     Ok(total_loss / len)
 }
-/*fn test_classification(model: &Mlp, data: &Tensor, labels: &Tensor) -> anyhow::Result<f32> {
-    let logits = model.forward(data)?;
-    let sum_ok = logits
-        .argmax(D::Minus1)?
-        .eq(labels)?
-        .to_dtype(DType::F32)?
-        .sum_all()?
-        .to_scalar::<f32>()?;
-    let accuracy = sum_ok / labels.dims1()? as f32;
-    Ok(accuracy)
-}*/
+
 fn test_classification(
     model: &Mlp,
     data: &Tensor,
@@ -349,8 +339,6 @@ fn to_01(labels: &Tensor, logits: Tensor) -> anyhow::Result<f32> {
     let within_threshold = diff.le(0.1)?.to_dtype(DType::F32)?;
 
     let count_within_threshold = within_threshold.sum_all()?.to_scalar::<f32>()?;
-    //println!("logits 0:{:?}", logits.eq(0.0)?.to_dtype(DType::F32)?.sum_all()?.to_scalar::<f32>());
-    //println!("labels 0:{:?}", labels.eq(0.0)?.to_dtype(DType::F32)?.sum_all()?.to_scalar::<f32>());
     let total_count = labels.dims1()? as f32;
     let percentage = (count_within_threshold / total_count) * 100.0;
     Ok(percentage)

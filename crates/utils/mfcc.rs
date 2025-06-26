@@ -188,13 +188,3 @@ impl MFCC {
     }
 }
 
-/*
-fn out(name: &str, out: &[f32]) {
-    println!(
-        "{name}:{:?}->{:?}..{:?}",
-        out.len(),
-        out[0],
-        out.last().unwrap(),
-    );
-}
-*/

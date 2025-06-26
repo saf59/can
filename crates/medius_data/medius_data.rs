@@ -50,13 +50,6 @@ pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32,dev: &Device) -> candle_
     })
 }
 
-/*
-fn parts(y: &Vec<u8>) {    let i0 = y.iter().filter(|i| **i == 0).count();
-    let i1 = y.iter().filter(|i| **i == 1).count();
-    let i2 = y.iter().filter(|i| **i == 2).count();
-    println!("{:?},{:?},{:?}", i0, i1, i2);
-}
-*/
 fn fill_x_y(
     ind: core::ops::Range<usize>,
     x: &[f32],

@@ -139,19 +139,7 @@ impl HigherOrderMomentsAnalyzer {
     /// # Returns
     /// * Complex-valued FFT output with same length as input
     fn compute_fft(&mut self, input: &[f32]) -> Vec<Complex32> {
-/*        let n = input.len();
-
-        // Convert real input to complex format
-        let mut buffer: Vec<Complex32> = input.iter().map(|&x| Complex32::new(x, 0.0)).collect();
-
-        // Get FFT instance from planner
-        let fft = self.fft_planner.plan_fft_forward(n);
-
-        // Perform FFT in-place
-        fft.process(&mut buffer);
-
-        buffer
-*/      utils::fft::fft_forward(input, input.len())
+      utils::fft::fft_forward(input, input.len())
     }
 
     /// Compute Power Spectral Density from windowed signal using rustfft
@@ -821,22 +809,6 @@ mod tests {
         //let size = fft_result.len();
         println!("amplitudes: {:?})",utils::fft::to_amplitudes(&fft_result,test_signal.len()));
         println!("phases: {:?})",utils::fft::to_phases(&fft_result,test_signal.len()));
-/*        
-        //     with realfft
-        // make a planner
-        let mut real_planner = RealFftPlanner::<f64>::new();
-        // create a FFT
-        let r2c = real_planner.plan_fft_forward(test_signal.len());
-        // make a dummy real-valued signal (filled with zeros)
-        let mut indata:Vec<f64> = test_signal.into_iter()
-            .map(|x| x as f64).collect();
-        // make a vector for storing the spectrum
-        let mut spectrum = r2c.make_output_vec();
-        // forward transform the signal
-        r2c.process(&mut indata, &mut spectrum).unwrap();
-        spectrum.iter().for_each(|c| {
-            println!("{} + {}i", c.re, c.im);
-        });
- */
+
     }
 }

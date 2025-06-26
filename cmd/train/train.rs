@@ -108,15 +108,6 @@ fn meta() -> anyhow::Result<Meta> {
         println!("{:#?}", meta);
         process::exit(0);
     }
-    // Check if the algorithm type is implemented
-    /*
-        if meta.alg_type != AlgType::Bin {
-            return Err(anyhow::Error::msg(format!(
-                "Algorithm {:#?} is not implemented yet!",
-                meta.alg_type
-            )));
-        }
-    */
     if meta.alg_type == AlgType::HOM && meta.model_type != ModelType::Classification {
         return Err(anyhow::Error::msg(format!(
             "HOM is not implemented for {:#?} and model_type:{:#?}!",

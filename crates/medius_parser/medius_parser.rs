@@ -628,41 +628,4 @@ mod tests {
             .collect();
         signal
     }
-    /*
-    #[test]
-    fn test_hob_single_band64() {
-        use ho::HigherOrderMomentsAnalyzer;
-
-        let data = sample_hom_signal64();
-        let bands = 1;
-        let band_width = 3000.0f64;
-        let centers = vec![85_000.0f64];
-        let window = ""; //"hanning";
-        println!("Signal: {:?}..{:?}", data.first(),data.last());
-        // Create analyzer (adjust as needed for your constructor)
-        let mut analyzer = HigherOrderMomentsAnalyzer::default();
-        let result = hob64(&data, bands, band_width, window, &centers, &mut analyzer);
-        println!("HOB size: {:?}", result.len());
-        println!("HOB result 1st: {:?}", result[0..17].to_vec());
-        println!("HOB result 2nd: {:?}", result[17..].to_vec());
-    }
-
-    fn sample_hom_signal64() -> Vec<f64> {
-        let signal_length = 4096;
-        let sampling_rate = 192000.0;
-        let signal: Vec<f64> = (0..signal_length)
-            .map(|i| {
-                let t = i as f32 / sampling_rate;
-                // Harmonic components
-                let fundamental = (2.0 * PI * 10000.0 * t).sin();
-                let second_harmonic = 0.5 * (2.0 * PI * 20000.0 * t).sin();
-                let third_harmonic = 0.3 * (2.0 * PI * 85000.0 * t).sin();
-                // Nonlinear component (creates interesting higher-order moments)
-                let nonlinear = 0.1 * (2.0 * PI * 10000.0 * t).sin().powf(3.0);
-                (fundamental + second_harmonic + third_harmonic + nonlinear) as f64 //+ noise
-            })
-            .collect();
-        signal
-    }
-    */
 }

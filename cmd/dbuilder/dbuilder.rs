@@ -30,7 +30,6 @@ fn main() {
     let mut x_raw: Vec<Vec<f32>> = Vec::new();
     let mut y_raw: Vec<usize> = Vec::new();
     for group in grouped.values() {
-        // println!("Group path: {}", path);
         let mut x_group: Vec<Vec<f32>> = Vec::new();
         let mut y_group: usize = 0;
         for row in group {

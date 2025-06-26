@@ -38,16 +38,17 @@ docs for more detail on building and pushing.
 * [Docker's Rust guide](https://docs.docker.com/language/rust/)
 
 ## detect3 ##
-0) чтобы работало быстро, каталоги монтируем, но в .dockerignore нужное надо разрешить
-1) каталог models в .dockerignore, иначе собирает очень долго
-2) при билде нужны model.meta model.safetensors - mount it, 
+1) чтобы работало быстро, каталоги монтируем, но в .dockerignore нужное надо разрешить
+2) best3 чтобы правильные model.meta model.safetensors
+3) каталог models в .dockerignore, иначе собирает очень долго
+4) при билде нужны model.meta model.safetensors - mount it, 
    а при тесте x1_y1.wav поэтому копируем их в каталог export
-3) docker build -t detect3 -f Dockerfile_detect3 .
-4) docker run detect3  
+5) docker build -t detect3 -f Dockerfile_detect3 .
+6) docker run detect3  
 	-0.400
-5) Где то:  
+7) Где то:  
 	docker image save detect3 -o detect3.zip
-6) В архиве будет слой размером около 1-5M, а в нем еще один, а в нем \usr\bin\detect3 
+8) В архиве будет слой размером около 1-5M, а в нем еще один, а в нем \usr\bin\detect3 
 
 ## detect4 ##
-аналог detect3, но тестовый файл in.wav и результат должен быть 0
+аналог detect3, но best4 и тестовый файл in.wav и результат должен быть 0

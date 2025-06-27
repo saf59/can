@@ -100,7 +100,7 @@ fn pv(prefix: &str, tensor: &Tensor) {
         1 => println!("{}: {:.2?}", prefix, tensor.to_vec1::<f64>().unwrap()),
         2 => println!("{}: {:.2?}", prefix, tensor.to_vec2::<f64>().unwrap()),
         3 => println!("{}: {:.2?}", prefix, tensor.to_vec3::<f64>().unwrap()),
-        x => println!("Too big Tensor size:{:?}", x),
+        x => println!("Too big Tensor size:{x:?}"),
     }
 }
 fn softmax(x: &Tensor) -> Tensor {

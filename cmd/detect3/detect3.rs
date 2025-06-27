@@ -33,10 +33,10 @@ pub fn main() -> anyhow::Result<()> {
     // Show result
     if args.verbose {
         show_is_cuda();
-        println!("result: {:5.3?}", wp);
+        println!("result: {wp:5.3?}");
         println!("{:5.3?}", Instant::now().duration_since(start));
     } else {
-        println!("{:5.3?}", wp);
+        println!("{wp:5.3?}");
     }
     Ok(())
 }

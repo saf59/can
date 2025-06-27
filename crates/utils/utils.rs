@@ -18,11 +18,11 @@ pub fn set_root() {
 }
 
 pub fn first_char<T: Debug>(e: &T) -> char {
-    let name = format!("{:?}", e);
+    let name = format!("{e:?}");
     name.chars().next().unwrap()
 }
 pub fn enum_name<T: Debug>(e: &T) -> String {
-    let name = format!("_{:?}", e);
+    let name = format!("_{e:?}");
     match name.as_str() {
         "_Relu" => "".to_string(),
         _ => name.to_lowercase()
@@ -156,7 +156,7 @@ pub fn write_csv_strings<P: AsRef<Path>>(data: &Vec<String>, path: &P) -> Result
     let file = File::create(path)?;
     let mut writer = BufWriter::new(file);
     for line in data {
-        writeln!(writer, "{}", line)?;
+        writeln!(writer, "{line}")?;
     }
     Ok(())
 }

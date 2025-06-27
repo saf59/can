@@ -58,6 +58,6 @@ fn main() {
     bar.finish();
     let elapsed = now.elapsed();
     let calc_per_sec: f64 = (total_calc as f64) / (elapsed.as_secs() as f64);
-    println!("Total runtime: {:.2?}", elapsed);
-    println!("Calculations per second: {:.2?} seconds.", calc_per_sec);
+    println!("Total runtime: {elapsed:.2?}");
+    println!("Calculations per second: {calc_per_sec:.2?} seconds.");
 }

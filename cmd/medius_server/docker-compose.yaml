@@ -1,0 +1,10 @@
+﻿services:
+  medius:
+    image: alsh/meds
+    container_name: medius-container
+    restart: unless-stopped
+    ports:
+      - "9447:9447"
+    
+    environment:
+      - RUST_LOG=info

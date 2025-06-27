@@ -29,7 +29,7 @@ fn main() {
         }
     } else {
         let start_since_epoch = nano();
-        let start_time = format!("{:?}", start_since_epoch);
+        let start_time = format!("{start_since_epoch:?}");
         let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
         ctx.set_contents(start_time).unwrap();
     }

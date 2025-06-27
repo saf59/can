@@ -13,14 +13,11 @@ use std::net::Ipv4Addr;
 const OPENAPI_YAML: &str = include_str!("../static/openapi.yaml");
 const SWAGGER_UI_HTML: &str = include_str!("../static/swagger_ui.html");
 const OPENAPI_UI_HTML: &str = include_str!("../static/openapi_ui.html");
-
 const LLMS: &str = include_str!("../static/llms.txt");
-
 enum Version {
     Detect3,
     Detect4,
 }
-
 // Handler for Swagger UI
 async fn swagger_ui() -> HttpResponse {
     HttpResponse::Ok()
@@ -42,18 +39,13 @@ fn real_body(http_request: HttpRequest, src: &str) -> String {
     let runtime = format!("{}://{}", info.scheme(), info.host());
     src.replace("http://localhost:8080", &runtime)
 }
+async fn detect3(payload: Multipart) -> Result<HttpResponse, Error> { detect(payload, Detect3).await }
+async fn detect4(payload: Multipart) -> Result<HttpResponse, Error> { detect(payload, Detect4).await }
 // Main detection handler
-async fn detect3(payload: Multipart) -> Result<HttpResponse, Error> {
-    detect(payload, Detect3).await
-}
-async fn detect4(payload: Multipart) -> Result<HttpResponse, Error> {
-    detect(payload, Detect4).await
-}
 async fn detect(mut payload: Multipart, version: Version) -> Result<HttpResponse, Error> {
     let mut frequency = None;
     let mut file_data = Vec::new();
     let mut signature = None;
-
     // Process multipart form data
     while let Some(item) = payload.next().await {
         let mut field = item?;
@@ -62,13 +54,12 @@ async fn detect(mut payload: Multipart, version: Version) -> Result<HttpResponse
             .expect("REASON")
             .get_name()
             .unwrap_or_default();
-
         match field_name {
             "frequency" => {
                 let data = field.next().await.unwrap()?;
                 let freq_str = String::from_utf8(data.to_vec()).unwrap_or("0".to_string());
                 let freq = freq_str.parse::<f64>().map_err(|e| {
-                    actix_web::error::ErrorBadRequest(format!("Invalid frequency: {}", e))
+                    actix_web::error::ErrorBadRequest(format!("Invalid frequency: {e}"))
                 })?;
                 frequency = Some(freq);
             }
@@ -82,7 +73,7 @@ async fn detect(mut payload: Multipart, version: Version) -> Result<HttpResponse
                 let data = field.next().await.unwrap()?;
                 let sig_str = String::from_utf8(data.to_vec()).unwrap_or("0".to_string());
                 let sig = sig_str.parse::<i64>().map_err(|e| {
-                    actix_web::error::ErrorBadRequest(format!("Invalid signature: {}", e))
+                    actix_web::error::ErrorBadRequest(format!("Invalid signature: {e}"))
                 })?;
                 signature = Some(sig);
                 if (sig / 137) * 137 != sig {
@@ -114,26 +105,17 @@ async fn detect(mut payload: Multipart, version: Version) -> Result<HttpResponse
         );
         return Err(actix_web::error::ErrorForbidden("Invalid signature"));
     }
+    // Load embed model based on version
     let (meta_ba, safetensors_ba) = match version {
         Detect3 => detect3_model(),
         Detect4 => detect4_model(),
     };
-    // Detect wp
-    let wd = match detect_by(
-        &file_data,
-        freq as f32,
-        false,
-        true,
-        meta_ba,
-        safetensors_ba,
-    ) {
-        //let wd = match detect(&file_data, freq as f32, false, false) {
+    // Detect wp or class
+        let wd = match detect_by(
+        &file_data, freq as f32, false, true, meta_ba, safetensors_ba  ) {
         Ok(dist) => dist.to_string(),
         Err(e) => {
-            info!(
-                "Frequency: {:?}, file sig: {}, signature: {:?}",
-                &freq, file_sig, &sig
-            );
+            info!("Frequency: {:?}, file sig: {}, signature: {:?}",&freq, file_sig, &sig);
             return Err(actix_web::error::ErrorBadRequest(e.to_string()));
         }
     };
@@ -153,11 +135,8 @@ fn detect3_model() -> (&'static[u8], &'static[u8]) {
     )
 }
 async fn llms() -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type("text/html")
-        .body(LLMS)
+    HttpResponse::Ok().content_type("text/html").body(LLMS)
 }
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
@@ -176,10 +155,25 @@ async fn main() -> std::io::Result<()> {
             .route("/", web::get().to(swagger_ui))
             .route("/index.html", web::get().to(swagger_ui))
             .route("/swagger-ui", web::get().to(swagger_ui))
+            // LLM api
             .route("/llms.txt", web::get().to(llms))
             .wrap(Logger::default())
     })
     .bind((Ipv4Addr::UNSPECIFIED, port))?
     .run()
     .await
+}
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use crc32fast::Hasher;
+
+    #[test]
+    fn test_crc32_in_wav() {
+        let data = fs::read("../../test_data/4/in.wav").expect("Failed to read file");
+        let mut hasher = Hasher::new();
+        hasher.update(&data);
+        let crc32 = hasher.finalize() as i64 * 137;
+        assert_eq!(crc32, 75462951157, "CRC32 does not match expected value");
+    }
 }

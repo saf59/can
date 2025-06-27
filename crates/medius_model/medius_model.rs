@@ -164,10 +164,7 @@ fn train_classification(
             ),
         }?;
         let test_accuracy = test_classification(model, &test_data, &test_labels, Accuracy::Percent01)?;
-        print!(
-            "{epoch:4} train loss: {loss:8.7} test acc: {:5.2}%       \r",
-            test_accuracy
-        );
+        print!("{epoch:4} train loss: {loss:8.7} test acc: {test_accuracy:5.2}%       \r");
     }
     Ok(())
 }
@@ -235,10 +232,7 @@ fn train_regression(
             ),
         }?;
         let test_accuracy = test_regression(model, &test_data, &test_labels, Accuracy::Percent01)?;
-        print!(
-            "{epoch:6} train loss: {loss:8.7} test acc: {:5.2}%       \r",
-            test_accuracy
-        );
+        print!("{epoch:6} train loss: {loss:8.7} test acc: {test_accuracy:5.2}%       \r");
     }
     Ok(())
 }
@@ -363,10 +357,7 @@ pub fn get_model(
         .map(|x| x.parse().unwrap())
         .collect();
     if verbose {
-        println!(
-            "inputs:{:?},outputs:{:?},hidden:{:?}",
-            inputs, outputs, hidden
-        );
+        println!("inputs:{inputs:?},outputs:{outputs:?},hidden:{hidden:?}", );
     }
     let model = Mlp::new(
         vs.clone(),

@@ -31,24 +31,24 @@ pub fn main() -> anyhow::Result<()> {
                     let end = Instant::now();
                     let elapsed = end.duration_since(start).as_secs_f32() * 1000.0;
                     if accuracy == Accuracy::Loss {
-                        println!("{},{},{:5.2?}", details, test_accuracy, elapsed);
+                        println!("{details},{test_accuracy},{elapsed:5.2?}");
                     } else {
-                        println!("{},{:5.2?}%,{:5.2?}", details, test_accuracy,elapsed);
+                        println!("{details},{test_accuracy:5.2?}%,{elapsed:5.2?}");
                     }
                 }
-                Err(e) => println!("{:?}", e),
+                Err(e) => println!("{e:?}"),
             }
         }
     } else {
         match test_one(&mut meta, accuracy.clone()) {
             Ok(test_accuracy) => {
                 if accuracy == Accuracy::Loss {
-                    println!("{:5.7?}", test_accuracy);
+                    println!("{test_accuracy:5.7?}");
                 } else {
-                    println!("{:5.2?}%", test_accuracy);
+                    println!("{test_accuracy:5.2?}%" );
                 }
             }
-            Err(e) => println!("{:?}", e),
+            Err(e) => println!("{e:?}"),
         }
     }
     Ok(())

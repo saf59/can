@@ -12,5 +12,3 @@ crc32fast = "1.4.2"
 medius_utils = { path = "../../crates/medius_utils" }
 log = "0.4.27"
 env_logger = "0.11.8"
-#tracing-actix-web = "0.7.15"
-#tracing = "0.1.41"

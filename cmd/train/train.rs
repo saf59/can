@@ -55,7 +55,7 @@ pub fn main() -> anyhow::Result<()> {
             println!("{:5.2?}", Instant::now().duration_since(start));
             meta.save();
         }
-        Err(e) => println!("{:?}!!!", e),
+        Err(e) => println!("{e:?}!!!"),
     }
     Ok(())
 }
@@ -105,7 +105,7 @@ fn meta() -> anyhow::Result<Meta> {
     }
     // Check if the algorithm type is implemented
     if args.defaults {
-        println!("{:#?}", meta);
+        println!("{meta:#?}");
         process::exit(0);
     }
     if meta.alg_type == AlgType::HOM && meta.model_type != ModelType::Classification {

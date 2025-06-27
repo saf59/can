@@ -39,11 +39,11 @@ fn main() {
             );
             let impulse_path: &Path = impulse_path.as_ref();
             if !impulse_path.exists() {
-                println!("Impulse: {:?}", impulse_path);
+                println!("Impulse: {impulse_path:?}");
             } else {
                 // Your processing logic here
                 let data_f64 = read_f64_vec_from_file(impulse_path)
-                    .with_context(|| format!("Failed to read f64 data from: {:?}", impulse_path))
+                    .with_context(|| format!("Failed to read f64 data from: {impulse_path:?}"))
                     .unwrap();
                 let data_f32 = f64_slice_to_f32_vec(&data_f64);
                 let result = hob(
@@ -68,8 +68,8 @@ fn main() {
     bar.finish();
     let elapsed = now.elapsed();
     let calc_per_sec: f64 = (num_iters as f64) / (elapsed.as_secs() as f64);
-    println!("Total runtime: {:.2?}", elapsed);
-    println!("Calculations per second: {:.2?}.", calc_per_sec);
+    println!("Total runtime: {elapsed:.2?}");
+    println!("Calculations per second: {calc_per_sec:.2?}.");
     save_to_csv(&mut x, &mut y, "data/H34_BF/".as_ref());
     save_to_csv(&mut x_raw, &mut y_raw, "data/H34_SF/".as_ref());
     //build median and multyplier

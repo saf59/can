@@ -66,8 +66,6 @@ pub fn parse_hom(raw: &[f32]) -> anyhow::Result<Vec<Vec<f32>>> {
             hob(pulse, bands, band_width, window, &centers, &mut analyzer)
         }).collect::<Vec<_>>();
     Ok(results)
-    // Placeholder for HOM algorithm implementation
-    //Err(anyhow::anyhow!("HOM algorithm is not implemented yet"))
 }
 pub fn hob(
     data: &[f32],

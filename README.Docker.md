@@ -25,9 +25,9 @@ you'll want to build the image for that platform, e.g.:
 
 Then, push it to your registry, e.g.
 '''
+docker build -t meds .
+docker run --name medius-server --restart unless-stopped -p 127.0.0.1:9447:9447 -e RUST_LOG=info meds
 docker login
-docker tag can-server alsh/meds
-or
 docker tag meds alsh/meds
 docker push alsh/meds
 
@@ -46,9 +46,13 @@ docs for more detail on building and pushing.
 5) docker build -t detect3 -f Dockerfile_detect3 .
 6) docker run detect3  
 	-0.400
-7) Где то:  
+7) И если -0.4 - где то:  
 	docker image save detect3 -o detect3.zip
 8) В архиве будет слой размером около 1-5M, а в нем еще один, а в нем \usr\bin\detect3 
 
 ## detect4 ##
 аналог detect3, но best4 и тестовый файл in.wav и результат должен быть 0
+docker build -t detect4 -f Dockerfile_detect4 .
+docker run detect4
+и если 0
+docker image save detect4 -o detect4.zip

@@ -36,6 +36,13 @@ pub fn fft_forward(data: &[f32], buf_size: usize) -> Vec<Complex<f32>> {
     fft.process(&mut buffer);
     buffer
 }
+pub fn fft64_forward(data: &[f64], buf_size: usize) -> Vec<Complex<f64>> {
+    let mut fft_planner = FftPlanner::<f64>::new();
+    let fft = fft_planner.plan_fft_forward(buf_size);
+    let mut buffer = f64_to_complex_vec(data, buf_size);
+    fft.process(&mut buffer);
+    buffer
+}
 
 fn align(data: &[f32], buf_size: usize) -> Vec<f32> {
     if data.len() < buf_size {
@@ -47,6 +54,13 @@ fn align(data: &[f32], buf_size: usize) -> Vec<f32> {
     }
 }
 fn f32_to_complex_vec(data: &[f32], buf_size: usize) -> Vec<Complex<f32>> {
+    data.iter()
+        .take(buf_size)
+        .map(|&item| Complex::new(item, 0.0))
+        .collect()
+}
+
+fn f64_to_complex_vec(data: &[f64], buf_size: usize) -> Vec<Complex<f64>> {
     data.iter()
         .take(buf_size)
         .map(|&item| Complex::new(item, 0.0))

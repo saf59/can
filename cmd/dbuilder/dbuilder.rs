@@ -86,7 +86,6 @@ fn main() {
     write_csv_strings(&norm_strings, &"data/H34_BT/norm.csv").unwrap();
     write_csv_strings(&norm_strings, &"data/H34_ST/norm.csv").unwrap();
 }
-
 fn save_to_csv(x: &mut [Vec<f32>], y: &mut [usize], dir: &Path) {
     let x_strings = vecvecf32_to_vecstring(x);
     let y_strings = vecusize_to_vecstring(y);
@@ -94,9 +93,6 @@ fn save_to_csv(x: &mut [Vec<f32>], y: &mut [usize], dir: &Path) {
     write_csv_strings(x_strings.as_ref(), &dir.join("x.csv")).unwrap();
     write_csv_strings(y_strings.as_ref(), &dir.join("y.csv")).unwrap();
 }
-
-
-
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct MetaRow {
@@ -105,7 +101,6 @@ struct MetaRow {
     pub typeIndex: usize,
     pub pulse: usize,
 }
-
 fn group_and_sort_meta_rows_by_path(rows: &[MetaRow]) -> HashMap<String, Vec<&MetaRow>> {
     let mut map: HashMap<String, Vec<&MetaRow>> = HashMap::new();
     for row in rows {
@@ -132,7 +127,6 @@ fn read_meta_rows_from_csv<P: AsRef<std::path::Path>>(path: P) -> Result<Vec<Met
     }
     Ok(rows)
 }
-
 fn read_f64_vec_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<f64>> {
     let bytes =
         fs::read(&path).with_context(|| format!("Failed to read file: {:?}", path.as_ref()))?;
@@ -143,15 +137,12 @@ fn read_f64_vec_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<f64>> {
     }
     Ok(out)
 }
-
 pub fn f64_slice_to_f32_vec(input: &[f64]) -> Vec<f32> {
     input.iter().map(|&x| x as f32).collect()
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     #[ignore] // Ignore this test by default, as it requires a specific file path
     fn test_read_f64_vec_from_file() {
@@ -167,7 +158,6 @@ mod tests {
         assert!((first - 0.05157470703125).abs() < 1e-6);
         assert!((last - 0.214935302734375).abs() < 1e-6);
     }
-
     #[test]
     #[ignore] // Requires the actual file at the given path
     fn test_read_meta_rows_from_csv() {

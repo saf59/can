@@ -35,7 +35,7 @@ ndarray = "0.16.1"
 # ndarray-rand = "0.15.0"
 num-complex = "0.4.6"
 plotly = "0.12.1"
-indicatif = "0.17.11"
+indicatif = "0.17.12"
 sysinfo = "0.35.2"
 
 # do not update this version for compatibility with candle-nn

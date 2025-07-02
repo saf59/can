@@ -141,13 +141,7 @@ fn train_classification(
     model: &Mlp,
 ) -> anyhow::Result<()> {
     //let mut opt = SGD::new(varmap.all_vars(), meta.learning_rate)?;
-    let mut opt = AdamW::new(
-        varmap.all_vars(),
-        ParamsAdamW {
-            lr: meta.learning_rate,
-            ..Default::default()
-        },
-    )?;
+    let mut opt = adamw(meta, varmap)?;
     let train_data = m.train_data.to_device(dev)?;
     let train_labels = m.train_labels.to_dtype(DType::U32)?.to_device(dev)?;
     let test_data = m.test_data.to_device(dev)?;
@@ -209,13 +203,7 @@ fn train_regression(
     varmap: &VarMap,
     model: &Mlp,
 ) -> anyhow::Result<()> {
-    let mut opt = AdamW::new(
-        varmap.all_vars(),
-        ParamsAdamW {
-            lr: meta.learning_rate,
-            ..Default::default()
-        },
-    )?;
+    let mut opt = adamw(meta, varmap)?;
     let train_data = m.train_data.to_device(dev)?;
     let train_labels = labels_to_wp(&m.train_labels, dev);
     let test_data = m.test_data.to_device(dev)?;
@@ -236,6 +224,17 @@ fn train_regression(
     }
     Ok(())
 }
+
+fn adamw(meta: &mut Meta, varmap: &VarMap) -> Result<AdamW> {
+    AdamW::new(
+        varmap.all_vars(),
+        ParamsAdamW { // ювелирной настройки: β₁=0.9, β₂=0.95, eps=1e-15
+            lr: meta.learning_rate,
+            ..Default::default()
+        },
+    )
+}
+
 fn labels_to_wp(labels: &Tensor, dev: &Device) -> Tensor {
     labels
         .to_dtype(DType::F32)

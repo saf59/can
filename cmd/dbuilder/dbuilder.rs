@@ -7,7 +7,10 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
-use utils::{column_averages, ensure_dir_exists, median_and_multiplier_columns, normalize_data_columns, vecusize_to_vecstring, vecvecf32_to_vecstring, write_csv_strings};
+use utils::{
+    column_averages, ensure_dir_exists, median_and_multiplier_columns, normalize_data_columns,
+    vecusize_to_vecstring, vecvecf32_to_vecstring, write_csv_strings,
+};
 
 fn main() {
     let path = r"W:\data\medius\part3\impulse_meta.csv";

@@ -29,7 +29,7 @@ pub fn main() -> anyhow::Result<()> {
     let safetensors_ba = include_bytes!("./../../models/model.safetensors");
     // Detect wp
     //let wp = detect( &all, freq, verbose, false)?;
-    let wp = detect_by( &all, freq, verbose, false,meta_ba,safetensors_ba)?;
+    let wp = detect_by(&all, freq, verbose, false, meta_ba, safetensors_ba)?;
     // Show result
     if args.verbose {
         show_is_cuda();

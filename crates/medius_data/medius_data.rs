@@ -15,15 +15,35 @@ pub struct Dataset {
     pub test_labels: Tensor,
 }
 impl Dataset {
-    pub fn classes(&self, is_regression:bool) -> usize {
-        if is_regression {return 1;}
-        let train_classes: HashSet<_> = self.train_labels.flatten_all().unwrap().to_vec1().unwrap().into_iter().collect();
-        let test_classes: HashSet<_> = self.test_labels.flatten_all().unwrap().to_vec1::<u8>().unwrap().into_iter().collect();
+    pub fn classes(&self, is_regression: bool) -> usize {
+        if is_regression {
+            return 1;
+        }
+        let train_classes: HashSet<_> = self
+            .train_labels
+            .flatten_all()
+            .unwrap()
+            .to_vec1()
+            .unwrap()
+            .into_iter()
+            .collect();
+        let test_classes: HashSet<_> = self
+            .test_labels
+            .flatten_all()
+            .unwrap()
+            .to_vec1::<u8>()
+            .unwrap()
+            .into_iter()
+            .collect();
         train_classes.union(&test_classes).count()
     }
 }
 
-pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32,dev: &Device) -> candle_core::Result<Dataset> {
+pub fn load_dir<T: AsRef<Path>>(
+    dir: T,
+    train_part: f32,
+    dev: &Device,
+) -> candle_core::Result<Dataset> {
     let y = read_medius_y(dir.as_ref())?;
     //parts(&y);
     let x = read_medius_x(dir.as_ref())?;
@@ -37,7 +57,7 @@ pub fn load_dir<T: AsRef<Path>>(dir: T, train_part: f32,dev: &Device) -> candle_
     } else {
         (0..indexes.len(), 0..indexes.len())
     };
-    let (train_size, test_size) = (&train.len(),&test.len());
+    let (train_size, test_size) = (&train.len(), &test.len());
     let (train_x, train_y) = fill_x_y(train, &x, &y, width);
     //parts(&train_y);
     let (test_x, test_y) = fill_x_y(test, &x, &y, width);
@@ -124,14 +144,18 @@ mod tests {
     fn test_load_dir() {
         set_root();
         let device = Device::cuda_if_available(0).unwrap();
-        let dataset = load_dir(BASE, 0.9,&device).unwrap();
-        println!("{:?}-> {:?}", &dataset.test_data.shape(),&dataset.classes(false));
+        let dataset = load_dir(BASE, 0.9, &device).unwrap();
+        println!(
+            "{:?}-> {:?}",
+            &dataset.test_data.shape(),
+            &dataset.classes(false)
+        );
         assert_eq!(dataset.test_data.shape().dims2().unwrap(), (72, 260));
-        assert_eq!(dataset.classes(false) , 5);
+        assert_eq!(dataset.classes(false), 5);
     }
     #[test]
     fn test_y() {
-        let y:Vec<u8> = vec![0,0,1,1,1,2,2,2,2];
+        let y: Vec<u8> = vec![0, 0, 1, 1, 1, 2, 2, 2, 2];
         let i0 = y.iter().filter(|i| **i == 0).count();
         let i1 = y.iter().filter(|i| **i == 1).count();
         let i2 = y.iter().filter(|i| **i == 2).count();

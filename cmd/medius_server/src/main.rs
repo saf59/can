@@ -39,13 +39,17 @@ fn real_body(http_request: HttpRequest, src: &str) -> String {
     let runtime = format!("{}://{}", info.scheme(), info.host());
     src.replace("http://localhost:8080", &runtime)
 }
-async fn detect3(payload: Multipart) -> Result<HttpResponse, Error> { detect(payload, Detect3).await }
-async fn detect4(payload: Multipart) -> Result<HttpResponse, Error> { detect(payload, Detect4).await }
+async fn detect3(payload: Multipart) -> Result<HttpResponse, Error> {
+    detect(payload, Detect3).await
+}
+async fn detect4(payload: Multipart) -> Result<HttpResponse, Error> {
+    detect(payload, Detect4).await
+}
 // Main detection handler
 async fn detect(mut payload: Multipart, version: Version) -> Result<HttpResponse, Error> {
     let mut frequency = None;
     let mut file_data = Vec::new();
-    let mut signature = None;
+    //let mut signature = None;
     // Process multipart form data
     while let Some(item) = payload.next().await {
         let mut field = item?;
@@ -69,17 +73,18 @@ async fn detect(mut payload: Multipart, version: Version) -> Result<HttpResponse
                     file_data.extend_from_slice(&data);
                 }
             }
-            "signature" => {
-                let data = field.next().await.unwrap()?;
-                let sig_str = String::from_utf8(data.to_vec()).unwrap_or("0".to_string());
-                let sig = sig_str.parse::<i64>().map_err(|e| {
-                    actix_web::error::ErrorBadRequest(format!("Invalid signature: {e}"))
-                })?;
-                signature = Some(sig);
-                if (sig / 137) * 137 != sig {
-                    return Err(actix_web::error::ErrorForbidden("Invalid signature"));
-                }
-            }
+            /*            "signature" => {
+                            let data = field.next().await.unwrap()?;
+                            let sig_str = String::from_utf8(data.to_vec()).unwrap_or("0".to_string());
+                            let sig = sig_str.parse::<i64>().map_err(|e| {
+                                actix_web::error::ErrorBadRequest(format!("Invalid signature: {e}"))
+                            })?;
+                            signature = Some(sig);
+                            if (sig / 137) * 137 != sig {
+                                return Err(actix_web::error::ErrorForbidden("Invalid signature"));
+                            }
+                        }
+            */
             _ => {}
         }
     }
@@ -89,7 +94,6 @@ async fn detect(mut payload: Multipart, version: Version) -> Result<HttpResponse
     } else {
         10000.0
     };
-    let sig = signature.ok_or(actix_web::error::ErrorBadRequest("Missing signature"))?;
     if file_data.is_empty() {
         return Err(actix_web::error::ErrorBadRequest("Missing file"));
     }
@@ -97,38 +101,47 @@ async fn detect(mut payload: Multipart, version: Version) -> Result<HttpResponse
         return Err(actix_web::error::ErrorBadRequest("Frequency is wrong"));
     }
     // Signature validation
-    let file_sig: i64 = (crc32fast::hash(&file_data) as i64) * 137_i64;
-    if file_sig != sig {
-        info!(
-            "Frequency: {:?}, file sig: {}, signature: {:?}",
-            &freq, file_sig, &sig
-        );
-        return Err(actix_web::error::ErrorForbidden("Invalid signature"));
-    }
+    /*    let sig = signature.ok_or(actix_web::error::ErrorBadRequest("Missing signature"))?;
+        let file_sig: i64 = (crc32fast::hash(&file_data) as i64) * 137_i64;
+        if file_sig != sig {
+            info!(
+                "Frequency: {:?}, file sig: {}, signature: {:?}",
+                &freq, file_sig, &sig
+            );
+            return Err(actix_web::error::ErrorForbidden("Invalid signature"));
+        }
+    */
     // Load embed model based on version
     let (meta_ba, safetensors_ba) = match version {
         Detect3 => detect3_model(),
         Detect4 => detect4_model(),
     };
     // Detect wp or class
-        let wd = match detect_by(
-        &file_data, freq as f32, false, true, meta_ba, safetensors_ba  ) {
+    let wd = match detect_by(
+        &file_data,
+        freq as f32,
+        false,
+        true,
+        meta_ba,
+        safetensors_ba,
+    ) {
         Ok(dist) => dist.to_string(),
         Err(e) => {
-            info!("Frequency: {:?}, file sig: {}, signature: {:?}",&freq, file_sig, &sig);
+            //            info!("Frequency: {:?}, file sig: {}, signature: {:?}",&freq, file_sig, &sig);
+            info!("Error:{e:?}");
             return Err(actix_web::error::ErrorBadRequest(e.to_string()));
         }
     };
     // info!("Detection result: {}", wd);
     Ok(HttpResponse::Ok().content_type("text/plain").body(wd))
 }
-fn detect4_model() -> (&'static[u8], &'static[u8]) {
+fn detect4_model() -> (&'static [u8], &'static [u8]) {
     (
         include_bytes!("../../../models/C_100_40_10_H34_ST_100/model.meta"),
-        include_bytes!("../../../models/C_100_40_10_H34_ST_100/model.safetensors")
+        include_bytes!("../../../models/C_100_40_10_H34_ST_100/model.safetensors"),
     )
 }
-fn detect3_model() -> (&'static[u8], &'static[u8]) {
+fn detect3_model() -> (&'static [u8], &'static [u8]) {
     (
         include_bytes!("../../../models/R_100_40_10_B260_ST_1/model.meta"),
         include_bytes!("../../../models/R_100_40_10_B260_ST_1/model.safetensors"),
@@ -165,8 +178,8 @@ async fn main() -> std::io::Result<()> {
 }
 #[cfg(test)]
 mod tests {
-    use std::fs;
     use crc32fast::Hasher;
+    use std::fs;
 
     #[test]
     fn test_crc32_in_wav() {

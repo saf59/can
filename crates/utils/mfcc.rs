@@ -1,4 +1,4 @@
-﻿use crate::fft::fft_amplitudes;
+use crate::fft::fft_amplitudes;
 use crate::{median_and_multiplier, normalize_array};
 
 pub struct MFCC {
@@ -187,4 +187,3 @@ impl MFCC {
         column_averages
     }
 }
-

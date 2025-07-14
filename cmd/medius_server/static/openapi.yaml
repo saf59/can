@@ -43,7 +43,6 @@ paths:
               required:
                 - frequency
                 - file
-                - signature
               type: object
               properties:
                 frequency:
@@ -55,11 +54,6 @@ paths:
                   type: string
                   description: WAV file body
                   format: binary
-                signature:
-                  type: integer
-                  format: int64
-                  description: Request signature
-                  example: 123456728
       responses:
         '200':
           description: Successful response. Returns the requested result.
@@ -71,8 +65,6 @@ paths:
                 description: Working position
         "400":
           description: Bad request. Frequency is wrong or wav file is wrong.
-        "403":
-          description: Signature is invalid.
         "422":
           description: Unprocessable Content.
         "500":
@@ -90,18 +82,12 @@ paths:
             schema:
               required:
                 - file
-                - signature
               type: object
               properties:
                 file:
                   type: string
                   description: WAV file body
                   format: binary
-                signature:
-                  type: integer
-                  format: int64
-                  description: Request signature
-                  example: 123456728
       responses:
         '200':
           description: Successful response. Returns the requested result.
@@ -113,8 +99,6 @@ paths:
                 description: Class = 0 - focus, 1 - below, 2 - above
         "400":
           description: Bad request. WAV file is wrong.
-        "403":
-          description: Signature is invalid.
         "422":
           description: Unprocessable Content.
         "500":

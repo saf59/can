@@ -1,47 +1,43 @@
-﻿use std::collections::HashMap;
-use std::f32::consts::PI;
-use rustfft::num_complex::Complex32;
-// External crate dependencies
-//use rustfft::{num_complex::Complex32, FftPlanner};
-
-// Remove the custom Complex implementation since we're using rustfft's Complex32
+use realfft::num_complex::Complex64;
+use std::collections::HashMap;
+use std::f64::consts::PI;
 
 /// Result structure containing all higher-order spectral moments and related metrics
 #[derive(Debug, Clone)]
 pub struct HigherOrderMomentsResult {
     /// First moment - spectral centroid (center of mass of the spectrum)
-    pub spectral_mean: f32,
+    pub spectral_mean: f64,
     /// Second central moment - spectral spread
-    pub spectral_variance: f32,
+    pub spectral_variance: f64,
     /// Third standardized moment - spectral asymmetry
-    pub spectral_skewness: f32,
+    pub spectral_skewness: f64,
     /// Fourth standardized moment - spectral peakedness
-    pub spectral_kurtosis: f32,
+    pub spectral_kurtosis: f64,
     /// Ratio of geometric to arithmetic mean - measure of spectral uniformity
-    pub spectral_flatness: f32,
+    pub spectral_flatness: f64,
     /// Shannon entropy of the power spectral density
-    pub spectral_entropy: f32,
+    pub spectral_entropy: f64,
     /// Normalized moment ratios for feature extraction
-    pub moment_ratios: Vec<f32>,
+    pub moment_ratios: Vec<f64>,
     /// Cumulants derived from raw moments
-    pub cumulants: Vec<f32>,
+    pub cumulants: Vec<f64>,
     /// Per-harmonic moment analysis for harmonic content
-    pub harmonic_moments: HashMap<usize, Vec<f32>>,
+    pub harmonic_moments: HashMap<usize, Vec<f64>>,
 }
 
 /// Frequency band definition for band-specific analysis
 #[derive(Debug, Clone)]
 pub struct FrequencyBand {
     /// Start frequency of the band in Hz
-    pub start_freq: f32,
+    pub start_freq: f64,
     /// End frequency of the band in Hz
-    pub end_freq: f32,
+    pub end_freq: f64,
     /// Human-readable name for the frequency band
     pub name: String,
 }
 
 impl FrequencyBand {
-    pub fn new(start_freq: f32, end_freq: f32, name: &str) -> Self {
+    pub fn new(start_freq: f64, end_freq: f64, name: &str) -> Self {
         Self {
             start_freq,
             end_freq,
@@ -53,13 +49,13 @@ impl FrequencyBand {
 /// Main analyzer for computing higher-order spectral moments and related features
 pub struct HigherOrderMomentsAnalyzer {
     /// Audio sampling rate in Hz
-    sampling_rate: f32,
+    sampling_rate: f64,
     /// Maximum order of moments to compute (N)
     n: usize,
     /// Cache for precomputed window functions to avoid recomputation
-    window_cache: HashMap<(usize, String), Vec<f32>>,
+    window_cache: HashMap<(usize, String), Vec<f64>>,
     // FFT planner for efficient Fourier transforms
-    //fft_planner: FftPlanner<f32>,
+    //fft_planner: FftPlanner<f64>,
 }
 
 impl HigherOrderMomentsAnalyzer {
@@ -68,7 +64,7 @@ impl HigherOrderMomentsAnalyzer {
     /// # Arguments
     /// * `sampling_rate` - Audio sampling rate in Hz (default: 192000.0)
     /// * `n` - Maximum order of moments to compute (default: 5)
-    pub fn new(sampling_rate: f32, n: usize) -> Self {
+    pub fn new(sampling_rate: f64, n: usize) -> Self {
         Self {
             sampling_rate,
             n,
@@ -87,7 +83,7 @@ impl HigherOrderMomentsAnalyzer {
     /// # Arguments
     /// * `n` - Window length in samples
     /// * `window_type` - Type of window ("hanning", "hamming", "blackman", or "rectangular")
-    fn get_window(&mut self, n: usize, window_type: &str) -> Vec<f32> {
+    fn get_window(&mut self, n: usize, window_type: &str) -> Vec<f64> {
         let key = (n, window_type.to_lowercase());
 
         if let Some(cached_window) = self.window_cache.get(&key) {
@@ -95,10 +91,10 @@ impl HigherOrderMomentsAnalyzer {
         }
 
         // Compute window function based on type
-        let window: Vec<f32> = (0..n)
+        let window: Vec<f64> = (0..n)
             .map(|i| {
-                let i_f = i as f32;
-                let n_f = n as f32;
+                let i_f = i as f64;
+                let n_f = n as f64;
                 match window_type.to_lowercase().as_str() {
                     "hanning" => 0.5 * (1.0 - (2.0 * PI * i_f / (n_f - 1.0)).cos()),
                     "hamming" => 0.54 - 0.46 * (2.0 * PI * i_f / (n_f - 1.0)).cos(),
@@ -120,8 +116,10 @@ impl HigherOrderMomentsAnalyzer {
     /// # Arguments
     /// * `signal` - Input signal samples
     /// * `window_type` - Type of window to apply
-    fn apply_window(&mut self, signal: &[f32], window_type: &str) -> Vec<f32> {
-        if window_type.is_empty() { return signal.to_vec(); }
+    fn apply_window(&mut self, signal: &[f64], window_type: &str) -> Vec<f64> {
+        if window_type.is_empty() {
+            return signal.to_vec();
+        }
         let window = self.get_window(signal.len(), window_type);
         signal
             .iter()
@@ -138,8 +136,8 @@ impl HigherOrderMomentsAnalyzer {
     ///
     /// # Returns
     /// * Complex-valued FFT output with same length as input
-    fn compute_fft(&mut self, input: &[f32]) -> Vec<Complex32> {
-      utils::fft::fft_forward(input, input.len())
+    fn compute_fft(&mut self, input: &[f64]) -> Vec<Complex64> {
+        utils::fft::fft64_forward(input, input.len())
     }
 
     /// Compute Power Spectral Density from windowed signal using rustfft
@@ -147,7 +145,7 @@ impl HigherOrderMomentsAnalyzer {
     /// # Arguments
     /// * `signal` - Input time-domain signal
     /// * `window` - Window type to apply before FFT
-    fn compute_psd(&mut self, signal: &[f32], window: &str) -> Vec<f32> {
+    fn compute_psd(&mut self, signal: &[f64], window: &str) -> Vec<f64> {
         // Apply windowing to reduce spectral leakage
         let windowed_signal = self.apply_window(signal, window);
 
@@ -159,7 +157,7 @@ impl HigherOrderMomentsAnalyzer {
         let mut psd = vec![0.0; n / 2 + 1];
         for i in 0..psd.len() {
             let magnitude = spectrum[i].norm(); // rustfft Complex32 has norm() method
-            let mut power = (magnitude * magnitude) / (self.sampling_rate * n as f32);
+            let mut power = (magnitude * magnitude) / (self.sampling_rate * n as f64);
 
             // Double the power for positive frequencies (except DC and Nyquist)
             if i > 0 && i < n / 2 {
@@ -174,9 +172,9 @@ impl HigherOrderMomentsAnalyzer {
     ///
     /// # Arguments
     /// * `n` - Length of original signal (determines frequency resolution)
-    fn get_frequencies(&self, n: usize) -> Vec<f32> {
-        let df = self.sampling_rate / n as f32; // Frequency resolution
-        (0..=n / 2).map(|i| i as f32 * df).collect()
+    fn get_frequencies(&self, n: usize) -> Vec<f64> {
+        let df = self.sampling_rate / n as f64; // Frequency resolution
+        (0..=n / 2).map(|i| i as f64 * df).collect()
     }
 
     /// Analyze the full spectrum and compute all higher-order moments
@@ -186,7 +184,7 @@ impl HigherOrderMomentsAnalyzer {
     /// * `window` - Window type for preprocessing
     pub fn analyze_full_spectrum(
         &mut self,
-        signal: &[f32],
+        signal: &[f64],
         window: &str,
     ) -> HigherOrderMomentsResult {
         let psd = self.compute_psd(signal, window);
@@ -202,7 +200,7 @@ impl HigherOrderMomentsAnalyzer {
     /// * `window` - Window type for preprocessing
     pub fn analyze_frequency_bands(
         &mut self,
-        signal: &[f32],
+        signal: &[f64],
         bands: &[FrequencyBand],
         window: &str,
     ) -> HashMap<String, HigherOrderMomentsResult> {
@@ -221,8 +219,8 @@ impl HigherOrderMomentsAnalyzer {
             //println!("Analyzing band: {} (from {} {} indices)", band.name, band_indices[0], band_indices.len());
             if !band_indices.is_empty() {
                 // Extract PSD and frequencies for this band
-                let band_psd: Vec<f32> = band_indices.iter().map(|&i| psd[i]).collect();
-                let band_freqs: Vec<f32> = band_indices.iter().map(|&i| frequencies[i]).collect();
+                let band_psd: Vec<f64> = band_indices.iter().map(|&i| psd[i]).collect();
+                let band_freqs: Vec<f64> = band_indices.iter().map(|&i| frequencies[i]).collect();
                 //println!("Band PSD: {:?}", band_psd);
                 //println!("Band freq: {:?}", band_freqs);
                 let result = self.compute_higher_order_moments(&band_psd, &band_freqs);
@@ -242,10 +240,10 @@ impl HigherOrderMomentsAnalyzer {
     /// * `bandwidth_hz` - Bandwidth around each harmonic to include
     pub fn analyze_around_harmonics(
         &mut self,
-        signal: &[f32],
-        fundamental_freq: f32,
+        signal: &[f64],
+        fundamental_freq: f64,
         max_harmonic: usize,
-        bandwidth_hz: f32,
+        bandwidth_hz: f64,
     ) -> HigherOrderMomentsResult {
         let psd = self.compute_psd(signal, "hanning");
         let frequencies = self.get_frequencies(signal.len());
@@ -254,7 +252,7 @@ impl HigherOrderMomentsAnalyzer {
 
         // Analyze each harmonic separately
         for harmonic in 1..=max_harmonic {
-            let harmonic_freq = fundamental_freq * harmonic as f32;
+            let harmonic_freq = fundamental_freq * harmonic as f64;
             let start_freq = harmonic_freq - bandwidth_hz / 2.0;
             let end_freq = harmonic_freq + bandwidth_hz / 2.0;
 
@@ -267,8 +265,8 @@ impl HigherOrderMomentsAnalyzer {
                 .collect();
 
             if !harmonic_indices.is_empty() {
-                let harmonic_psd: Vec<f32> = harmonic_indices.iter().map(|&i| psd[i]).collect();
-                let harmonic_freqs: Vec<f32> =
+                let harmonic_psd: Vec<f64> = harmonic_indices.iter().map(|&i| psd[i]).collect();
+                let harmonic_freqs: Vec<f64> =
                     harmonic_indices.iter().map(|&i| frequencies[i]).collect();
 
                 // Compute raw moments for this harmonic
@@ -281,8 +279,8 @@ impl HigherOrderMomentsAnalyzer {
         }
 
         // Combine all harmonic regions for overall analysis
-        let combined_psd: Vec<f32> = all_harmonic_indices.iter().map(|&i| psd[i]).collect();
-        let combined_freqs: Vec<f32> = all_harmonic_indices
+        let combined_psd: Vec<f64> = all_harmonic_indices.iter().map(|&i| psd[i]).collect();
+        let combined_freqs: Vec<f64> = all_harmonic_indices
             .iter()
             .map(|&i| frequencies[i])
             .collect();
@@ -299,13 +297,13 @@ impl HigherOrderMomentsAnalyzer {
     /// * `frequencies` - Corresponding frequency values
     fn compute_higher_order_moments(
         &self,
-        psd: &[f32],
-        frequencies: &[f32],
+        psd: &[f64],
+        frequencies: &[f64],
     ) -> HigherOrderMomentsResult {
-        let total_power: f32 = psd.iter().sum();
+        let total_power: f64 = psd.iter().sum();
 
         // Normalize PSD to create probability density function
-        let normalized_psd: Vec<f32> = if total_power > 0.0 {
+        let normalized_psd: Vec<f64> = if total_power > 0.0 {
             psd.iter().map(|&p| p / total_power).collect()
         } else {
             psd.to_vec()
@@ -313,7 +311,7 @@ impl HigherOrderMomentsAnalyzer {
         // Compute raw moments (m_k = sum(p_i * f_i^k))
         let raw_moments = self.compute_raw_moments(&normalized_psd, frequencies, self.n + 1);
         let mean = raw_moments[1]; // First moment is the spectral centroid
-        // Compute central moments around the mean
+                                   // Compute central moments around the mean
         let central_moments = self.compute_central_moments(&normalized_psd, frequencies, mean, 4);
         // Compute cumulants from raw moments
         let cumulants = self.compute_cumulants(&raw_moments);
@@ -334,30 +332,30 @@ impl HigherOrderMomentsAnalyzer {
         };
         // Spectral flatness: ratio of geometric to arithmetic mean
         let geometric_mean = if normalized_psd.iter().all(|&p| p > 0.0) {
-            let log_sum: f32 = normalized_psd.iter().map(|&p| p.ln()).sum();
-            (log_sum / normalized_psd.len() as f32).exp()
+            let log_sum: f64 = normalized_psd.iter().map(|&p| p.ln()).sum();
+            (log_sum / normalized_psd.len() as f64).exp()
         } else {
             0.0
         };
-        let arithmetic_mean: f32 = normalized_psd.iter().sum::<f32>() / normalized_psd.len() as f32;
+        let arithmetic_mean: f64 = normalized_psd.iter().sum::<f64>() / normalized_psd.len() as f64;
         let spectral_flatness = if arithmetic_mean > 0.0 {
             geometric_mean / arithmetic_mean
         } else {
             0.0
         };
         // Spectral entropy: Shannon entropy of the PSD
-        let spectral_entropy: f32 = normalized_psd
+        let spectral_entropy: f64 = normalized_psd
             .iter()
             .filter(|&&p| p > 0.0)
             .map(|&p| -p * p.ln())
             .sum();
         // Moment ratios for feature extraction (normalized moments)
-        let moment_ratios: Vec<f32> = (0..self.n)
+        let moment_ratios: Vec<f64> = (0..self.n)
             .map(|i| {
                 if i == 0 || raw_moments[1] == 0.0 {
                     0.0
                 } else {
-                    raw_moments[i + 1] / raw_moments[1].powf((i + 1) as f32)
+                    raw_moments[i + 1] / raw_moments[1].powf((i + 1) as f64)
                 }
             })
             .collect();
@@ -381,14 +379,14 @@ impl HigherOrderMomentsAnalyzer {
     /// * `psd` - Normalized power spectral density
     /// * `frequencies` - Frequency bins
     /// * `max_order` - Maximum moment order to compute
-    fn compute_raw_moments(&self, psd: &[f32], frequencies: &[f32], max_order: usize) -> Vec<f32> {
+    fn compute_raw_moments(&self, psd: &[f64], frequencies: &[f64], max_order: usize) -> Vec<f64> {
         let mut moments = vec![0.0; max_order + 1];
 
         for (order, moment) in moments.iter_mut().enumerate().take(max_order + 1) {
-            let sum: f32 = psd
+            let sum: f64 = psd
                 .iter()
                 .zip(frequencies.iter())
-                .map(|(&p, &f)| p * f.powf(order as f32))
+                .map(|(&p, &f)| p * f.powf(order as f64))
                 .sum();
             *moment = sum;
         }
@@ -404,48 +402,40 @@ impl HigherOrderMomentsAnalyzer {
     /// * `max_order` - Maximum moment order to compute
     fn compute_central_moments(
         &self,
-        psd: &[f32],
-        frequencies: &[f32],
-        mean: f32,
+        psd: &[f64],
+        frequencies: &[f64],
+        mean: f64,
         max_order: usize,
-    ) -> Vec<f32> {
+    ) -> Vec<f64> {
         let mut central_moments = vec![0.0; max_order + 1];
 
         for (order, central_moment) in central_moments.iter_mut().enumerate().take(max_order + 1) {
-            let sum: f32 = psd
+            let sum: f64 = psd
                 .iter()
                 .zip(frequencies.iter())
-                .map(|(&p, &f)| p * (f - mean).powf(order as f32))
+                .map(|(&p, &f)| p * (f - mean).powf(order as f64))
                 .sum();
             *central_moment = sum;
         }
         central_moments
-    }
-    // &[f32] to Vec<f64>
-    fn f32_slice_to_f64_vec(input: &[f32]) -> Vec<f64> {
-        input.iter().map(|&x| x as f64).collect()
-    }
-
-    // &[f64] to Vec<f32>
-    fn f64_slice_to_f32_vec(input: &[f64]) -> Vec<f32> {
-        input.iter().map(|&x| x as f32).collect()
     }
     /// Compute cumulants from raw moments using the moment-cumulant relationship
     /// Cumulants are more robust to outliers than moments
     ///
     /// # Arguments
     /// * `moments` - Raw moments array
-    fn compute_cumulants(&self, moments: &[f32]) -> Vec<f32> {
-        let moments = Self::f32_slice_to_f64_vec(moments);
+    fn compute_cumulants(&self, moments: &[f64]) -> Vec<f64> {
+//        let moments = Self::f64_slice_to_f64_vec(moments);
         let n = self.n.min(moments.len());
-        let mut cumulants :Vec<f64> = vec![0.0; n];
+        let mut cumulants: Vec<f64> = vec![0.0; n];
 
         // Cumulant relationships (up to 5th order)
         if !moments.is_empty() {
             cumulants[0] = moments[0]; // κ₁ = μ₁
         }
         if moments.len() >= 2 {
-            cumulants[1] = moments[1]; // κ₂ = μ₂
+            //cumulants[1] = moments[1]; // κ₂ = μ₂
+            cumulants[1] = moments[1] - moments[0].powf(2.0); // κ₂ = μ₂ - μ₁²
         }
         if moments.len() >= 3 {
             cumulants[2] = moments[2] - moments[1].powf(2.0); // κ₃ = μ₃ - μ₁²
@@ -460,12 +450,13 @@ impl HigherOrderMomentsAnalyzer {
                 + 12.0 * moments[2] * moments[1].powf(2.0)
                 - 6.0 * moments[1].powf(4.0);
         }
-        Self::f64_slice_to_f32_vec(&cumulants)
+        //Self::f64_slice_to_f64_vec(&cumulants)
+        cumulants
     }
-    fn compute_cumulants_r(&self, moments: &[f32]) -> Vec<f32> {
-        let moments = Self::f32_slice_to_f64_vec(moments);
+/*    fn compute_cumulants_r(&self, moments: &[f64]) -> Vec<f64> {
+        let moments = Self::f64_slice_to_f64_vec(moments);
         let n = self.n.min(moments.len());
-        let mut cumulants:Vec<f64> = vec![0.0; n];
+        let mut cumulants: Vec<f64> = vec![0.0; n];
 
         if n > 0 {
             // κ₁ = μ₁
@@ -481,24 +472,22 @@ impl HigherOrderMomentsAnalyzer {
         }
         if n > 3 {
             // κ₄ = μ₄ - 4μ₃μ₁ - 3μ₂² + 12μ₂μ₁² - 6μ₁⁴
-            cumulants[3] = moments[3]
-                - 4.0 * moments[2] * moments[0]
-                - 3.0 * moments[1].powi(2)
+            cumulants[3] = moments[3] - 4.0 * moments[2] * moments[0] - 3.0 * moments[1].powi(2)
                 + 12.0 * moments[1] * moments[0].powi(2)
                 - 6.0 * moments[0].powi(4);
         }
         if n > 4 {
             // κ₅ = μ₅ - 5μ₄μ₁ - 10μ₃μ₂ + 20μ₃μ₁² + 30μ₂²μ₁ - 60μ₂μ₁³ + 24μ₁⁵
-            cumulants[4] = moments[4]
-                - 5.0 * moments[3] * moments[0]
-                - 10.0 * moments[2] * moments[1]
-                + 20.0 * moments[2] * moments[0].powi(2)
-                + 30.0 * moments[1].powi(2) * moments[0]
-                - 60.0 * moments[1] * moments[0].powi(3)
-                + 24.0 * moments[0].powi(5);
+            cumulants[4] =
+                moments[4] - 5.0 * moments[3] * moments[0] - 10.0 * moments[2] * moments[1]
+                    + 20.0 * moments[2] * moments[0].powi(2)
+                    + 30.0 * moments[1].powi(2) * moments[0]
+                    - 60.0 * moments[1] * moments[0].powi(3)
+                    + 24.0 * moments[0].powi(5);
         }
-        Self::f64_slice_to_f32_vec(&cumulants)
+        Self::f64_slice_to_f64_vec(&cumulants)
     }
+*/
     /// Get standard frequency bands for audio analysis
     pub fn get_standard_frequency_bands(&self) -> Vec<FrequencyBand> {
         vec![
@@ -519,17 +508,17 @@ impl HigherOrderMomentsAnalyzer {
     /// * `band_width` - Width of each band in Hz
     pub fn get_custom_frequency_bands(
         &self,
-        centers: &[f32],
+        centers: &[f64],
         bands: usize,
-        band_width: f32,
+        band_width: f64,
     ) -> Vec<FrequencyBand> {
         let mut result = Vec::new();
 
         for &center in centers {
-            let start = center - band_width * (bands as f32) / 2.0;
+            let start = center - band_width * (bands as f64) / 2.0;
 
             for i in 0..bands {
-                let start_freq = start + band_width * i as f32;
+                let start_freq = start + band_width * i as f64;
                 let end_freq = start_freq + band_width;
                 let name = format!("Band{}_Center{}", i + 1, center as usize);
 
@@ -544,7 +533,7 @@ impl HigherOrderMomentsAnalyzer {
     ///
     /// # Arguments
     /// * `result` - Analysis results to extract features from
-    pub fn extract_features_for_ml(&self, result: &HigherOrderMomentsResult) -> Vec<f32> {
+    pub fn extract_features_for_ml(&self, result: &HigherOrderMomentsResult) -> Vec<f64> {
         // Calculate feature vector size: 6 basic + 2*(N-1) moments/cumulants + 3 derived = 2*(N-1) + 9
         let mut features = Vec::with_capacity(2 * (self.n - 1) + 9);
 
@@ -630,9 +619,9 @@ pub fn example_usage() {
     let mut analyzer = HigherOrderMomentsAnalyzer::new(96000.0, 6);
 
     // Generate example signal: chirp from 1kHz to 5kHz
-    let signal: Vec<f32> = (0..8192)
+    let signal: Vec<f64> = (0..8192)
         .map(|i| {
-            let t = i as f32 / 96000.0;
+            let t = i as f64 / 96000.0;
             let freq = 1000.0 + 4000.0 * t; // Linear chirp
             (2.0 * PI * freq * t).sin()
         })
@@ -653,8 +642,8 @@ pub fn example_usage() {
 
 #[cfg(test)]
 mod tests {
-//    use realfft::num_complex::{Complex, Complex64};
-//    use realfft::RealFftPlanner;
+    //    use realfft::num_complex::{Complex, Complex64};
+    //    use realfft::RealFftPlanner;
     use super::*;
 
     /// Test function converted from Kotlin main() - creates synthetic signal and analyzes it
@@ -686,7 +675,7 @@ mod tests {
         println!("Bands result: {:?}", band_results);
     }
 
-    fn sample_hom_signal() -> Vec<f32> {
+    fn sample_hom_signal() -> Vec<f64> {
         // Create test signal with multiple harmonics and noise
         let signal_length = 4096;
         let sampling_rate = 192000.0;
@@ -697,9 +686,9 @@ mod tests {
         // - Third harmonic at 30kHz (30% amplitude)
         // - Nonlinear distortion (creates higher-order moments)
         // - Gaussian noise
-        let signal: Vec<f32> = (0..signal_length)
+        let signal: Vec<f64> = (0..signal_length)
             .map(|i| {
-                let t = i as f32 / sampling_rate;
+                let t = i as f64 / sampling_rate;
                 // Harmonic components
                 let fundamental = (2.0 * PI * 10000.0 * t).sin();
                 let second_harmonic = 0.5 * (2.0 * PI * 20000.0 * t).sin();
@@ -724,8 +713,8 @@ mod tests {
         assert!(window[512] >= 0.0 && window[512] <= 1.0);
 
         // Test FFT functionality with simple signal
-        let test_signal: Vec<f32> = (0..64)
-            .map(|i| (2.0 * PI * i as f32 / 64.0).sin())
+        let test_signal: Vec<f64> = (0..64)
+            .map(|i| (2.0 * PI * i as f64 / 64.0).sin())
             .collect();
         let fft_result = analyzer.compute_fft(&test_signal);
         assert_eq!(fft_result.len(), 64);
@@ -747,8 +736,8 @@ mod tests {
         let mut analyzer = HigherOrderMomentsAnalyzer::new_default();
 
         // Simple test signal
-        let signal: Vec<f32> = (0..1024)
-            .map(|i| (2.0 * PI * 440.0 * i as f32 / 44100.0).sin())
+        let signal: Vec<f64> = (0..1024)
+            .map(|i| (2.0 * PI * 440.0 * i as f64 / 44100.0).sin())
             .collect();
 
         let result = analyzer.analyze_full_spectrum(&signal, "hanning");
@@ -786,7 +775,7 @@ mod tests {
     /// Analyze frequency bands and print results for significant bands only
     fn bands_stat(
         analyzer: &mut HigherOrderMomentsAnalyzer,
-        signal: &[f32],
+        signal: &[f64],
         bands: &[FrequencyBand],
         window: &str,
     ) {
@@ -802,7 +791,7 @@ mod tests {
     }
 
     /// Main analysis function demonstrating all capabilities
-    fn analyze_signal(signal: &[f32]) {
+    fn analyze_signal(signal: &[f64]) {
         let mut analyzer = HigherOrderMomentsAnalyzer::new_default();
 
         // Full spectrum analysis
@@ -833,27 +822,32 @@ mod tests {
         let features_str: Vec<String> = features.iter().map(|&x| format!("{:.4}", x)).collect();
         println!("Features: {}", features_str.join(", "));
     }
-    
+
     // to compare with App4.checkComputeFft()
     #[test]
     #[ignore]
     fn test_compute_fft() {
         // Test with a simple sine wave, but not 2.0 * PI -> 2.123 * PI
-        let test_signal: Vec<f32> = (0..8)
-            .map(|i| (2.123 * PI * i as f32 / 8.0).sin())
+        let test_signal: Vec<f64> = (0..8)
+            .map(|i| (2.123 * PI * i as f64 / 8.0).sin())
             .collect();
-        // the same        
+        // the same
         // [0.0, 0.0980171, 0.195090, 0.290284, 0.382683, 0.4713967, 0.555570 ...
         //let fft_result = analyzer.compute_fft(&test_signal);
         // different only Complex.re, and it is very small values
-        let fft_result = utils::fft::fft_forward(&test_signal, test_signal.len());
+        let fft_result = utils::fft::fft64_forward(&test_signal, test_signal.len());
         println!("FFT Result:");
         fft_result.iter().for_each(|c| {
             println!("{} + {}i", c.re, c.im);
         });
         //let size = fft_result.len();
-        println!("amplitudes: {:?})",utils::fft::to_amplitudes(&fft_result,test_signal.len()));
-        println!("phases: {:?})",utils::fft::to_phases(&fft_result,test_signal.len()));
-
+        println!(
+            "amplitudes: {:?})",
+            utils::fft::to64_amplitudes(&fft_result, test_signal.len())
+        );
+        println!(
+            "phases: {:?})",
+            utils::fft::to64_phases(&fft_result, test_signal.len())
+        );
     }
 }

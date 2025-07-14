@@ -1,16 +1,16 @@
+use ho::HigherOrderMomentsAnalyzer;
+use medius_meta::AlgType;
 use pacmog::PcmReader;
 use std::collections::HashMap;
+#[allow(unused_imports)]
+use std::f32::consts::PI;
 use std::fs;
-use medius_meta::AlgType;
 #[allow(unused_imports)]
 use std::path::Path;
-use ho::HigherOrderMomentsAnalyzer;
 use utils::fft::fft_amplitudes;
 use utils::mfcc::MFCC;
 use utils::statistics::stat3;
 use utils::{median_and_multiplier, normalize_array};
-#[allow(unused_imports)]
-use std::f32::consts::PI;
 
 const SAMPLE_RATE: usize = 192_000;
 const SAMPLE_RATE_F32: f32 = SAMPLE_RATE as f32;
@@ -62,9 +62,8 @@ pub fn parse_hom(raw: &[f32]) -> anyhow::Result<Vec<Vec<f32>>> {
     let mut analyzer = HigherOrderMomentsAnalyzer::default();
     let results: Vec<Vec<f32>> = pulses
         .iter()
-        .map(|pulse| {
-            hob(pulse, bands, band_width, window, &centers, &mut analyzer)
-        }).collect::<Vec<_>>();
+        .map(|pulse| hob(pulse, bands, band_width, window, &centers, &mut analyzer))
+        .collect::<Vec<_>>();
     Ok(results)
 }
 pub fn hob(
@@ -77,13 +76,14 @@ pub fn hob(
 ) -> Vec<f32> {
     // Ensure signal is sized to 4096
     let signal = to_sized(data, 4096);
-
+    let signal = f32_slice_to_f64_vec(&signal);
     // Analyze full spectrum
     let full_result = analyzer.analyze_full_spectrum(&signal, window);
     let mut result = analyzer.extract_features_for_ml(&full_result);
 
     // Get custom frequency bands
-    let custom_bands = analyzer.get_custom_frequency_bands(centers, bands, band_width);
+    let centers = f32_slice_to_f64_vec(centers);
+    let custom_bands = analyzer.get_custom_frequency_bands(&centers, bands, band_width as f64);
     //let band_results = analyzer.analyze_frequency_bands(signal, bands, "hanning");
     let band_results = analyzer.analyze_frequency_bands(&signal, &custom_bands, window);
 
@@ -91,8 +91,18 @@ pub fn hob(
         let band_features = analyzer.extract_features_for_ml(&band_result);
         result.extend(band_features);
     }
-    result
+    f64_slice_to_f32_vec(&result)
 }
+// &[f32] to Vec<f64>
+fn f32_slice_to_f64_vec(input: &[f32]) -> Vec<f64> {
+    input.iter().map(|&x| x as f64).collect()
+}
+
+// &[f64] to Vec<f32>
+fn f64_slice_to_f32_vec(input: &[f64]) -> Vec<f32> {
+    input.iter().map(|&x| x as f32).collect()
+}
+
 // Helper: resize or pad/truncate to 4096
 fn to_sized(data: &[f32], size: usize) -> Vec<f32> {
     let mut out = vec![0.0; size];
@@ -320,12 +330,12 @@ fn impuls(data: &[f32], peak: usize) -> Vec<f32> {
         .copied()
         .sum::<f32>()
         / data
-        .iter()
-        .skip(peak)
-        .take(1000)
-        .filter(|&&x| x > 0.0)
-        .count()
-        .max(1) as f32;
+            .iter()
+            .skip(peak)
+            .take(1000)
+            .filter(|&&x| x > 0.0)
+            .count()
+            .max(1) as f32;
 
     let last = back_search(data, peak, mean);
     // Slice from (peak-2)..=last, handling bounds
@@ -600,7 +610,7 @@ mod tests {
         let band_width = 3000.0;
         let centers = vec![85_000.0];
         let window = ""; //"hanning";
-        println!("Signal: {:?}..{:?}", data.first(),data.last());
+        println!("Signal: {:?}..{:?}", data.first(), data.last());
         // Create analyzer (adjust as needed for your constructor)
         let mut analyzer = HigherOrderMomentsAnalyzer::default();
         let result = hob(&data, bands, band_width, window, &centers, &mut analyzer);

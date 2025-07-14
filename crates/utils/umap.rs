@@ -1,5 +1,5 @@
-﻿use rand::Rng;
 use rand::rngs::ThreadRng;
+use rand::Rng;
 
 // qwq32b
 pub fn umap(
@@ -122,11 +122,7 @@ fn compute_global_epsilon(epsilons: &[f32]) -> f32 {
     sorted[mid]
 }
 
-
-fn combine_similarities(
-    local: &[Vec<f32>],
-    global: &[Vec<f32>],
-) -> Vec<Vec<f32>> {
+fn combine_similarities(local: &[Vec<f32>], global: &[Vec<f32>]) -> Vec<Vec<f32>> {
     let n = local.len();
     let mut combined = vec![vec![0.0; n]; n];
 
@@ -138,10 +134,7 @@ fn combine_similarities(
 
     combined
 }
-fn compute_local_similarities(
-    distance_matrix: &[Vec<f32>],
-    epsilons: &[f32],
-) -> Vec<Vec<f32>> {
+fn compute_local_similarities(distance_matrix: &[Vec<f32>], epsilons: &[f32]) -> Vec<Vec<f32>> {
     let n = distance_matrix.len();
     let mut similarities = vec![vec![0.0; n]; n];
 
@@ -161,10 +154,7 @@ fn compute_local_similarities(
     similarities
 }
 
-fn compute_global_similarities(
-    distance_matrix: &[Vec<f32>],
-    global_epsilon: f32,
-) -> Vec<Vec<f32>> {
+fn compute_global_similarities(distance_matrix: &[Vec<f32>], global_epsilon: f32) -> Vec<Vec<f32>> {
     let n = distance_matrix.len();
     let mut similarities = vec![vec![0.0; n]; n];
 
@@ -184,7 +174,10 @@ fn compute_global_similarities(
 }
 fn normalize_probabilities(matrix: &[Vec<f32>]) -> Vec<Vec<f32>> {
     let n = matrix.len();
-    let total = matrix.iter().map(|row| row.iter().sum::<f32>()).sum::<f32>();
+    let total = matrix
+        .iter()
+        .map(|row| row.iter().sum::<f32>())
+        .sum::<f32>();
     let mut p_matrix = vec![vec![0.0; n]; n];
 
     for i in 0..n {
@@ -197,7 +190,7 @@ fn normalize_probabilities(matrix: &[Vec<f32>]) -> Vec<Vec<f32>> {
 }
 
 fn initialize_embeddings(n: usize, n_components: usize) -> Vec<Vec<f32>> {
-    let mut rng:ThreadRng = rand::rng();
+    let mut rng: ThreadRng = rand::rng();
     (0..n)
         .map(|_| {
             (0..n_components)
@@ -275,7 +268,8 @@ mod tests {
             0.1,
             // 1.0,
             "euclidean",
-        ).unwrap();
+        )
+        .unwrap();
 
         for point in result {
             println!("{:?}", point);

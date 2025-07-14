@@ -39,7 +39,8 @@ pub fn meta_from_ba(buf: &[u8]) -> anyhow::Result<Meta> {
     serde_yaml::from_slice(buf).map_err(|e| anyhow::anyhow!("Failed to parse Meta: {}", e))
 }
 pub fn safetensors_from_ba<'a>(buf: &'a [u8]) -> anyhow::Result<SafeTensors<'a>> {
-    SafeTensors::deserialize(buf).map_err(|e| anyhow::anyhow!("Failed to deserialize SafeTensors: {}", e))
+    SafeTensors::deserialize(buf)
+        .map_err(|e| anyhow::anyhow!("Failed to deserialize SafeTensors: {}", e))
 }
 /// Fill VarMap from embed
 pub fn fill_safetensors(varmap: &mut VarMap, map: SafeTensors) -> anyhow::Result<()> {

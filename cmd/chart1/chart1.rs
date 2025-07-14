@@ -19,7 +19,6 @@ struct Timepoint {
     value: f64,
 }
 
-
 fn main() -> std::io::Result<()> {
     let data_dir = "T:/EnerReg/14102024/memo/";
     let h_file = "generation@id=318_L2h.json";
@@ -48,7 +47,10 @@ fn main() -> std::io::Result<()> {
     plot.show();
     Ok(())
 }
-fn get_timeseries_data(data_dir: &str, file_name: &str) -> Result<(Vec<DateTime<Utc>>, Vec<f64>), std::io::Error> {
+fn get_timeseries_data(
+    data_dir: &str,
+    file_name: &str,
+) -> Result<(Vec<DateTime<Utc>>, Vec<f64>), std::io::Error> {
     let mut file_path = String::from(data_dir);
     file_path.push_str(file_name);
 
@@ -56,12 +58,19 @@ fn get_timeseries_data(data_dir: &str, file_name: &str) -> Result<(Vec<DateTime<
     File::open(file_path)?.read_to_string(&mut file_content)?;
 
     let ts: Timeseries = serde_json::from_str(&file_content)?;
-    let x: Vec<DateTime<Utc>> = ts.data.iter().map(|tp| Utc.timestamp_opt(tp.timestamp as i64 / 1000, 0).unwrap()).collect();
+    let x: Vec<DateTime<Utc>> = ts
+        .data
+        .iter()
+        .map(|tp| Utc.timestamp_opt(tp.timestamp as i64 / 1000, 0).unwrap())
+        .collect();
     let y: Vec<f64> = ts.data.iter().map(|tp| tp.value).collect();
 
     Ok((x, y))
 }
-fn get_real_data(data_dir: &str, file_name: &str) -> Result<(Vec<DateTime<Utc>>, Vec<f64>), std::io::Error> {
+fn get_real_data(
+    data_dir: &str,
+    file_name: &str,
+) -> Result<(Vec<DateTime<Utc>>, Vec<f64>), std::io::Error> {
     let mut file_path = String::from(data_dir);
     file_path.push_str(file_name);
 
@@ -69,19 +78,30 @@ fn get_real_data(data_dir: &str, file_name: &str) -> Result<(Vec<DateTime<Utc>>,
     File::open(file_path)?.read_to_string(&mut file_content)?;
 
     let lines: Vec<&str> = file_content.lines().skip(1).collect();
-    let x: Vec<DateTime<Utc>> = lines.iter().map(|line| {
-        let parts: Vec<&str> = line.split(',').collect();
-        Utc.timestamp_opt(parts[0].parse::<i64>().unwrap() / 1000, 0).unwrap()
-    }).collect();
-    let y: Vec<f64> = lines.iter().map(|line| {
-        let parts: Vec<&str> = line.split(',').collect();
-        parts[1].parse::<f64>().unwrap()
-    }).collect();
+    let x: Vec<DateTime<Utc>> = lines
+        .iter()
+        .map(|line| {
+            let parts: Vec<&str> = line.split(',').collect();
+            Utc.timestamp_opt(parts[0].parse::<i64>().unwrap() / 1000, 0)
+                .unwrap()
+        })
+        .collect();
+    let y: Vec<f64> = lines
+        .iter()
+        .map(|line| {
+            let parts: Vec<&str> = line.split(',').collect();
+            parts[1].parse::<f64>().unwrap()
+        })
+        .collect();
 
     Ok((x, y))
 }
 
-fn date_time_scatter_trace(name: &str, x_data: &[DateTime<Utc>], y_data: &[f64]) -> Box<dyn plotly::Trace> {
+fn date_time_scatter_trace(
+    name: &str,
+    x_data: &[DateTime<Utc>],
+    y_data: &[f64],
+) -> Box<dyn plotly::Trace> {
     plotly::Scatter::new(x_data.to_vec(), y_data.to_vec())
         .mode(plotly::common::Mode::Lines)
         .name(name)

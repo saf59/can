@@ -1,4 +1,4 @@
-﻿use rand_distr::{Normal, Distribution};
+use rand_distr::{Distribution, Normal};
 
 // DS
 //QwQ + DS_main
@@ -26,7 +26,7 @@ fn find_sigma(distances_i: &[f32], target_entropy: f32, max_iter: usize) -> f32 
     let mut min_error = f32::MAX;
 
     for _ in 0..max_iter {
-        let sigma:f32 = (lower + upper) / 2.0;
+        let sigma: f32 = (lower + upper) / 2.0;
         let mut sum_p = 0.0;
         let mut entropy = 0.0;
         for &dist in distances_i {
@@ -62,7 +62,10 @@ fn compute_p_matrix(data: &[Vec<f32>], perplexity: f32) -> Vec<Vec<f32>> {
     let mut p_joint = vec![vec![0.0; n]; n];
 
     data.iter().enumerate().for_each(|(i, _)| {
-        let distances_i: Vec<f32> = (0..n).filter(|&j| j != i).map(|j| distances[i][j]).collect();
+        let distances_i: Vec<f32> = (0..n)
+            .filter(|&j| j != i)
+            .map(|j| distances[i][j])
+            .collect();
         let sigma_i = find_sigma(&distances_i, target_entropy, 200);
 
         let sum_p: f32 = (0..n)
@@ -188,7 +191,14 @@ pub fn tsne(
 ) -> Vec<Vec<f32>> {
     let p_sym = compute_p_matrix(data, perplexity);
     let mut y = initialize_y(data.len(), n_components);
-    run_tsne(&p_sym, &mut y, n_components, learning_rate, momentum, num_iterations);
+    run_tsne(
+        &p_sym,
+        &mut y,
+        n_components,
+        learning_rate,
+        momentum,
+        num_iterations,
+    );
     y
 }
 #[cfg(test)]
@@ -210,7 +220,7 @@ mod tests {
         let learning_rate = 200.0;
         let momentum = 0.1;
 
-        let embedded = tsne(&data, 2, perplexity, learning_rate, momentum ,iterations);
+        let embedded = tsne(&data, 2, perplexity, learning_rate, momentum, iterations);
         println!("{:?}", embedded);
     }
 }

@@ -186,7 +186,7 @@ pub fn kurtosis(values: &[f32]) -> f32 {
     let std_deviation = std_deviation(values);
     if !values.is_empty() && std_deviation > 0.0 {
         // values.iter().for_each(|&value| kurtosis += ((value - mean) / std_deviation).powf(4.0));
-        for value in values{
+        for value in values {
             kurtosis += ((value - mean) / std_deviation).powf(4.0);
         }
         kurtosis /= values.len() as f32;

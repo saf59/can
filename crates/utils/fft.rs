@@ -21,13 +21,26 @@ pub fn to_amplitudes(buffer: &[Complex<f32>], buf_size: usize) -> Vec<f32> {
         })
         .collect()
 }
-pub fn to_phases(buffer: &[Complex<f32>], buf_size: usize) -> Vec<f32> {
+pub fn to64_amplitudes(buffer: &[Complex<f64>], buf_size: usize) -> Vec<f64> {
     let half = buf_size / 2;
+    let n = half as f64;
     buffer
         .iter()
         .take(half)
-        .map(|item|  item.arg())
+        .map(|item| {
+            let real = item.re.powi(2);
+            let imag = item.im.powi(2);
+            ((real + imag).sqrt()) / n
+        })
         .collect()
+}
+pub fn to_phases(buffer: &[Complex<f32>], buf_size: usize) -> Vec<f32> {
+    let half = buf_size / 2;
+    buffer.iter().take(half).map(|item| item.arg()).collect()
+}
+pub fn to64_phases(buffer: &[Complex<f64>], buf_size: usize) -> Vec<f64> {
+    let half = buf_size / 2;
+    buffer.iter().take(half).map(|item| item.arg()).collect()
 }
 pub fn fft_forward(data: &[f32], buf_size: usize) -> Vec<Complex<f32>> {
     let mut fft_planner = FftPlanner::<f32>::new();

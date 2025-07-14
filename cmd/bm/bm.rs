@@ -36,7 +36,10 @@ fn main() {
     println!("System OS version:       {:?}", System::os_version());
     println!("System host name:        {:?}", System::host_name());
     // Number of CPUs:
-    println!("Number of available threads: {}", System::new().cpus().len());
+    println!(
+        "Number of available threads: {}",
+        System::new().cpus().len()
+    );
 
     let available_cores: u64 = available_parallelism().unwrap().get() as u64; // get info how many threads we can use and use half of them
     let iter_per_core: u64 = num_calcs / available_cores;

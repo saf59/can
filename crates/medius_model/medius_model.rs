@@ -73,7 +73,7 @@ impl Model for Mlp {
 
 pub fn training_loop(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<()> {
     let dev = &Device::cuda_if_available(0)?;
-    println!("Device:{:?}, {:?}, {:?}", dev, &meta.small() , &datapath);
+    println!("Device:{:?}, {:?}, {:?}", dev, &meta.small(), &datapath);
     let dataset = load_dir(datapath, meta.train_part, dev)?;
     print_dataset_info(&dataset);
     let binding = meta.model_file();
@@ -157,7 +157,8 @@ fn train_classification(
                 meta.batch_size,
             ),
         }?;
-        let test_accuracy = test_classification(model, &test_data, &test_labels, Accuracy::Percent01)?;
+        let test_accuracy =
+            test_classification(model, &test_data, &test_labels, Accuracy::Percent01)?;
         print!("{epoch:4} train loss: {loss:8.7} test acc: {test_accuracy:5.2}%       \r");
     }
     Ok(())
@@ -228,7 +229,8 @@ fn train_regression(
 fn adamw(meta: &mut Meta, varmap: &VarMap) -> Result<AdamW> {
     AdamW::new(
         varmap.all_vars(),
-        ParamsAdamW { // ювелирной настройки: β₁=0.9, β₂=0.95, eps=1e-15
+        ParamsAdamW {
+            // для ювелирной настройки: β₁=0.9, β₂=0.95, eps=1e-15
             lr: meta.learning_rate,
             ..Default::default()
         },
@@ -283,12 +285,9 @@ fn test_classification(
     labels: &Tensor,
     accuracy: Accuracy,
 ) -> anyhow::Result<f32> {
-    let logits = model.forward(data)?
-        .argmax(D::Minus1)?;
+    let logits = model.forward(data)?.argmax(D::Minus1)?;
     if accuracy == Accuracy::Loss {
-        let logits01 = logits.to_dtype(DType::F32)
-            .unwrap()
-            .mul(-0.1)?; // 0,1,2.... * 0.1
+        let logits01 = logits.to_dtype(DType::F32).unwrap().mul(-0.1)?; // 0,1,2.... * 0.1
         let labels01 = labels.to_dtype(DType::F32).unwrap().mul(-0.1)?;
         to_loss(&labels01, logits01)
     } else {
@@ -356,7 +355,7 @@ pub fn get_model(
         .map(|x| x.parse().unwrap())
         .collect();
     if verbose {
-        println!("inputs:{inputs:?},outputs:{outputs:?},hidden:{hidden:?}", );
+        println!("inputs:{inputs:?},outputs:{outputs:?},hidden:{hidden:?}",);
     }
     let model = Mlp::new(
         vs.clone(),

@@ -4,11 +4,11 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
-pub mod statistics;
 pub mod fft;
 pub mod mfcc;
-pub mod umap;
+pub mod statistics;
 pub mod t_sne;
+pub mod umap;
 use std::env;
 use std::fmt::Debug;
 
@@ -25,7 +25,7 @@ pub fn enum_name<T: Debug>(e: &T) -> String {
     let name = format!("_{e:?}");
     match name.as_str() {
         "_Relu" => "".to_string(),
-        _ => name.to_lowercase()
+        _ => name.to_lowercase(),
     }
 }
 
@@ -89,7 +89,11 @@ pub fn default_mm() -> (Vec<f32>, Vec<f32>){
     let multipliers = vec![0.00010151042,0.000000004507747,1.0709519,0.32236034,18.253918,0.5059593,5.406613,1.3980033,0.4590763,0.1603308,0.00010151042,0.0000000045077693,0.00000000000021020621,0.0,1.0710099,0.32236034,0.00016464255,0.0019837855,0.0000024104188,1.1636093,0.7899756,3.894378,3.2838109,17458.996,5789.309,2893.1082,1733.5161,0.0019837855,0.000002415025,0.00000000083550206,0.0000000000000061779496,1.5947978,0.7899756,0.004043599];
     (medians, multipliers)
 }
-pub fn normalize_data_columns(data: &[Vec<f32>], median: &[f32], multiplier: &[f32]) -> Vec<Vec<f32>> {
+pub fn normalize_data_columns(
+    data: &[Vec<f32>],
+    median: &[f32],
+    multiplier: &[f32],
+) -> Vec<Vec<f32>> {
     data.iter()
         .map(|row| normalize_row_columns(row, median, multiplier))
         .collect()
@@ -163,7 +167,12 @@ pub fn write_csv_strings<P: AsRef<Path>>(data: &Vec<String>, path: &P) -> Result
 
 pub fn vecvecf32_to_vecstring(data: &[Vec<f32>]) -> Vec<String> {
     data.iter()
-        .map(|row| row.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(","))
+        .map(|row| {
+            row.iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        })
         .collect()
 }
 
@@ -172,13 +181,18 @@ pub fn vecstring_to_vecvecf32(data: &[String]) -> Result<Vec<Vec<f32>>> {
         .enumerate()
         .map(|(i, line)| {
             line.split(',')
-                .map(|s| s.trim().parse::<f32>().with_context(|| format!("Parse error '{}' on line {}", s, i + 1)))
+                .map(|s| {
+                    s.trim()
+                        .parse::<f32>()
+                        .with_context(|| format!("Parse error '{}' on line {}", s, i + 1))
+                })
                 .collect()
         })
         .collect()
 }
 pub fn read_csv_strings<P: AsRef<Path>>(path: P) -> Result<Vec<String>> {
-    let file = File::open(&path).with_context(|| format!("Failed to open file: {:?}", path.as_ref()))?;
+    let file =
+        File::open(&path).with_context(|| format!("Failed to open file: {:?}", path.as_ref()))?;
     let reader = BufReader::new(file);
     let mut data = Vec::new();
     for line in reader.lines() {
@@ -194,7 +208,11 @@ pub fn vecusize_to_vecstring(data: &[usize]) -> Vec<String> {
 pub fn vecstring_to_vecusize(data: &[String]) -> Result<Vec<usize>> {
     data.iter()
         .enumerate()
-        .map(|(i, s)| s.trim().parse::<usize>().with_context(|| format!("Parse error '{}' on line {}", s, i + 1)))
+        .map(|(i, s)| {
+            s.trim()
+                .parse::<usize>()
+                .with_context(|| format!("Parse error '{}' on line {}", s, i + 1))
+        })
         .collect()
 }
 pub fn column_averages(data: &Vec<Vec<f32>>) -> Vec<f32> {

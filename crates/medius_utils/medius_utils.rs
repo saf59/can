@@ -1,7 +1,7 @@
 use anyhow::Error;
 use candle_core::{Device, Tensor, D};
 use candle_nn::VarMap;
-use medius_meta::{fill_safetensors,meta_from_ba,safetensors_from_ba, AlgType, Meta, ModelType};
+use medius_meta::{fill_safetensors, meta_from_ba, safetensors_from_ba, AlgType, Meta, ModelType};
 use medius_model::{get_model, Model};
 use medius_parser::{parse_all, parse_hom, read_wav};
 use utils::{column_averages, default_mm, normalize_row_columns};
@@ -20,7 +20,7 @@ pub fn detect_by(
     let alg_type = meta.alg_type.clone();
     let fill = move |_meta: &Meta, _flag: bool, varmap: &mut VarMap| {
         let safetensors = safetensors_from_ba(safetensor_ba)?;
-        fill_safetensors( varmap, safetensors)
+        fill_safetensors(varmap, safetensors)
     };
 
     if alg_type != medius_meta::AlgType::HOM {

@@ -45,7 +45,7 @@ pub fn main() -> anyhow::Result<()> {
                 if accuracy == Accuracy::Loss {
                     println!("{test_accuracy:5.7?}");
                 } else {
-                    println!("{test_accuracy:5.2?}%" );
+                    println!("{test_accuracy:5.2?}%");
                 }
             }
             Err(e) => println!("{e:?}"),

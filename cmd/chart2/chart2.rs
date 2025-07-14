@@ -69,7 +69,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     //let dir = "./data/S10_SF";
     let dir = "./charts/data/ready1";
     //let low_type ="umap";
-    let low_type ="ready1";
+    let low_type = "ready1";
     let data_type = dir.split('/').last().unwrap();
     let out_name = format!("charts/chart_{}_{}.html", low_type, data_type);
     let result = get_data(dir, low_type)?;
@@ -85,7 +85,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn get_data(dir: &str, low_type: &str) -> Result<Vec<Vec<f32>>, Box<dyn Error>> {
-//    let src = dir.replace("/data",format!("/charts/{}",low_type).as_str());
+    //    let src = dir.replace("/data",format!("/charts/{}",low_type).as_str());
     let raw = read_medius_x(dir.as_ref())?;
     let width = raw.len() / 720;
     let data: Vec<Vec<f32>> = raw.chunks(width).map(|x| x.to_vec()).collect();

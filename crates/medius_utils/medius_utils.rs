@@ -1,10 +1,13 @@
 use anyhow::Error;
-use candle_core::{Device, Tensor, D};
+use candle_core::{DType, Device, Tensor, D};
 use candle_nn::VarMap;
-use medius_meta::{fill_safetensors, meta_from_ba, safetensors_from_ba, AlgType, Meta, ModelType};
+use medius_meta::{
+    fill_safetensors, meta_from_ba, safetensors_from_ba, AlgType, Meta, ModelType, MEDIAN,
+    MULTIPLIER,
+};
 use medius_model::{get_model, Model};
 use medius_parser::{parse_all, parse_hom, read_wav};
-use utils::{column_averages, default_mm, normalize_row_columns};
+use utils::{column_averages, normalize_row_columns};
 pub fn detect_by(
     all: &[u8],
     freq: f32,
@@ -20,13 +23,37 @@ pub fn detect_by(
     let alg_type = meta.alg_type.clone();
     let fill = move |_meta: &Meta, _flag: bool, varmap: &mut VarMap| {
         let safetensors = safetensors_from_ba(safetensor_ba)?;
+        if safetensors.names().contains(&&"median".to_string()) {
+            // If median is present, we will init it
+            //let median = safetensors.tensor("median")?;
+            //let multiplier = safetensors.tensor("multiplier")?;
+            //varmap.set("median", Tensor::from_vec(median, (inputs,), &dev)?)?;
+            //varmap.set("multiplier", Tensor::from_vec(multiplier, (inputs,), &dev)?)?;
+            let dev = Device::cuda_if_available(0)?;
+            let _ = varmap.get(
+                (inputs,),
+                MEDIAN,
+                candle_nn::Init::Const(0.0),
+                DType::F32,
+                &dev,
+            );
+            let _ = varmap.get(
+                (inputs,),
+                MULTIPLIER,
+                candle_nn::Init::Const(0.0),
+                DType::F32,
+                &dev,
+            );
+        }
         fill_safetensors(varmap, safetensors)
     };
 
     if alg_type != medius_meta::AlgType::HOM {
+        // Stage 3 data
         let data = parse_all(all, inputs, freq, buff_size, alg_type)?;
         detect_by_single_vec(verbose, &meta, inputs, &dev, &data, &fill)
     } else {
+        // Stage 4 data
         let raw = read_wav(all)?;
         detect_by_many_vectors(verbose, joined, &meta, inputs, &dev, &raw, &fill)
     }
@@ -42,29 +69,16 @@ fn detect_by_many_vectors(
     fill: &dyn Fn(&Meta, bool, &mut VarMap) -> anyhow::Result<()>,
 ) -> anyhow::Result<f32> {
     let hom_data = parse_hom(raw)?;
-    let (medians, multiplier) = default_mm();
+    //let (medians, multiplier) = default_mm();
     if joined {
         // If joined, we use the same function as for all
-        let mut avg = column_averages(&hom_data);
-        //println!("avg1: {:?}", avg);
-        if meta.flag {
-            avg = normalize_row_columns(&avg, &medians, &multiplier);
-        }
-        //println!("avg2: {:?}", avg);
+        let avg = column_averages(&hom_data);
         detect_by_single_vec(verbose, meta, inputs, dev, &avg, fill)
     } else {
         // If not joined, we use the special function for hom
         let results = hom_data
             .iter()
-            .map(|h| {
-                let hn = if meta.flag {
-                    // If flag is true, we normalize the data
-                    normalize_row_columns(h, &medians, &multiplier)
-                } else {
-                    h.to_vec()
-                };
-                detect_by_single_vec(verbose, meta, inputs, dev, &hn, fill)
-            })
+            .map(|h| detect_by_single_vec(verbose, meta, inputs, dev, h, fill))
             .collect::<Result<Vec<_>, Error>>()?;
         Ok(most_frequent_value(&results).unwrap_or(0.0))
     }
@@ -89,10 +103,16 @@ fn detect_by_single_vec(
     data: &[f32],
     fill: &dyn Fn(&Meta, bool, &mut VarMap) -> anyhow::Result<()>,
 ) -> anyhow::Result<f32> {
-    // Convert data(extracted wav properties) to Tensor
-    let data = Tensor::from_vec(data.to_vec(), (1, inputs), dev)?;
     // Build model and fill it VarMap
-    let (_vm, model) = get_model(dev, meta, verbose, fill)?;
+    let (_vm, model, median, multiplier) = get_model(dev, meta, verbose, &[], fill)?;
+    // normalize data if it is required
+    let data = if meta.flag && AlgType::HOM == meta.alg_type {
+        normalize_row_columns(data, &median, &multiplier)
+    } else {
+        data.to_vec()
+    };
+    // Convert data(extracted wav properties) to Tensor
+    let data = Tensor::from_vec(data, (1, inputs), dev)?;
     let result = model.forward(&data)?;
     // Extract wp from result by model type
     let wp = match meta.model_type {

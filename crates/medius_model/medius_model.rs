@@ -1,7 +1,7 @@
 use candle_core::{DType, Device, Result, Tensor, D};
 use candle_nn::{loss, ops, AdamW, Linear, Module, Optimizer, ParamsAdamW, VarBuilder, VarMap};
-use medius_data::{load_dir, print_dataset_info, Dataset};
-use medius_meta::Accuracy;
+use medius_data::{load_dir, print_dataset_info, read_medius_norm, Dataset};
+use medius_meta::{Accuracy, MEDIAN, MULTIPLIER};
 pub(crate) use medius_meta::{
     Activation, Meta,
     ModelType::{Classification, Regression},
@@ -74,13 +74,14 @@ impl Model for Mlp {
 pub fn training_loop(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<()> {
     let dev = &Device::cuda_if_available(0)?;
     println!("Device:{:?}, {:?}, {:?}", dev, &meta.small(), &datapath);
-    let dataset = load_dir(datapath, meta.train_part, dev)?;
+    let dataset = load_dir(&datapath, meta.train_part, dev)?;
+    let norm = read_medius_norm(&datapath); // read norm from data file norm.csv or empty
     print_dataset_info(&dataset);
     let binding = meta.model_file();
     let model_path: &Path = binding.as_ref();
     let _ = check_hidden(meta.hidden.as_ref());
     meta.outputs = dataset.classes(meta.model_type == Regression);
-    let (varmap, model) = get_model(dev, meta, false, &fill_from_file)?;
+    let (varmap, model,_median, _multiplier) = get_model(dev, meta, false, &norm, &fill_from_file)?;
     match meta.model_type {
         Classification => train_classification(dataset, meta, dev, &varmap, &model),
         Regression => train_regression(dataset, meta, dev, &varmap, &model),
@@ -98,7 +99,7 @@ pub fn test_all(datapath: PathBuf, meta: &mut Meta, accuracy: Accuracy) -> anyho
     let dev = &Device::cuda_if_available(0)?;
     let dataset = load_dir(datapath, meta.train_part, dev)?;
     meta.outputs = dataset.classes(meta.model_type == Regression);
-    let (_varmap, model) = get_model(dev, meta, false, &fill_from_file)?;
+    let (_varmap, model,_median, _multiplier) = get_model(dev, meta, false, &[], &fill_from_file)?;
     let test_data = dataset.test_data.to_device(dev)?;
     let test_accuracy = match meta.model_type {
         Classification => {
@@ -117,7 +118,7 @@ pub fn test_less01(datapath: PathBuf, meta: &mut Meta) -> anyhow::Result<f32> {
     let dev = &Device::cuda_if_available(0)?;
     let dataset = load_dir(datapath, meta.train_part, dev)?;
     meta.outputs = dataset.classes(meta.model_type == Regression);
-    let (_varmap, model) = get_model(dev, meta, false, &fill_from_file)?;
+    let (_varmap, model,_median, _multiplier) = get_model(dev, meta, false, &[], &fill_from_file)?;
     let test_data = dataset.test_data.to_device(dev)?;
     let test_accuracy = match meta.model_type {
         Classification => {
@@ -340,8 +341,9 @@ pub fn get_model(
     dev: &Device,
     meta: &Meta,
     verbose: bool,
+    norm: &[f32],
     fill: &dyn Fn(&Meta, bool, &mut VarMap) -> anyhow::Result<()>,
-) -> anyhow::Result<(VarMap, Mlp)> {
+) -> anyhow::Result<(VarMap, Mlp, Vec<f32>, Vec<f32>)> {
     let mut varmap = VarMap::new();
     let vs = VarBuilder::from_varmap(&varmap, DType::F32, dev);
     let inputs = meta.n;
@@ -364,8 +366,70 @@ pub fn get_model(
         &hidden,
         meta.activation.clone(),
     )?;
+    let (_median,_multiplier) = fill_norm(dev, norm, &mut varmap)?;
     fill(meta, verbose, &mut varmap)?;
-    Ok((varmap, model))
+    let (median,multiplier) = get_norm(dev, inputs, &mut varmap)?;
+    Ok((varmap, model, median, multiplier))
+}
+fn get_norm(dev: &Device, inputs: usize, varmap: &mut VarMap) -> anyhow::Result<(Vec<f32>,Vec<f32>)> {
+    // median, multiplayer shape
+    let shape = (inputs ,); // and Tensor size from it
+    // Use get to insert or retrieve the variable
+    let median_tensor = varmap.get(
+        shape,
+        MEDIAN,
+        candle_nn::Init::Const(0.0),
+        DType::F32,
+        dev,
+    )?;
+    let multiplier_tensor = varmap.get(
+        shape,
+        MULTIPLIER,
+        candle_nn::Init::Const(0.0),
+        DType::F32,
+        dev,
+    )?;
+    let median = median_tensor.to_vec1::<f32>()?;
+    let multiplier = multiplier_tensor.to_vec1::<f32>()?;
+    Ok((median,multiplier))
+}
+fn fill_norm(dev: &Device, norm: &[f32], varmap: &mut VarMap) -> anyhow::Result<(Vec<f32>,Vec<f32>)> {
+    if norm.is_empty() {
+        return Ok((vec![],vec![]));
+    }
+    // median, multiplayer shape
+    let shape = (norm.len() / 2,); // and Tensor size from it
+                                   // Use get to insert or retrieve the variable
+    let _ = varmap.get(
+        shape,
+        MEDIAN,
+        candle_nn::Init::Const(0.0),
+        DType::F32,
+        dev,
+    );
+    let _ = varmap.get(
+        shape,
+        MULTIPLIER,
+        candle_nn::Init::Const(0.0),
+        DType::F32,
+        dev,
+    );
+    // median, multiplayer
+    let mid = norm.len() / 2;
+    let (median, multiplier) = norm.split_at(mid);
+    // Set the tensor's value
+    let _ = varmap.set_one(MEDIAN, Tensor::from_vec(median.to_vec(), mid, dev)?);
+
+    let _ = varmap.set_one(
+        MULTIPLIER,
+        Tensor::from_vec(multiplier.to_vec(), mid, dev)?,
+    );
+    println!(
+        "set median[{}] and multiplier[{}] from norm",
+        median.len(),
+        multiplier.len()
+    );
+    Ok((median.to_vec(),multiplier.to_vec()))
 }
 
 fn check_hidden(hidden: Option<&String>) -> anyhow::Result<()> {

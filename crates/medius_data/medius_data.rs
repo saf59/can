@@ -86,8 +86,15 @@ fn fill_x_y(
     }
     (out_x, out_y)
 }
+
+pub fn read_medius_norm(dir: &Path) -> Vec<f32> {
+    read_medius_csv(dir, "norm.csv").unwrap_or_default()
+}
 pub fn read_medius_x(dir: &Path) -> candle_core::Result<Vec<f32>> {
-    let reader = get_reader(dir, "x.csv")?;
+    read_medius_csv(dir, "x.csv")
+}
+fn read_medius_csv(dir: &Path, csv: &str) -> candle_core::Result<Vec<f32>> {
+    let reader = get_reader(dir, csv)?;
     let data = reader
         .into_records()
         .flatten()

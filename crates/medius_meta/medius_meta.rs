@@ -15,7 +15,8 @@ const META_NAME: &str = "model.meta";
 const MODEL_NAME: &str = "model.safetensors";
 pub const DEFAULT: &str = "./models/model.meta";
 pub const DEFAULT_VM: &str = "./models/model.safetensors";
-
+pub const MEDIAN:&str = "median";
+pub const MULTIPLIER:&str = "multiplier";
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Debug)]
 pub struct Meta {
     // data && parse
@@ -46,7 +47,8 @@ pub fn safetensors_from_ba<'a>(buf: &'a [u8]) -> anyhow::Result<SafeTensors<'a>>
 pub fn fill_safetensors(varmap: &mut VarMap, map: SafeTensors) -> anyhow::Result<()> {
     let dev = Device::cuda_if_available(0)?;
     for (k, v) in map.tensors() {
-        let _ = varmap.set_one(k, v.load(&dev)?);
+        let _ = varmap.set_one(&k, v.load(&dev)?);
+        // println!("key: {:?}, shape: {:?}, dtype: {:?}", k, v.shape(), v.dtype());
         // v.load(&dev)? ->  v.convert(&dev)?  in 0.5 version, but candle 0.8.4 use load
     }
     Ok(())

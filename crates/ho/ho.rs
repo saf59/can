@@ -453,41 +453,6 @@ impl HigherOrderMomentsAnalyzer {
         //Self::f64_slice_to_f64_vec(&cumulants)
         cumulants
     }
-/*    fn compute_cumulants_r(&self, moments: &[f64]) -> Vec<f64> {
-        let moments = Self::f64_slice_to_f64_vec(moments);
-        let n = self.n.min(moments.len());
-        let mut cumulants: Vec<f64> = vec![0.0; n];
-
-        if n > 0 {
-            // κ₁ = μ₁
-            cumulants[0] = moments[0];
-        }
-        if n > 1 {
-            // κ₂ = μ₂ - μ₁²
-            cumulants[1] = moments[1] - moments[0].powi(2);
-        }
-        if n > 2 {
-            // κ₃ = μ₃ - 3μ₂μ₁ + 2μ₁³
-            cumulants[2] = moments[2] - 3.0 * moments[1] * moments[0] + 2.0 * moments[0].powi(3);
-        }
-        if n > 3 {
-            // κ₄ = μ₄ - 4μ₃μ₁ - 3μ₂² + 12μ₂μ₁² - 6μ₁⁴
-            cumulants[3] = moments[3] - 4.0 * moments[2] * moments[0] - 3.0 * moments[1].powi(2)
-                + 12.0 * moments[1] * moments[0].powi(2)
-                - 6.0 * moments[0].powi(4);
-        }
-        if n > 4 {
-            // κ₅ = μ₅ - 5μ₄μ₁ - 10μ₃μ₂ + 20μ₃μ₁² + 30μ₂²μ₁ - 60μ₂μ₁³ + 24μ₁⁵
-            cumulants[4] =
-                moments[4] - 5.0 * moments[3] * moments[0] - 10.0 * moments[2] * moments[1]
-                    + 20.0 * moments[2] * moments[0].powi(2)
-                    + 30.0 * moments[1].powi(2) * moments[0]
-                    - 60.0 * moments[1] * moments[0].powi(3)
-                    + 24.0 * moments[0].powi(5);
-        }
-        Self::f64_slice_to_f64_vec(&cumulants)
-    }
-*/
     /// Get standard frequency bands for audio analysis
     pub fn get_standard_frequency_bands(&self) -> Vec<FrequencyBand> {
         vec![

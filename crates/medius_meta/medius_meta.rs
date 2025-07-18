@@ -22,8 +22,15 @@ pub struct Meta {
     // data && parse
     pub n: usize,
     pub alg_type: AlgType,
+    #[serde(default)]
     pub buff_size: BufSize,
-    pub flag: bool,
+    #[serde(default)]
+    #[serde(alias = "flag")]
+    pub scale: Option<bool>,
+    #[serde(default)]
+    pub norm: Option<bool>,
+    #[serde(default)]
+    pub data_type: DataType,
     // model
     pub model_type: ModelType,
     pub activation: Activation,
@@ -48,7 +55,7 @@ pub fn fill_safetensors(varmap: &mut VarMap, map: SafeTensors) -> anyhow::Result
     let dev = Device::cuda_if_available(0)?;
     for (k, v) in map.tensors() {
         let _ = varmap.set_one(&k, v.load(&dev)?);
-        // println!("key: {:?}, shape: {:?}, dtype: {:?}", k, v.shape(), v.dtype());
+        //println!("key: {:?}, shape: {:?}, dtype: {:?}", k, v.shape(), v.dtype());
         // v.load(&dev)? ->  v.convert(&dev)?  in 0.5 version, but candle 0.8.4 use load
     }
     Ok(())
@@ -61,8 +68,10 @@ impl Default for Meta {
             // Data and parsing parameters
             n: 260,
             alg_type: AlgType::Bin,
-            buff_size: BufSize::Small,
-            flag: true,
+            buff_size: BufSize::None,
+            scale: None,
+            norm: None,
+            data_type: DataType::None,
             // Model parameters
             model_type: ModelType::Classification,
             activation: Activation::Relu,
@@ -107,8 +116,77 @@ pub enum AlgType {
 pub enum BufSize {
     Big = 65_536 * 2,
     Small = 65_536,
+    None
+}
+impl Default for BufSize {
+    fn default() -> Self {
+        Self::None
+    }
+}
+impl Chr for BufSize {
+    fn first_char(&self) -> &str {
+        match self {
+            BufSize::None => "",
+            BufSize::Big => "B",
+            BufSize::Small => "S",
+        }
+    }
+}
+#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
+pub enum Scale {
+    True,
+    False,
+    None
+}
+impl Default for Scale {
+    fn default() -> Self {
+        Self::None
+    }
+}
+/*
+impl Chr for Scale {
+    fn first_char(&self) -> &str {
+        match self {
+            Scale::None => "",
+            Scale::True => "T",
+            Scale::False => "F",
+        }
+    }
+}*/
+#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
+pub enum DataType {
+    Impulse,
+    Raw,
+    None
+}
+impl Default for DataType {
+    fn default() -> Self {
+        Self::None
+    }
+}
+impl Chr for DataType {
+    fn first_char(&self) -> &str {
+        match self {
+            DataType::None => "",
+            DataType::Impulse => "I",
+            DataType::Raw => "R",
+        }
+    }
 }
 
+fn norm_first_char(scale: &Option<bool>) -> &str {
+    match scale {
+        Some(true) => "N",
+        _ => "",
+    }
+}
+fn scale_first_char(scale: &Option<bool>) -> &str {
+    match scale {
+        Some(true) => "T",
+        Some(false) => "F",
+        _ => "",
+    }
+}
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
 pub enum Accuracy {
     Loss,
@@ -147,6 +225,9 @@ impl Activation {
         }
     }
 }
+trait Chr {
+    fn first_char(&self) -> &str;
+}
 impl Meta {
     /// Saves the metadata to the default and specific file paths
     pub fn save(&self) {
@@ -178,9 +259,11 @@ impl Meta {
     pub fn data_name(&self) -> String {
         let at = first_char(&self.alg_type);
         let sn = &self.n.to_string();
-        let bs = first_char(&self.buff_size);
-        let sf = if self.flag { 'T' } else { 'F' };
-        format!("{at}{sn}_{bs}{sf}")
+        let bs = &self.buff_size.first_char();
+        let sf = scale_first_char(&self.scale);
+        let dt = self.data_type.first_char();
+        let nc = norm_first_char(&self.norm);
+        format!("{at}{sn}_{bs}{sf}{dt}{nc}")
     }
     pub fn name_out(&self) -> String {
         let hidden = self
@@ -189,8 +272,10 @@ impl Meta {
             .unwrap_or(&"".to_string())
             .replace(",", "_");
         format!(
-            "{:?},{:?},{:?},{},{:?},{:?}",
-            &self.model_type, &self.alg_type, &self.n, hidden, &self.activation, &self.batch_size
+            "{:?},{:?},{:?},{},{:?},{:?},{},{},{},{}",
+            &self.model_type, &self.alg_type, &self.n, hidden, &self.activation, &self.batch_size,
+            scale_first_char(&self.scale),self.buff_size.first_char(),self.data_type.first_char(),
+            norm_first_char(&self.norm)
         )
     }
     /// Generates a model name based on the metadata
@@ -198,16 +283,18 @@ impl Meta {
         let mt = first_char(&self.model_type);
         let at = first_char(&self.alg_type);
         let sn = &self.n.to_string();
-        let bs = first_char(&self.buff_size);
         let h = self
             .hidden
             .as_ref()
             .unwrap_or(&"".to_string())
             .replace(",", "_");
-        let sf = if self.flag { 'T' } else { 'F' };
+        let bs = &self.buff_size.first_char();
+        let sf = scale_first_char(&self.scale);
+        let dt = self.data_type.first_char();
+        let nc = norm_first_char(&self.norm);
         let bcs = &self.batch_size.to_string();
         let act = enum_name(&self.activation);
-        format!("{mt}_{h}_{at}{sn}_{bs}{sf}_{bcs}{act}")
+        format!("{mt}_{h}_{at}{sn}_{bs}{sf}{dt}{nc}_{bcs}{act}")
     }
     /// Returns the file path for the metadata file
     pub fn meta_file(&self) -> PathBuf {
@@ -235,5 +322,54 @@ mod tests {
         let meta: Meta = Default::default();
         let name = meta.model_name();
         assert_eq!(name, "C_40_10_B260_ST_40");
+    }
+
+    #[test]
+    fn test_h_name() {
+        let buf:&str = "
+        n: 34
+        alg_type: HOM
+        data_type: Impulse
+        norm: true
+        model_type: Classification
+        activation: Relu
+        batch_size: 100
+        learning_rate: 5e-6
+        train_part: 1.0
+        hidden: 100,40,10
+        outputs: 3";
+        let mut meta: Meta = serde_yaml::from_slice(buf.as_bytes()).unwrap();
+        println!("{}",meta.name_out());
+        meta.buff_size = BufSize::None;
+        assert_eq!(meta.model_name(), "C_100_40_10_H34_IN_100");
+        assert_eq!(meta.data_name(), "H34_IN");
+        meta.data_type = DataType::Raw;
+        assert_eq!(meta.model_name(), "C_100_40_10_H34_RN_100");
+        assert_eq!(meta.data_name(), "H34_RN");
+        meta.norm = Some(false);
+        assert_eq!(meta.model_name(), "C_100_40_10_H34_R_100");
+        assert_eq!(meta.data_name(), "H34_R");
+    }
+    #[test]
+    fn test_b_name() {
+        let buf:&str = "
+        n: 260
+        alg_type: Bin
+        buff_size: Small
+        scale: true
+        model_type: Regression
+        activation: Relu
+        batch_size: 1
+        learning_rate: 5e-6
+        train_part: 1.0
+        hidden: 100,40,10
+        outputs: 1";
+        let mut meta: Meta = serde_yaml::from_slice(buf.as_bytes()).unwrap();
+        println!("{}",meta.name_out());
+        println!("{}",meta.model_name());
+        println!("{}",meta.data_name());
+        meta.scale = Some(false);
+        println!("{}",meta.model_name());
+        println!("{}",meta.data_name());
     }
 }

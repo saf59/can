@@ -137,8 +137,8 @@ async fn detect(mut payload: Multipart, version: Version) -> Result<HttpResponse
 }
 fn detect4_model() -> (&'static [u8], &'static [u8]) {
     (
-        include_bytes!("../../../models/C_100_40_10_H34_ST_100/model.meta"),
-        include_bytes!("../../../models/C_100_40_10_H34_ST_100/model.safetensors"),
+        include_bytes!("../../../models/C_100_40_10_H34_RN_100/model.meta"),
+        include_bytes!("../../../models/C_100_40_10_H34_RN_100/model.safetensors"),
     )
 }
 fn detect3_model() -> (&'static [u8], &'static [u8]) {

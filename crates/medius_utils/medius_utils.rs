@@ -20,30 +20,16 @@ pub fn detect_by(
     let buff_size: usize = meta.buff_size.clone() as usize;
     let inputs = meta.n;
     let dev = Device::cuda_if_available(0)?;
+    //let devf = dev.clone();
     let alg_type = meta.alg_type.clone();
-    let fill = move |_meta: &Meta, _flag: bool, varmap: &mut VarMap| {
+    let fill = move |_meta: &Meta, _norm: bool, varmap: &mut VarMap| {
         let safetensors = safetensors_from_ba(safetensor_ba)?;
         if safetensors.names().contains(&&"median".to_string()) {
-            // If median is present, we will init it
-            //let median = safetensors.tensor("median")?;
-            //let multiplier = safetensors.tensor("multiplier")?;
-            //varmap.set("median", Tensor::from_vec(median, (inputs,), &dev)?)?;
-            //varmap.set("multiplier", Tensor::from_vec(multiplier, (inputs,), &dev)?)?;
-            let dev = Device::cuda_if_available(0)?;
-            let _ = varmap.get(
-                (inputs,),
-                MEDIAN,
-                candle_nn::Init::Const(0.0),
-                DType::F32,
-                &dev,
-            );
-            let _ = varmap.get(
-                (inputs,),
-                MULTIPLIER,
-                candle_nn::Init::Const(0.0),
-                DType::F32,
-                &dev,
-            );
+            let init = candle_nn::Init::Const(0.0);
+            let devf = Device::cuda_if_available(0)?;
+            // If median is present in safetensors, we will prepare it in varmap
+            let _ = varmap.get((inputs,), MEDIAN, init, DType::F32, &devf);
+            let _ = varmap.get((inputs,), MULTIPLIER, init, DType::F32, &devf);
         }
         fill_safetensors(varmap, safetensors)
     };
@@ -106,7 +92,7 @@ fn detect_by_single_vec(
     // Build model and fill it VarMap
     let (_vm, model, median, multiplier) = get_model(dev, meta, verbose, &[], fill)?;
     // normalize data if it is required
-    let data = if meta.flag && AlgType::HOM == meta.alg_type {
+    let data = if Some(true)==meta.norm && AlgType::HOM == meta.alg_type {
         normalize_row_columns(data, &median, &multiplier)
     } else {
         data.to_vec()

@@ -73,21 +73,21 @@ fn main() {
     let calc_per_sec: f64 = (num_iters as f64) / (elapsed.as_secs() as f64);
     println!("Total runtime: {elapsed:.2?}");
     println!("Calculations per second: {calc_per_sec:.2?}.");
-    save_to_csv(&mut x, &mut y, "data/H34_BF/".as_ref());
-    save_to_csv(&mut x_raw, &mut y_raw, "data/H34_SF/".as_ref());
+    save_to_csv(&mut x, &mut y, "data/H34_I/".as_ref());
+    save_to_csv(&mut x_raw, &mut y_raw, "data/H34_R/".as_ref());
     //build median and multyplier
     let (median, multyplier) = median_and_multiplier_columns(&x).unwrap();
     // Normalize data
     let mut x_norm = normalize_data_columns(&x, &median, &multyplier);
     let mut x_raw_norm = normalize_data_columns(&x_raw, &median, &multyplier);
     // Save normalized data
-    save_to_csv(&mut x_norm, &mut y, "data/H34_BT/".as_ref());
-    save_to_csv(&mut x_raw_norm, &mut y_raw, "data/H34_ST/".as_ref());
+    save_to_csv(&mut x_norm, &mut y, "data/H34_IN/".as_ref());
+    save_to_csv(&mut x_raw_norm, &mut y_raw, "data/H34_RN/".as_ref());
     // Save median and multyplier to 2 CSV
     let norm: Vec<Vec<f32>> = vec![median.clone(), multyplier.clone()];
     let norm_strings = vecvecf32_to_vecstring(&norm);
-    write_csv_strings(&norm_strings, &"data/H34_BT/norm.csv").unwrap();
-    write_csv_strings(&norm_strings, &"data/H34_ST/norm.csv").unwrap();
+    write_csv_strings(&norm_strings, &"data/H34_IN/norm.csv").unwrap();
+    write_csv_strings(&norm_strings, &"data/H34_RN/norm.csv").unwrap();
 }
 fn save_to_csv(x: &mut [Vec<f32>], y: &mut [usize], dir: &Path) {
     let x_strings = vecvecf32_to_vecstring(x);

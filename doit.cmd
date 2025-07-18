@@ -30,11 +30,11 @@ set rate="0.005"
 rem set default meta by -e 0
 if %1 == c (
 	echo Train classification %NAME%
-	%CP%train.exe --model-type classification --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden% --alg-type %alg% --buff-size %buff% --flag %scaled% -n %N%
+	%CP%train.exe --model-type classification --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden% --alg-type %alg% --buff-size %buff% --norm %scaled% -n %N%
 	call :train
 ) else if %1 == r (
 	echo Train regression %NAME%
-	%CP%train.exe --model-type regression --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden% --alg-type %alg% --buff-size %buff% --flag %scaled% -n %N%
+	%CP%train.exe --model-type regression --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden% --alg-type %alg% --buff-size %buff% --norm %scaled% -n %N%
 	call :train
 ) else (
     ECHO Bad type "%1" , exit 

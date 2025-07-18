@@ -1,5 +1,5 @@
 use clap::Parser;
-use medius_meta::{Activation, AlgType, BufSize, Meta, ModelType};
+use medius_meta::{Activation, AlgType, BufSize, DataType, Meta, ModelType, Scale};
 use medius_model::training_loop;
 use std::path::Path;
 use std::process;
@@ -16,12 +16,18 @@ struct Args {
     /// Algorithm
     #[arg(long, value_enum)]
     alg_type: Option<AlgType>,
+    /// Data type
+    #[arg(long, value_enum)]
+    data_type: Option<DataType>,
     /// Buffer size
     #[arg(long, value_enum)]
     buff_size: Option<BufSize>,
-    /// Use frequency scaling or normalisation
+    /// Use frequency scaling
+    #[arg(long, value_enum)]
+    scale: Option<Scale>,
+    /// Use normalisation
     #[arg(long)]
-    flag: Option<bool>,
+    norm: Option<bool>,
     /// Model type
     #[arg(long, value_enum)]
     model_type: Option<ModelType>,
@@ -48,6 +54,7 @@ pub fn main() -> anyhow::Result<()> {
     let mut meta = meta()?;
     let base: &Path = "./data".as_ref();
     let datapath = base.join(meta.data_name());
+    println!("{:?},{:?}",&datapath,&meta.model_name());
     let start = Instant::now();
     // Run training loop
     match training_loop(datapath, &mut meta) {
@@ -60,6 +67,7 @@ pub fn main() -> anyhow::Result<()> {
     Ok(())
 }
 /// Load metadata and parse command line arguments
+#[allow(clippy::manual_map)]
 fn meta() -> anyhow::Result<Meta> {
     let args = Args::parse();
     // All defaults are from Meta::default() except epochs
@@ -71,12 +79,28 @@ fn meta() -> anyhow::Result<Meta> {
     if let Some(alg_type) = args.alg_type {
         meta.alg_type = alg_type;
     }
+    if let Some(data_type) = args.data_type {
+        meta.data_type = data_type;
+    } else {
+        meta.data_type = DataType::None; // DEFAULT
+    }
     if let Some(buff_size) = args.buff_size {
         meta.buff_size = buff_size;
+    } else {
+        meta.buff_size = BufSize::None; // DEFAULT
     }
-    if let Some(flag) = args.flag {
-        meta.flag = flag;
+    if let Some(scale) = args.scale {
+        meta.scale = match scale {
+            Scale::True => Some(true),
+            Scale::False => Some(false),
+            Scale::None => None
+        };
+    } else {
+        meta.scale = None; // DEFAULT
     }
+
+    meta.norm = if let Some(norm) = args.norm { Some(norm) } else { None };
+
     if let Some(model_type) = args.model_type {
         meta.model_type = model_type;
     }
@@ -103,7 +127,6 @@ fn meta() -> anyhow::Result<Meta> {
     } else if meta.hidden.is_none() {
         meta.hidden = Some("40,10".to_string());
     }
-    // Check if the algorithm type is implemented
     if args.defaults {
         println!("{meta:#?}");
         process::exit(0);

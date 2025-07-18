@@ -8,7 +8,7 @@ fn main() {
 
     // Check if the target OS is "windows".
     if target_os == "windows" {
-        // If it is Windows, instruct cargo to pass a cfg flag to rustc,
+        // If it is Windows, instruct cargo to pass a cfg norm to rustc,
         // effectively enabling the "os_windows" feature for this build.
         // This uses the `rustc-cfg` directive.
         println!("cargo:rustc-cfg=feature=\"os_windows\"");

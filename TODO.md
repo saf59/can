@@ -36,15 +36,30 @@
     можно нормализовать уже там (94), но тогда нужно будет из get_model возвращить и m,m
     нужен ридер из varmap после fill  в 
  
-- ПРОБЛЕМА - flag
-  - для HOB  это нормализация
-  - для остальных это scale frquency - ВСЕГДА
-  - надо решить проблему если нужны ОБА варианта
-- ПРОБЛЕМА - Big|Small
-  - для HOB  это impulse|raw
-  - для остальных это buffer is Big
-  
++ ПРОБЛЕМА - flag = надо разделить на 2 разных
+  - для HOB  это нормализация norm: `N|▋`
+  - для остальных это scale frquency: scale - `T|F`
+
++ ПРОБЛЕМА - Big|Small - разделить на 2 enum и оба с None
+  - для HOB  это impulse|raw - свойство датасета datatype `I|R|▋`
+  - для остальных это buffer is Big |Small - свойство буфера при анализе `B|S|▋`
+
+- После правок (было 2, станет 4) нужно будет:
+  + добавить и поменять в meta именах,
+  + сделать тесты на имена
+  + поменяь в hob meta на data_type & norm, flag default = scale 
+  + переименвать данные и H34 модели ST->RN, SF->R, BT->IN
+  + замеить константы в исходниках
+  - добавить и поменять в cmd для H34,
++ БАГ не заполняет MM - (вернее исчезают после load)
+  fill_from_file(440) varmap.load(model_path)?;
+  loading weights from ./models\C_100_40_10_H34_IN_100\model.safetensors
+  если в вармапе есть, а в файле нету -> self.data.iter -> item.load(name, var.device())?;
+  т.е. заполнение должно быть после!!
+  !!! но при detect_by error: process didn't exit successfully: `target\debug\detect4.exe test_data/4/in.wav` (exit code: 0xc0000005, STATUS_ACCESS_VIOLATION)
+  Исправлено fill_norm после fill и с get внутри !!! 
 - генератор hob для 3 + signal normalize и scale
++ тестирование текущее на 3 - 100%
 - тестирование hob на 3
-- 
+ 
   

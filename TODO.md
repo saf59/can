@@ -1,9 +1,9 @@
 ﻿
 Можно сразу и на Kotlin 
 + +проверить 4 hom impulse без 85, но с нормализацией   
-  **BAD**
+  **BAD** buildHOM4()
 + проверить 4 V2 hom impulse без 85, но с нормализацией   
-  **BAD**
+  **BAD** buildHOM4()
 + проверить hom на RAW (без пиков и 85) но с нормализацией 
   not20000RawFilter как buildHOM, но 4
 + проверить hom на RAW Stage 3 (без пиков и 85) но с нормализацией
@@ -58,6 +58,11 @@
   т.е. заполнение должно быть после!!
   !!! но при detect_by error: process didn't exit successfully: `target\debug\detect4.exe test_data/4/in.wav` (exit code: 0xc0000005, STATUS_ACCESS_VIOLATION)
   Исправлено fill_norm после fill и с get внутри !!! 
+- на НОВЫХ данных нужно будет:
+    - usefil (all) -> FFT -> db/Hz -> stat13
+    - corr
+- повторить на других данных
+  
 - генератор hob для 3 + signal normalize и scale
 + тестирование текущее на 3 - 100%
 - тестирование hob на 3

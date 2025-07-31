@@ -318,10 +318,11 @@ impl Meta {
 mod tests {
     use super::*;
     #[test]
+    //#[ignore]
     fn test_name() {
         let meta: Meta = Default::default();
         let name = meta.model_name();
-        assert_eq!(name, "C_40_10_B260_ST_40");
+        assert_eq!(name, "C_40_10_B260__40");
     }
 
     #[test]

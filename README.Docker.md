@@ -56,3 +56,7 @@ docker build -t detect4 -f Dockerfile_detect4 .
 docker run detect4
 и если 0
 docker image save detect4 -o detect4.zip
+
+Так как все монтируется в build (RUN --mount...), а не копируется, в конце надо из монтируемых каталогов скопировать в реальные (cp),
+и все одной командой, т.е. слеш \ в конце,
+а затем в финальной сборке скопировать все нужное из build (COPY --from=build)

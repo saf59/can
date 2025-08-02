@@ -1,4 +1,5 @@
 #![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
+
 pub fn summary_statistics(data: &[f32]) -> anyhow::Result<Vec<f32>> {
     let stats: Vec<f32> = vec![
         min(data),
@@ -178,6 +179,40 @@ pub fn population_skewness(data: &[f32]) -> f32 {
         return 0f32;
     }
     sum3 / n / (variance * variance * variance)
+}
+
+pub fn to_db(data: &[f32]) -> Vec<f32> {
+    data.iter().map(|amplitude|10.0 * (amplitude.abs().log10())).collect()
+}
+pub fn average_by_column(data: &[Vec<f32>]) -> Vec<f32> {
+    if data.is_empty() {
+        return Vec::new();
+    }
+    let cols = data[0].len();
+    (0..cols)
+        .map(|col| {
+            data.iter().map(|row| row[col]).sum::<f32>() / data.len() as f32
+        })
+        .collect()
+}
+pub fn skew(data: &[f32]) -> f32 {
+    let n = data.len();
+    if n == 0 {
+        return 0.0;
+    }
+    let mean = data.iter().copied().sum::<f32>() / n as f32;
+    let std_dev = {
+        let var = data.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / n as f32;
+        var.sqrt()
+    };
+    if std_dev == 0.0 {
+        return 0.0;
+    }
+    let mut skew = 0.0;
+    for &x in data {
+        skew += ((x - mean) / std_dev).powi(3);
+    }
+    skew / n as f32
 }
 
 pub fn kurtosis(values: &[f32]) -> f32 {

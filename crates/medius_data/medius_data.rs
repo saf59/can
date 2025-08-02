@@ -2,8 +2,9 @@ extern crate core;
 
 use candle_core::{Device, Tensor};
 use csv::Reader;
-use rand::rng;
 use rand::seq::SliceRandom;
+use rand_pcg::rand_core::SeedableRng;
+use rand_pcg::Pcg64Mcg;
 use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
@@ -50,7 +51,8 @@ pub fn load_dir<T: AsRef<Path>>(
     let size = y.len();
     let width = x.len() / size;
     let mut indexes: Vec<usize> = (0..size).collect();
-    indexes.shuffle(&mut rng()); // randomize indexes
+    let mut rng = Pcg64Mcg::seed_from_u64(12345);
+    indexes.shuffle(&mut rng); // randomize indexes
     let border: usize = ((size as f32) * train_part) as usize;
     let (train, test) = if train_part < 1.0 {
         (0..border, border..indexes.len())

@@ -12,10 +12,14 @@ SET buff=%7
 IF NOT DEFINED buff SET "buff=small"
 SET scaled=%8
 IF NOT DEFINED scaled SET "scaled=true"
+SET scaled=%9
+IF NOT DEFINED dt SET "dt=none"
+shift
+SET norm=%9
+IF NOT DEFINED norm SET "norm=none"
+
 
 IF NOT DEFINED DETECT SET "DETECT=detect3"
-
-SET hidden=%9
 IF NOT DEFINED hidden SET hidden="100,40,10"
 SET hidden=%hidden:"=%
 
@@ -30,11 +34,11 @@ set rate="0.005"
 rem set default meta by -e 0
 if %1 == c (
 	echo Train classification %NAME%
-	%CP%train.exe --model-type classification --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden% --alg-type %alg% --buff-size %buff% --norm %scaled% -n %N%
+	%CP%train.exe --model-type classification --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden% --alg-type %alg% --buff-size %buff% --norm %norm% --scale %scaled% --data-type %dt%-n %N%
 	call :train
 ) else if %1 == r (
 	echo Train regression %NAME%
-	%CP%train.exe --model-type regression --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden% --alg-type %alg% --buff-size %buff% --norm %scaled% -n %N%
+	%CP%train.exe --model-type regression --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden% --alg-type %alg% --buff-size %buff% --norm %norm% --scale %scaled% --data-type %dt%-n %N%
 	call :train
 ) else (
     ECHO Bad type "%1" , exit 

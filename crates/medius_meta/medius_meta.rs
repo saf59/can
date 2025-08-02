@@ -373,4 +373,30 @@ mod tests {
         println!("{}",meta.model_name());
         println!("{}",meta.data_name());
     }
+    #[test]
+    fn test_ten_name() {
+        let buf:&str = "
+        n: 18
+        alg_type: Bin
+        buff_size: Small
+        model_type: Classification
+        activation: Relu
+        batch_size: 1
+        learning_rate: 5e-6
+        train_part: 1.0
+        hidden: 100,40,10
+        norm: false
+        data_type: Raw
+        outputs: 1";
+        let mut meta: Meta = serde_yaml::from_slice(buf.as_bytes()).unwrap();
+        meta.scale = None;
+        meta.buff_size = BufSize::None;
+        println!("{}",meta.name_out());
+        println!("{}",meta.model_name());
+        println!("{}",meta.data_name());
+        meta.data_type = DataType::Impulse;
+        println!("{}",meta.model_name());
+        println!("{}",meta.data_name());
+    }
+
 }

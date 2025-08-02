@@ -1,18 +1,88 @@
+#![allow(dead_code)]
 use anyhow::{Context, Result};
 use ho::HigherOrderMomentsAnalyzer;
 use indicatif::ProgressBar;
-use medius_parser::hob;
+use medius_parser::{all_peaks, bin_harmonics, hob, impuls, read_wav};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
+use total::Total;
+use utils::fft::fft_amplitudes;
+use utils::statistics::{average_by_column, mean, skew, to_db};
 use utils::{
     column_averages, ensure_dir_exists, median_and_multiplier_columns, normalize_data_columns,
     vecusize_to_vecstring, vecvecf32_to_vecstring, write_csv_strings,
 };
 
 fn main() {
+    //s4()
+    s_ten18().unwrap();
+}
+fn s_ten18() -> anyhow::Result<()> {
+    let path = r"T:\Medius\stage4\idea\raw_meta_all.csv";
+    let now = Instant::now();
+    let rows = read_raw4_meta_rows_from_csv(path).unwrap();
+    //let rows = &rows[0..5] ; // only first time
+    let sampling_rate = 192000.0;
+    let num_iters = rows.len() as u64;
+    //let bar = ProgressBar::new(num_iters);
+    let total =Total::new(num_iters as i64);
+    let mut x: Vec<Vec<f32>> = Vec::new();
+    let mut y: Vec<usize> = Vec::new();
+    let mut x_raw: Vec<Vec<f32>> = Vec::new();
+    let mut y_raw: Vec<usize> = Vec::new();
+    rows.iter().for_each(|r| {
+        let wav_path: &Path = r.path.as_ref();
+        let all =fs::read(wav_path).unwrap();
+        match read_wav(&all) {
+            Ok(raw) => {
+                let peaks = all_peaks(&raw, 4000);
+                let fft: Vec<Vec<f32>> = peaks
+                    .iter()
+                    .map(|p| impuls(&raw, *p))
+                    .map(|p| fft_amplitudes(&p, 4096))
+                    .collect::<Vec<Vec<f32>>>();
+                let px: Vec<Vec<f32>> = fft.iter().map(|p_ampl| {
+                    // to no_harmonic bins (10)
+                    let bins = bin_harmonics(p_ampl, 10_000.0, 1_500.0, sampling_rate);
+                    let avg:Vec<f32> = bins[1..].iter().map(|bin| mean(bin)).collect();
+                    let skew:Vec<f32> = bins[1..].iter()
+                        .map(|bin   | to_db(bin))
+                        .map(|db| skew(&db))
+                        .collect();
+                    // join to 18 and to px,y
+                    [&avg[..], &skew[..]].concat()
+                }).collect();
+                let vy = r.r#type;
+                // for pulses
+                px.iter().for_each(|vx  |{
+                    x.push(vx.clone());
+                    y.push(vy)
+                });
+                // for raw
+                let rx = average_by_column(&px);
+                x_raw.push(rx);
+                y_raw.push(vy);
+            }
+            Err(e) => {
+                println!("{e:?}/n{wav_path:?}");
+            }
+        }
+        total.step(&r.path);
+        //bar.inc(1);
+    });
+    //bar.finish();
+    save_to_csv(&mut x, &mut y, "data/T18_I/".as_ref());
+    save_to_csv(&mut x_raw, &mut y_raw, "data/T18_R/".as_ref());
+    let elapsed = now.elapsed();
+    let calc_per_sec: f64 = (num_iters as f64) / (elapsed.as_secs() as f64);
+    println!("Total runtime: {elapsed:.2?}");
+    println!("Calculations per second: {calc_per_sec:.2?}.");
+    Ok(())
+}
+fn s4() {
     let path = r"W:\data\medius\part3\impulse_meta.csv";
     let rows = read_meta_rows_from_csv(path).unwrap();
     println!("Read {} rows", rows.len());
@@ -104,6 +174,15 @@ struct MetaRow {
     pub typeIndex: usize,
     pub pulse: usize,
 }
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct Raw4Meta {
+    pub path: String,
+    pub r#type: usize,
+    pub pulses: usize,
+    pub typeIndex: usize,
+}
+
 fn group_and_sort_meta_rows_by_path(rows: &[MetaRow]) -> HashMap<String, Vec<&MetaRow>> {
     let mut map: HashMap<String, Vec<&MetaRow>> = HashMap::new();
     for row in rows {
@@ -127,6 +206,19 @@ fn read_meta_rows_from_csv<P: AsRef<std::path::Path>>(path: P) -> Result<Vec<Met
         if !row.path.contains("_MS150_5_P30_2_20_") {
             rows.push(row);
         }
+    }
+    Ok(rows)
+}
+fn read_raw4_meta_rows_from_csv<P: AsRef<std::path::Path>>(path: P) -> Result<Vec<Raw4Meta>> {
+    let mut rdr = csv::ReaderBuilder::new()
+        .delimiter(b',')
+        .has_headers(true)
+        .from_path(&path)
+        .with_context(|| format!("Failed to open CSV file: {:?}", path.as_ref()))?;
+    let mut rows = Vec::new();
+    for result in rdr.deserialize() {
+        let row: Raw4Meta = result.with_context(|| "Failed to deserialize MetaRow")?;
+        rows.push(row);
     }
     Ok(rows)
 }

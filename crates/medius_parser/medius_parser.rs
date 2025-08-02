@@ -296,14 +296,15 @@ fn left_part(n: usize) -> (f32, f32) {
     (part, left)
 }
 
-fn all_peaks(data: &[f32], n_after: usize) -> Vec<usize> {
+pub fn all_peaks(data: &[f32], n_after: usize) -> Vec<usize> {
     let abs_data: Vec<f32> = data.iter().map(|x| x.abs()).collect();
     let (mean, std) = mean_and_std(&abs_data);
     let top = mean + std * 3.0;
     let mut i = 0;
     let mut peaks = Vec::new();
+    let last = data.len() - n_after;
     while i < data.len() {
-        if data[i] > top {
+        if data[i] > top && i < last {
             peaks.push(i);
             i += n_after;
         } else {
@@ -320,7 +321,7 @@ fn mean_and_std(data: &[f32]) -> (f32, f32) {
     (mean, var.sqrt())
 }
 
-fn impuls(data: &[f32], peak: usize) -> Vec<f32> {
+pub fn impuls(data: &[f32], peak: usize) -> Vec<f32> {
     // Calculate mean of positive values in the range [peak, peak+1000)
     let mean: f32 = data
         .iter()
@@ -342,6 +343,29 @@ fn impuls(data: &[f32], peak: usize) -> Vec<f32> {
     let start = peak.saturating_sub(2);
     let end = last + 1; // inclusive range
     data.get(start..end).unwrap_or(&[]).to_vec()
+}
+pub fn bin_harmonics(
+    data: &[f32],
+    base_freq: f32,
+    edge_width: f32,
+    sample_rate: f32,
+) -> Vec<Vec<f32>> {
+    let n_bins = ((sample_rate / 2.0) / base_freq).round() as usize;
+    let mut result = vec![Vec::new(); n_bins];
+    let k = sample_rate / (data.len() as f32 * 2.0);
+
+    for (i, &v) in data.iter().enumerate() {
+        let f = i as f32 * k;
+        let bin_idx = (f / base_freq).round() as usize;
+        if bin_idx < n_bins {
+            let bin_start = bin_idx as f32 * base_freq + edge_width;
+            let bin_end = (bin_idx as f32 + 1.0) * base_freq - edge_width;
+            if f >= bin_start && f < bin_end {
+                result[bin_idx].push(v);
+            }
+        }
+    }
+    result
 }
 
 fn back_search(data: &[f32], peak: usize, border: f32) -> usize {
@@ -559,14 +583,14 @@ mod tests {
                 y.write_all(id.to_string().as_bytes())?;
                 y.write_all(b"\n")?;
                 result += 1;
-                print!("{}\r ", result);
+                print!("{result}\r ");
             } else {
                 return Err(anyhow::anyhow!("Invalid CSV format"));
             }
         }
         x.flush()?;
         y.flush()?;
-        println!("{:?}", result); // 5 min 15 sec
+        println!("{result:?}"); // 5 min 15 sec
         Ok(())
     }
 

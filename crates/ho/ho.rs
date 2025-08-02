@@ -632,12 +632,12 @@ mod tests {
         assert!(result.spectral_entropy >= 0.0);
         assert!(!result.moment_ratios.is_empty());
         assert!(!result.cumulants.is_empty());
-        println!("Analysis result: {:?}", result);
+        println!("Analysis result: {result:?}");
         println!("✅ All tests passed! Analysis completed successfully.");
         let custom_bands = analyzer.get_custom_frequency_bands(&[85_000.0], 1, 3000.0);
         //let band_results = analyzer.analyze_frequency_bands(signal, bands, "hanning");
         let band_results = analyzer.analyze_frequency_bands(&signal, &custom_bands, "hanning");
-        println!("Bands result: {:?}", band_results);
+        println!("Bands result: {band_results:?}");
     }
 
     fn sample_hom_signal() -> Vec<f64> {
@@ -713,14 +713,14 @@ mod tests {
 
         // All features should be finite
         for &feature in &features {
-            assert!(feature.is_finite(), "Feature should be finite: {}", feature);
+            assert!(feature.is_finite(), "Feature should be finite: {feature}");
         }
 
         println!("✅ ML feature extraction test passed!");
     }
     /// Print detailed analysis results in a formatted way
     fn print_ho_results(name: &str, result: &HigherOrderMomentsResult) {
-        println!("--- {} ---", name);
+        println!("--- {name} ---");
         println!("Spectral Mean: {:.2} Hz", result.spectral_mean);
         println!("Spectral Variance: {:.6}", result.spectral_variance);
         println!("Spectral Skewness: {:.4}", result.spectral_skewness);
@@ -731,7 +731,7 @@ mod tests {
         let cumulants_str: Vec<String> = result
             .cumulants
             .iter()
-            .map(|&x| format!("{:.4}", x))
+            .map(|&x| format!("{x:.4}"))
             .collect();
         println!("Cumulants: {}", cumulants_str.join(", "));
         println!();
@@ -784,7 +784,7 @@ mod tests {
         let features = analyzer.extract_features_for_ml(&full_result);
         println!("Number of features: {}", features.len());
 
-        let features_str: Vec<String> = features.iter().map(|&x| format!("{:.4}", x)).collect();
+        let features_str: Vec<String> = features.iter().map(|&x| format!("{x:.4}")).collect();
         println!("Features: {}", features_str.join(", "));
     }
 

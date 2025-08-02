@@ -272,7 +272,7 @@ mod tests {
         .unwrap();
 
         for point in result {
-            println!("{:?}", point);
+            println!("{point:?}");
         }
     }
 }

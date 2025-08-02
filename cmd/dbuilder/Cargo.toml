@@ -12,6 +12,7 @@ indicatif.workspace = true
 medius_parser = { path = "../../crates/medius_parser" }
 ho = { path = "../../crates/ho" }
 utils = { path = "../../crates/utils" }
+total = { path = "../../crates/total" }
 
 
 [[bin]]

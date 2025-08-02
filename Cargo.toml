@@ -13,7 +13,7 @@ members = [
     "cmd/dur", "cmd/medius_server", "cmd/bicks", "cmd/dbuilder",
     "crates/medius_data", "crates/medius_utils", "crates/medius_model",
     "crates/medius_meta", "crates/medius_parser", "crates/can_data",
-    "crates/utils", "crates/ho", 
+    "crates/utils", "crates/ho", "crates/total",
 ]
 resolver = "2"
 
@@ -26,6 +26,7 @@ clipboard = "0.5.0"
 csv = "1.3.1"
 rand = "0.9.1"
 rand_distr = "0.5.1"
+rand_pcg = "0.9.0"
 chrono = { version = "0.4.41", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"

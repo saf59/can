@@ -221,6 +221,6 @@ mod tests {
         let momentum = 0.1;
 
         let embedded = tsne(&data, 2, perplexity, learning_rate, momentum, iterations);
-        println!("{:?}", embedded);
+        println!("{embedded:?}");
     }
 }

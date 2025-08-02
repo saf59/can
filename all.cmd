@@ -1,11 +1,15 @@
 ﻿@Echo Off
 cargo build --release --bin train --bin test3
-rem SET "DEF=260 1500 bin small true"
 @REM N epochs type size freq|norm
-SET "DEF=34 200 hom small true"
-rem SET "DEF=34 100 hom big false"
-SET "DETECT=detect4"
+@rem   4     5  6   7    8      9  10(need shift -> 9)
+@rem   N epochs alg buff scaled dt norm   
+@rem 4
+SET "DEF=34 200 hom none none raw true"
+@rem 3
+@rem SET "DEF=260 1500 bin small true none false"
 
+SET hidden="100,40,10"
+SET "DETECT=detect4"
 set "JOINED=-j"
  
 rem del total.csv >nul

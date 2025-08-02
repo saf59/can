@@ -42,15 +42,17 @@
 
 + ПРОБЛЕМА - Big|Small - разделить на 2 enum и оба с None
   - для HOB  это impulse|raw - свойство датасета datatype `I|R|▋`
-  - для остальных это buffer is Big |Small - свойство буфера при анализе `B|S|▋`
-
+    - для остальных это buffer is Big |Small - свойство буфера при анализе `B|S|▋`
+3: --buff-size small --norm false --scale true  // --data-type none
+4: --buff-size none --norm true --data-type raw // --scale none
+  
 - После правок (было 2, станет 4) нужно будет:
   + добавить и поменять в meta именах,
   + сделать тесты на имена
   + поменяь в hob meta на data_type & norm, flag default = scale 
   + переименвать данные и H34 модели ST->RN, SF->R, BT->IN
   + замеить константы в исходниках
-  - добавить и поменять в cmd для H34,
+  + добавить и поменять в cmd для H34,
 + БАГ не заполняет MM - (вернее исчезают после load)
   fill_from_file(440) varmap.load(model_path)?;
   loading weights from ./models\C_100_40_10_H34_IN_100\model.safetensors
@@ -58,13 +60,6 @@
   т.е. заполнение должно быть после!!
   !!! но при detect_by error: process didn't exit successfully: `target\debug\detect4.exe test_data/4/in.wav` (exit code: 0xc0000005, STATUS_ACCESS_VIOLATION)
   Исправлено fill_norm после fill и с get внутри !!! 
-- на НОВЫХ данных нужно будет:
-    - usefil (all) -> FFT -> db/Hz -> stat13
-    - corr
-- повторить на других данных
-  
-- генератор hob для 3 + signal normalize и scale
-+ тестирование текущее на 3 - 100%
-- тестирование hob на 3
+- builder ten 18
  
   

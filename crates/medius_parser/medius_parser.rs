@@ -7,9 +7,9 @@ use std::f32::consts::PI;
 use std::fs;
 #[allow(unused_imports)]
 use std::path::Path;
-use utils::fft::fft_amplitudes;
+use utils::fft::{asize, fft_amplitudes};
 use utils::mfcc::MFCC;
-use utils::statistics::stat3;
+use utils::statistics::{mean, skew, stat3, to_db};
 use utils::{median_and_multiplier, normalize_array};
 
 const SAMPLE_RATE: usize = 192_000;
@@ -29,7 +29,6 @@ pub fn parse_wav<P: AsRef<Path>>(
     let all = fs::read(&path)?;
     parse_all(&all, n, frequency, buff_size, alg_type)
 }
-
 // call also from medius_utils.detect()
 pub fn parse_all(
     all: &[u8],
@@ -45,8 +44,32 @@ pub fn parse_all(
         AlgType::BinN => parse_bin_n(n, &raw),
         AlgType::Mfcc => parse_mfcc(n, 250, buff_size, nf, &raw),
         AlgType::Stat => parse_stat(n, buff_size, nf, &raw),
+        AlgType::ATen => parse_aten( &raw,SAMPLE_RATE_F32, n),
         AlgType::HOM => Err(anyhow::anyhow!("HOM algorithm is not implemented yet")),
+        AlgType::Ten => Err(anyhow::anyhow!("Ten algorithm is not implemented yet")),
     }
+}
+pub fn parse_aten(raw: &[f32],sampling_rate: f32, n:usize) -> anyhow::Result<Vec<f32>> {
+    if n!=18 {
+        return Err(anyhow::anyhow!("Aten algorithm requires N=18!"));
+    }
+    // useful
+    let useful = usefull(raw);
+    // fft
+    let buff_size = asize(useful.len()).0 * 2;
+    let ampl = fft_amplitudes(&useful, buff_size);
+    // 10 bins
+    let bins = bin_harmonics(&ampl, 10_000.0, 1_500.0, sampling_rate);
+    // 9 avg && 9 db->skew
+    let avg: Vec<f32> = bins[1..].iter().map(|bin| mean(bin)).collect();
+    let skew: Vec<f32> = bins[1..]
+        .iter()
+        .map(|bin| to_db(bin))
+        .map(|db| skew(&db))
+        .collect();
+    // 18 total
+    let vx = [&avg[..], &skew[..]].concat();
+    Ok(vx)
 }
 
 pub fn parse_hom(raw: &[f32]) -> anyhow::Result<Vec<Vec<f32>>> {
@@ -272,7 +295,22 @@ fn useful3(raw: &[f32]) -> Vec<f32> {
     // Slice the original data
     raw[first..=last].to_vec() // Include last element
 }
+pub fn usefull(raw_data: &[f32]) -> Vec<f32> {
+    let peak_list = all_peaks(raw_data, 4000);
+    if peak_list.is_empty() {
+        return vec![];
+    }
+    let u_start = peak_list[0].saturating_sub(2);
+    let mut e_peak = *peak_list.last().unwrap();
+    let mut size = ((e_peak - peak_list[0]) as f32 / (peak_list.len() - 1) as f32) as usize;
+    if (e_peak + size) > raw_data.len() && peak_list.len() >= 2 {
+        e_peak = peak_list[peak_list.len() - 2];
+        size = ((e_peak - peak_list[0]) / (peak_list.len() - 2)) as usize;
+    }
 
+    let u_end = e_peak + size;
+    raw_data.get(u_start..=u_end).unwrap_or(&[]).to_vec()
+}
 fn bin(data: &[f32], n: usize) -> Vec<f32> {
     let (part, left) = left_part(n);
     let size = ((SAMPLE_RATE_F32 / 2.0 + left) / part).ceil() as usize;

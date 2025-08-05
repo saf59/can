@@ -34,12 +34,12 @@ pub fn detect_by(
         fill_safetensors(varmap, safetensors)
     };
 
-    if alg_type != medius_meta::AlgType::HOM {
+    if !alg_type.by_pulses() {
         // Stage 3 data
         let data = parse_all(all, inputs, freq, buff_size, alg_type)?;
         detect_by_single_vec(verbose, &meta, inputs, &dev, &data, &fill)
     } else {
-        // Stage 4 data
+        // Stage 4 data && all
         let raw = read_wav(all)?;
         detect_by_many_vectors(verbose, joined, &meta, inputs, &dev, &raw, &fill)
     }
@@ -54,7 +54,7 @@ fn detect_by_many_vectors(
     raw: &[f32],
     fill: &dyn Fn(&Meta, bool, &mut VarMap) -> anyhow::Result<()>,
 ) -> anyhow::Result<f32> {
-    let hom_data = parse_hom(raw)?;
+    let hom_data = parse_hom(raw)?; // TODO for Ten
     //let (medians, multiplier) = default_mm();
     if joined {
         // If joined, we use the same function as for all
@@ -92,7 +92,7 @@ fn detect_by_single_vec(
     // Build model and fill it VarMap
     let (_vm, model, median, multiplier) = get_model(dev, meta, verbose, &[], fill)?;
     // normalize data if it is required
-    let data = if Some(true)==meta.norm && AlgType::HOM == meta.alg_type {
+    let data = if Some(true)==meta.norm && meta.alg_type.by_pulses() {
         normalize_row_columns(data, &median, &multiplier)
     } else {
         data.to_vec()
@@ -112,8 +112,7 @@ fn detect_by_single_vec(
 fn by_class(logits: &Tensor, alg_type: &AlgType) -> anyhow::Result<f32> {
     let max = logits.argmax(D::Minus1)?.to_vec1::<u32>()?;
     let max = max.first();
-    if alg_type == &AlgType::HOM {
-        // For HOM, we return the first value as the result
+    if  matches!(alg_type, AlgType::HOM | AlgType::Ten| AlgType::ATen){
         return Ok(*max.unwrap_or(&0) as f32);
     }
     let wp: f32 = (*max.unwrap() as f32) * -0.1;

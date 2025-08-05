@@ -4,13 +4,21 @@ cargo build --release --bin train --bin test3
 @rem   4     5  6   7    8      9  10(need shift -> 9)
 @rem   N epochs alg buff scaled dt norm   
 @rem 4
-SET "DEF=34 200 hom none none raw true"
+@remSET "DEF=34 200 hom none none raw true"
+rem SET "DEF=18 4000 ten none none raw false"
+SET "DEF=18 6000 a-ten none none raw false"
+rem SET "DEF=18 200 ten none none impulse false"
+
 @rem 3
 @rem SET "DEF=260 1500 bin small true none false"
 
-SET hidden="100,40,10"
+@rem SET hidden="100,40,10"
+@rem SET hidden="40,20,10,5"
+"куь SET hidden="30,30,30"
+SET hidden="36,36,36,12"
+@rem SET hidden="36,18,9"
 SET "DETECT=detect4"
-set "JOINED=-j"
+REM set "JOINED=-- -j"
  
 rem del total.csv >nul
 call :size c
@@ -19,20 +27,22 @@ GOTO :eof
 	
 :size 
 @REM batchsize
-rem call :act %1 1
+call :act %1 1
 rem call :act %1 40
-call :act %1 100
+rem call :act %1 100
 EXIT /B
 
 :act
 @REM alg
-call doit %1 %2 gelu %DEF%
-call doit %1 %2 new-gelu %DEF%
-call doit %1 %2 relu %DEF%
-call doit %1 %2 relu2 %DEF%
 call doit %1 %2 relu6 %DEF%
-call doit %1 %2 silu %DEF%
+EXIT /B
+call doit %1 %2 hard-sigmoid %DEF%
+call doit %1 %2 relu %DEF%
+call doit %1 %2 gelu %DEF%
 call doit %1 %2 sigmoid %DEF%
+call doit %1 %2 new-gelu %DEF%
+call doit %1 %2 relu2 %DEF%
+call doit %1 %2 silu %DEF%
 call doit %1 %2 hard-sigmoid %DEF%
 call doit %1 %2 swish %DEF%
 rem call doit %1 %2 hard-swish %DEF%

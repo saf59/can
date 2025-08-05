@@ -41,6 +41,7 @@ pub struct Meta {
     pub train_part: f32,
     pub hidden: Option<String>,
     pub outputs: usize,
+    pub version: Option<String>,
 }
 /// Get Meta embed resource
 pub fn meta_from_ba(buf: &[u8]) -> anyhow::Result<Meta> {
@@ -81,20 +82,28 @@ impl Default for Meta {
             train_part: 0.9,
             hidden: Some("40,10".to_string()),
             outputs: 1,
+            version: None
         }
     }
 }
 impl Meta {
     pub fn small(&self) -> String {
         format!(
-            "{:?}, {:?}, {}, {}, {}, {}, {}",
+            "{:?}, {:?}, e:{}, batch:{}, lr:{}, tp:{}, alg:{:?}, n:{}, buff:{:?}, scale:{:?},dt:{:?}, norm:{:?}, hidden:{:?}, version:{:?}",
             self.model_type,
             self.activation,
             self.epochs,
             self.batch_size,
             self.learning_rate,
             self.train_part,
-            self.hidden.as_ref().unwrap_or(&"None".to_string())
+            self.alg_type,
+            self.n,
+            self.buff_size,
+            self.scale,
+            self.data_type,
+            self.norm,
+            self.hidden,
+            self.version
         )
     }
 }
@@ -111,6 +120,18 @@ pub enum AlgType {
     Mfcc,
     Stat,
     HOM,
+    ATen,
+    Ten
+}
+impl Default for AlgType {
+    fn default() -> Self {
+        Self::Bin
+    }
+}
+impl AlgType {
+    pub fn by_pulses(&self) -> bool {
+        matches!(self, Self::HOM | Self::Ten)
+    }
 }
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
 pub enum BufSize {
@@ -143,16 +164,6 @@ impl Default for Scale {
         Self::None
     }
 }
-/*
-impl Chr for Scale {
-    fn first_char(&self) -> &str {
-        match self {
-            Scale::None => "",
-            Scale::True => "T",
-            Scale::False => "F",
-        }
-    }
-}*/
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq, Debug, ValueEnum)]
 pub enum DataType {
     Impulse,
@@ -263,7 +274,8 @@ impl Meta {
         let sf = scale_first_char(&self.scale);
         let dt = self.data_type.first_char();
         let nc = norm_first_char(&self.norm);
-        format!("{at}{sn}_{bs}{sf}{dt}{nc}")
+        let version = self.version.as_deref().unwrap_or("");
+        format!("{at}{sn}_{bs}{sf}{dt}{nc}{version}")
     }
     pub fn name_out(&self) -> String {
         let hidden = self
@@ -271,11 +283,12 @@ impl Meta {
             .as_ref()
             .unwrap_or(&"".to_string())
             .replace(",", "_");
+        let version = self.version.as_deref().unwrap_or("");
         format!(
-            "{:?},{:?},{:?},{},{:?},{:?},{},{},{},{}",
+            "{:?},{:?},{:?},{},{:?},{:?},{},{},{},{},{}",
             &self.model_type, &self.alg_type, &self.n, hidden, &self.activation, &self.batch_size,
             scale_first_char(&self.scale),self.buff_size.first_char(),self.data_type.first_char(),
-            norm_first_char(&self.norm)
+            norm_first_char(&self.norm),version
         )
     }
     /// Generates a model name based on the metadata
@@ -294,7 +307,8 @@ impl Meta {
         let nc = norm_first_char(&self.norm);
         let bcs = &self.batch_size.to_string();
         let act = enum_name(&self.activation);
-        format!("{mt}_{h}_{at}{sn}_{bs}{sf}{dt}{nc}_{bcs}{act}")
+        let version = self.version.as_deref().unwrap_or("");
+        format!("{mt}_{h}_{at}{sn}_{bs}{sf}{dt}{nc}_{bcs}{act}{version}")
     }
     /// Returns the file path for the metadata file
     pub fn meta_file(&self) -> PathBuf {

@@ -7,7 +7,16 @@ pub fn fft_amplitudes(raw: &[f32], buf_size: usize) -> Vec<f32> {
     let buffer = fft_forward(&data, buf_size);
     to_amplitudes(&buffer, buf_size)
 }
-
+pub fn asize(data_size: usize) -> (usize, usize) {
+    (2..=24)
+        .map(|i| {
+            let s = 1 << (25 - i);
+            let idx = 25 - i;
+            (s, idx)
+        })
+        .find(|(s, _)| data_size > *s)
+        .expect("No suitable size found")
+}
 pub fn to_amplitudes(buffer: &[Complex<f32>], buf_size: usize) -> Vec<f32> {
     let half = buf_size / 2;
     let n = half as f32;
@@ -55,6 +64,12 @@ pub fn fft64_forward(data: &[f64], buf_size: usize) -> Vec<Complex<f64>> {
     let mut buffer = f64_to_complex_vec(data, buf_size);
     fft.process(&mut buffer);
     buffer
+}
+
+pub fn aliquot2(x: &[f32], to_low: bool) -> Vec<f32> {
+    let size = asize(x.len()).0;
+    let target_size = if to_low { size } else { size * 2 };
+    align(x, target_size)
 }
 
 fn align(data: &[f32], buf_size: usize) -> Vec<f32> {

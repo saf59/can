@@ -1,7 +1,14 @@
 ﻿@Echo Off
 set RUST_BACKTRACE=1
 set CP=D:\projects\rust\can\target\release\
-
+echo  1=%1 2=%2 3=%3 4=%4 5=%5 6=%6 7=%7 8=%8 9=%9
+rem  1=c 2=1 3=relu 4=18 5=2000 6=ten 7=none 8=none 9=raw
+SET CR=%1
+IF NOT DEFINED CR SET "CR=c"
+SET BATCH=%2
+IF NOT DEFINED BATCH SET "BATCH=1"
+SET ACTIVATION=%3
+IF NOT DEFINED ACTIVATION SET "ACTIVATION=relu"
 SET N=%4
 IF NOT DEFINED N SET "N=260"
 set epochs=%5
@@ -9,10 +16,10 @@ IF NOT DEFINED epochs SET "epochs=1500"
 SET alg=%6
 IF NOT DEFINED alg SET "alg=bin"
 SET buff=%7
-IF NOT DEFINED buff SET "buff=small"
+IF NOT DEFINED buff SET "buff=none"
 SET scaled=%8
-IF NOT DEFINED scaled SET "scaled=true"
-SET scaled=%9
+IF NOT DEFINED scaled SET "scaled=none"
+SET dt=%9
 IF NOT DEFINED dt SET "dt=none"
 shift
 SET norm=%9
@@ -23,25 +30,25 @@ IF NOT DEFINED DETECT SET "DETECT=detect3"
 IF NOT DEFINED hidden SET hidden="100,40,10"
 SET hidden=%hidden:"=%
 
-set NAME=%1_%2_%3_%N%_%alg%_%buff%_%scaled%_%hidden:,=_%
+set NAME=%CR%_%BATCH%_%ACTIVATION%_%N%_%alg%_%buff%_%scaled%_%hidden:,=_%
 ECHO Start %NAME%
 
-echo %1 %2 %3 %N% %alg% %buff% %scaled% %hidden:,=_%> %NAME%.csv 
+echo %CR% %BATCH% %ACTIVATION% %N% %alg% %buff% %scaled% %hidden:,=_%> %NAME%.csv 
 
 rem BUILD
 %CP%dur.exe
 set rate="0.005"
 rem set default meta by -e 0
-if %1 == c (
+if %CR% == c (
 	echo Train classification %NAME%
-	%CP%train.exe --model-type classification --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden% --alg-type %alg% --buff-size %buff% --norm %norm% --scale %scaled% --data-type %dt%-n %N%
+	%CP%train.exe --model-type classification --batch-size %BATCH% --train-part 1.0 -e 0 --activation %ACTIVATION% --hidden %hidden% --alg-type %alg% --buff-size %buff% --norm %norm% --scale %scaled% --data-type %dt% -n %N%
 	call :train
-) else if %1 == r (
+) else if %CR% == r (
 	echo Train regression %NAME%
-	%CP%train.exe --model-type regression --batch-size %2 --train-part 1.0 -e 0 --activation %3 --hidden %hidden% --alg-type %alg% --buff-size %buff% --norm %norm% --scale %scaled% --data-type %dt%-n %N%
+	%CP%train.exe --model-type regression --batch-size %BATCH% --train-part 1.0 -e 0 --activation %ACTIVATION% --hidden %hidden% --alg-type %alg% --buff-size %buff% --norm %norm% --scale %scaled% --data-type %dt% -n %N%
 	call :train
 ) else (
-    ECHO Bad type "%1" , exit 
+    ECHO Bad C/R type "%CR%" , exit 
 	%CP%dur.exe --stop
     EXIT /B
 )

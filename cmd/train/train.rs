@@ -81,13 +81,10 @@ fn meta() -> anyhow::Result<Meta> {
     }
     if let Some(data_type) = args.data_type {
         meta.data_type = data_type;
-    } else {
-        meta.data_type = DataType::None; // DEFAULT
     }
+
     if let Some(buff_size) = args.buff_size {
         meta.buff_size = buff_size;
-    } else {
-        meta.buff_size = BufSize::None; // DEFAULT
     }
     if let Some(scale) = args.scale {
         meta.scale = match scale {
@@ -95,10 +92,7 @@ fn meta() -> anyhow::Result<Meta> {
             Scale::False => Some(false),
             Scale::None => None
         };
-    } else {
-        meta.scale = None; // DEFAULT
     }
-
     meta.norm = if let Some(norm) = args.norm { Some(norm) } else { None };
 
     if let Some(model_type) = args.model_type {
@@ -110,9 +104,7 @@ fn meta() -> anyhow::Result<Meta> {
     // else {  meta.activation = Activation::Relu  } // DEFAULT -> NOT NEEDED
     if let Some(epochs) = args.epochs {
         meta.epochs = epochs;
-    } else {
-        meta.epochs = 0
-    } // DEFAULT
+    }
     if let Some(batch_size) = args.batch_size {
         meta.batch_size = batch_size;
     }
@@ -124,14 +116,13 @@ fn meta() -> anyhow::Result<Meta> {
     }
     if let Some(hidden) = args.hidden {
         meta.hidden = Some(hidden);
-    } else if meta.hidden.is_none() {
-        meta.hidden = Some("40,10".to_string());
     }
     if args.defaults {
         println!("{meta:#?}");
         process::exit(0);
     }
-    if meta.alg_type == AlgType::HOM && meta.model_type != ModelType::Classification {
+    if (meta.alg_type == AlgType::HOM || meta.alg_type == AlgType::Ten)
+        && meta.model_type != ModelType::Classification {
         return Err(anyhow::Error::msg(format!(
             "HOM is not implemented for {:#?} and model_type:{:#?}!",
             meta.alg_type, meta.model_type

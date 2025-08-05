@@ -2,7 +2,7 @@
 use anyhow::{Context, Result};
 use ho::HigherOrderMomentsAnalyzer;
 use indicatif::ProgressBar;
-use medius_parser::{all_peaks, bin_harmonics, hob, impuls, read_wav};
+use medius_parser::{all_peaks, bin_harmonics, hob, impuls, parse_aten, read_wav};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -18,8 +18,42 @@ use utils::{
 
 fn main() {
     //s4()
-    s_ten18().unwrap();
+    s_aten18().unwrap();
 }
+fn s_aten18() -> anyhow::Result<()> {
+    let path = r"T:\Medius\stage4\idea\raw_meta_all.csv";
+    let now = Instant::now();
+    let rows = read_raw4_meta_rows_from_csv(path).unwrap();
+    // let rows = &rows[0..5] ; // only first time
+    let sampling_rate = 192_000.0;
+    let num_iters = rows.len() as u64;
+    let total =Total::new(num_iters as i64);
+    let mut x_raw: Vec<Vec<f32>> = Vec::new();
+    let mut y_raw: Vec<usize> = Vec::new();
+    rows.iter().for_each(|r| {
+        let wav_path: &Path = r.path.as_ref();
+        let all =fs::read(wav_path).unwrap();
+        match read_wav(&all) {
+            Ok(raw) => {
+                let vx = parse_aten(&raw,sampling_rate,18).unwrap();
+                let vy = r.r#type;
+                x_raw.push(vx);
+                y_raw.push(vy);
+            }
+            Err(e) => {
+                println!("{e:?}/n{wav_path:?}");
+            }
+        }
+        total.step(&r.path);
+    });
+    save_to_csv(&mut x_raw, &mut y_raw, "data/A18_R/".as_ref());
+    let elapsed = now.elapsed();
+    let calc_per_sec: f64 = (num_iters as f64) / (elapsed.as_secs() as f64);
+    println!("Total runtime: {elapsed:.2?}");
+    println!("Calculations per second: {calc_per_sec:.2?}.");
+    Ok(())
+}
+
 fn s_ten18() -> anyhow::Result<()> {
     let path = r"T:\Medius\stage4\idea\raw_meta_all.csv";
     let now = Instant::now();
@@ -268,5 +302,20 @@ mod tests {
         println!("Read {} rows", rows.len());
         let grouped = group_and_sort_meta_rows_by_path(&rows);
         println!("Groups: {:?}", grouped.keys().len());
+    }
+    #[test]
+    #[ignore] // Requires the actual file at the given path
+    fn test_last_above() {
+        let wav_path: &Path = "../../test_data/5/fc654e9b-4ff4-44b2-ba0f-90940c8651a3.wav".as_ref();
+        let all =fs::read(wav_path).unwrap();
+        let raw = read_wav(&all).unwrap();
+        let vx = parse_aten(&raw,192_000.0,18).unwrap();
+        let expected = vec![
+            0.0000021452586,0.0000028828713,0.0000020222458,0.0000035319026,0.0000037967334,0.00000388461,0.0000019484974,0.000002687959,0.0000015372317,0.055014618,0.01997585,-0.03179508,-0.13942249,-0.14806712,-0.06754319,-0.054043826,0.10612965,0.26677045
+        ];
+        assert_eq!(expected.len(), vx.len());
+        for (i, &val) in expected.iter().enumerate() {
+            assert!((val - vx[i]).abs() < 1e-6, "Mismatch at index {}: expected {}, got {}", i, val, vx[i]);
+        }
     }
 }

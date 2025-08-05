@@ -70,7 +70,7 @@ impl Total {
         }
     }
     pub fn next(&self) -> String {
-        self.next_add(self.each)
+        self.next_add(0)
     }
     /// Advances the progress by `add` (default: `each`), returns time info.
     pub fn next_add(&self, add: i64) -> String {

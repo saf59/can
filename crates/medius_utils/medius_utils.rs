@@ -54,15 +54,19 @@ fn detect_by_many_vectors(
     raw: &[f32],
     fill: &dyn Fn(&Meta, bool, &mut VarMap) -> anyhow::Result<()>,
 ) -> anyhow::Result<f32> {
-    let hom_data = parse_hom(raw)?; // TODO for Ten
+    let data = match meta.alg_type {
+        AlgType::HOM => parse_hom(raw)?,
+        //AlgType::Ten => parse_ten(raw)?,
+        _ => return Err(anyhow::anyhow!("Unsupported AlgType: {:?}",meta.alg_type))
+    };
     //let (medians, multiplier) = default_mm();
     if joined {
         // If joined, we use the same function as for all
-        let avg = column_averages(&hom_data);
+        let avg = column_averages(&data);
         detect_by_single_vec(verbose, meta, inputs, dev, &avg, fill)
     } else {
         // If not joined, we use the special function for hom
-        let results = hom_data
+        let results = data
             .iter()
             .map(|h| detect_by_single_vec(verbose, meta, inputs, dev, h, fill))
             .collect::<Result<Vec<_>, Error>>()?;

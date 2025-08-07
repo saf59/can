@@ -35,3 +35,5 @@ README.md
 !models/R_100_40_10_B260_ST_1/model.safetensors
 !models/C_100_40_10_H34_ST_100/model.meta
 !models/C_100_40_10_H34_ST_100/model.safetensors
+!models/C_100_40_10_H34_RN_100/model.meta
+!models/C_100_40_10_H34_RN_100/model.safetensors

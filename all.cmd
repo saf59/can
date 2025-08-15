@@ -6,7 +6,7 @@ cargo build --release --bin train --bin test3
 @rem 4
 @remSET "DEF=34 200 hom none none raw true"
 rem SET "DEF=18 4000 ten none none raw false"
-SET "DEF=18 6000 a-ten none none raw false"
+SET "DEF=9 5000 a-ten none none raw false"
 rem SET "DEF=18 200 ten none none impulse false"
 
 @rem 3

@@ -44,32 +44,62 @@ pub fn parse_all(
         AlgType::BinN => parse_bin_n(n, &raw),
         AlgType::Mfcc => parse_mfcc(n, 250, buff_size, nf, &raw),
         AlgType::Stat => parse_stat(n, buff_size, nf, &raw),
-        AlgType::ATen => parse_aten( &raw,SAMPLE_RATE_F32, n),
+        AlgType::ATen => parse_aten(&raw, SAMPLE_RATE_F32, n),
         AlgType::HOM => Err(anyhow::anyhow!("HOM algorithm is not implemented yet")),
         AlgType::Ten => Err(anyhow::anyhow!("Ten algorithm is not implemented yet")),
     }
 }
-pub fn parse_aten(raw: &[f32],sampling_rate: f32, n:usize) -> anyhow::Result<Vec<f32>> {
-    if n!=18 {
-        return Err(anyhow::anyhow!("Aten algorithm requires N=18!"));
+pub fn parse_aten(raw: &[f32], sampling_rate: f32, n: usize) -> anyhow::Result<Vec<f32>> {
+    let n_list: Vec<usize> = vec![9, 18];
+    if !n_list.contains(&n) {
+        return Err(anyhow::anyhow!("Aten algorithm requires N in {n_list:?} !"));
     }
     // useful
     let useful = usefull(raw);
+    let useful = scale(useful);
     // fft
     let buff_size = asize(useful.len()).0 * 2;
     let ampl = fft_amplitudes(&useful, buff_size);
     // 10 bins
     let bins = bin_harmonics(&ampl, 10_000.0, 1_500.0, sampling_rate);
-    // 9 avg && 9 db->skew
-    let avg: Vec<f32> = bins[1..].iter().map(|bin| mean(bin)).collect();
     let skew: Vec<f32> = bins[1..]
         .iter()
         .map(|bin| to_db(bin))
         .map(|db| skew(&db))
         .collect();
     // 18 total
-    let vx = [&avg[..], &skew[..]].concat();
+    let vx = match n {
+        18 => {
+            let avg: Vec<f32> = bins[1..].iter().map(|bin| mean(bin)).collect();
+            let mut vx = vec![0.0; 18];
+            vx[..9].copy_from_slice(&avg);
+            vx[9..].copy_from_slice(&skew);
+            vx
+        }
+        9 => {
+            if skew.len() != 9 {
+                return Err(anyhow::anyhow!("Aten skew data requires N=9!"));
+            }
+            skew
+        }
+        _ => {
+            return Err(anyhow::anyhow!(
+                "Aten algorithm requires N in [{n_list:?}] !"
+            ))
+        }
+    };
     Ok(vx)
+}
+
+fn scale(useful: Vec<f32>) -> Vec<f32> {
+    let max = useful
+        .iter()
+        .map(|&x| x.abs())
+        .max_by(f32::total_cmp)
+        .unwrap();
+    let scale = if max > 0.0 { 1.0 / max } else { 1.0 };
+    let useful: Vec<f32> = useful.iter().map(|x| x * scale).collect();
+    useful
 }
 
 pub fn parse_hom(raw: &[f32]) -> anyhow::Result<Vec<Vec<f32>>> {
@@ -459,7 +489,103 @@ impl SimpleMovingAverage {
         }
     }
 }
+use std::cmp;
 
+/**
+ * Splits FFT amplitude data into bins based on harmonics of a base frequency.
+ * By Google Studio Team, adapted for Rust.
+ *
+ * @param amplitudes The input amplitude data from a Fourier Transform.
+ * @param n_sub_bins The number of sub-bins to split each main bin into.
+ * @param base_freq The fundamental frequency for calculating harmonics.
+ * @param edge_width The frequency width around each harmonic to be ignored.
+ * @param sample_rate The sample rate of the original signal.
+ * @return A vector of bins, where each bin is a vector of amplitude values.
+ */
+pub fn bin_n_harmonics(
+    amplitudes: &[f32],
+    n_sub_bins: usize,
+    base_freq: f32,
+    edge_width: f32,
+    sample_rate: f32,
+) -> Vec<Vec<f32>> {
+    let mut result_bins: Vec<Vec<f32>> = Vec::new();
+    let nyquist_freq = sample_rate / 2.0;
+
+    // Return an empty vector if the input is invalid or empty.
+    if base_freq <= 0.0 || amplitudes.is_empty() {
+        return result_bins;
+    }
+
+    // Calculate the frequency represented by each index in the amplitudes array.
+    let freq_resolution = nyquist_freq / (amplitudes.len() - 1) as f32;
+
+    // Determine the highest harmonic number below the Nyquist frequency.
+    let max_harmonic_n = (nyquist_freq / base_freq) as usize;
+
+    // Iterate through the regions between harmonics to create the main bins.
+    for n in 1..max_harmonic_n {
+        let start_freq = (n as f32 * base_freq) + edge_width;
+        let end_freq = ((n + 1) as f32 * base_freq) - edge_width;
+
+        if start_freq >= end_freq || start_freq >= nyquist_freq {
+            continue;
+        }
+
+        let start_index = (start_freq / freq_resolution).ceil() as usize;
+        let end_index = (end_freq / freq_resolution).floor() as usize;
+
+        if start_index >= end_index {
+            continue;
+        }
+
+        let main_bin_data = &amplitudes[start_index..=end_index];
+
+        if !main_bin_data.is_empty() {
+            if n_sub_bins > 1 {
+                let sub_bin_size = (main_bin_data.len() as f32 / n_sub_bins as f32).ceil() as usize;
+                if sub_bin_size > 0 {
+                    for chunk in main_bin_data.chunks(sub_bin_size) {
+                        result_bins.push(chunk.to_vec());
+                    }
+                }
+            } else {
+                result_bins.push(main_bin_data.to_vec());
+            }
+        }
+    }
+
+    // Handle the last bin.
+    if max_harmonic_n > 0 {
+        let start_freq = (max_harmonic_n as f32 * base_freq) + edge_width;
+
+        if start_freq < nyquist_freq {
+            let start_index = (start_freq / freq_resolution).ceil() as usize;
+
+            if start_index < amplitudes.len() {
+                let last_main_bin_data = &amplitudes[start_index..];
+
+                if !last_main_bin_data.is_empty() {
+                    let num_sub_bins_for_last = if n_sub_bins > 1 {
+                        cmp::max(1, n_sub_bins - 1)
+                    } else {
+                        1
+                    };
+                    let sub_bin_size = (last_main_bin_data.len() as f32
+                        / num_sub_bins_for_last as f32)
+                        .ceil() as usize;
+                    if sub_bin_size > 0 {
+                        for chunk in last_main_bin_data.chunks(sub_bin_size) {
+                            result_bins.push(chunk.to_vec());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    result_bins
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -501,7 +627,7 @@ mod tests {
         let all = fs::read(wav_path).unwrap();
         let raw = read_wav_ch(&all, channels).unwrap();
         let data = parse_bin_n(11, &raw).unwrap();
-        println!("data.len  :{:?},real:{:?}", data.len(),real.len());
+        println!("data.len  :{:?},real:{:?}", data.len(), real.len());
         assert_eq!(data.len(), real.len());
         for i in 0..data.len() {
             assert!((real[i] - data[i]).abs() < f32::EPSILON);
@@ -703,5 +829,93 @@ mod tests {
             })
             .collect();
         signal
+    }
+    /// Calls the main test logic with various input data sizes.
+    #[test]
+    fn test_n() {
+        test_bin_n_harmonics_for_size(128);
+        test_bin_n_harmonics_for_size(256);
+        test_bin_n_harmonics_for_size(4096);
+    }
+
+    /// Contains the core testing logic, adapted from the Kotlin example.
+    fn test_bin_n_harmonics_for_size(size: usize) {
+        // Generate sample data where each element is its index.
+        let data: Vec<f32> = (0..size).map(|i| i as f32).collect();
+
+        // Use the same default parameters as the Kotlin function.
+        let base_freq = 10_000.0;
+        let edge_width = 1_500.0;
+        let sample_rate = 192_000.0;
+
+        // Generate bins for n=1, 2, and 3.
+        let bins1 = bin_n_harmonics(&data, 1, base_freq, edge_width, sample_rate);
+        let bins2 = bin_n_harmonics(&data, 2, base_freq, edge_width, sample_rate);
+        let bins3 = bin_n_harmonics(&data, 3, base_freq, edge_width, sample_rate);
+
+        // --- Sanity Checks ---
+        // Ensure that the resulting lists of bins are not empty.
+        assert!(!bins1.is_empty(), "List bins1 should not be empty");
+        assert!(!bins2.is_empty(), "List bins2 should not be empty");
+        assert!(!bins3.is_empty(), "List bins3 should not be empty");
+
+        // Ensure that all bins within each list contain data.
+        assert!(
+            bins1.iter().all(|b| !b.is_empty()),
+            "All bins in bins1 should have size > 0"
+        );
+        assert!(
+            bins2.iter().all(|b| !b.is_empty()),
+            "All bins in bins2 should have size > 0"
+        );
+        assert!(
+            bins3.iter().all(|b| !b.is_empty()),
+            "All bins in bins3 should have size > 0"
+        );
+
+        // --- Bin Count Checks ---
+        // Check if the number of sub-bins matches the expected formula.
+        // The last main bin is split into max(1, n-1) sub-bins.
+        let main_bin_count = bins1.len();
+        assert_eq!(
+            bins2.len(),
+            (main_bin_count - 1) * 2 + 1,
+            "Bin count for n=2 should match expected"
+        );
+        assert_eq!(
+            bins3.len(),
+            (main_bin_count - 1) * 3 + 2,
+            "Bin count for n=3 should match expected"
+        );
+
+        // --- Summation Checks ---
+        // Verify that the sum of sub-bins equals the sum of the original main bins.
+        let sums1: Vec<f32> = bins1.iter().map(|bin| bin.iter().sum()).collect();
+
+        // For bins2, chunk sub-bins by 2 and sum them to reconstruct the original main bin sums.
+        let sums2: Vec<f32> = bins2
+            .chunks(2)
+            .map(|chunk| -> f32 {
+                chunk
+                    .iter()
+                    .map(|sub_bin| sub_bin.iter().sum::<f32>())
+                    .sum()
+            })
+            .collect();
+
+        // For bins3, chunk sub-bins by 3.
+        let sums3: Vec<f32> = bins3
+            .chunks(3)
+            .map(|chunk| -> f32 {
+                chunk
+                    .iter()
+                    .map(|sub_bin| sub_bin.iter().sum::<f32>())
+                    .sum()
+            })
+            .collect();
+
+        // Since the input data and operations are exact, we can directly compare the resulting sums.
+        assert_eq!(sums1, sums2, "Bins for n=2 by sum should match expected");
+        assert_eq!(sums1, sums3, "Bins for n=3 by sum should match expected");
     }
 }

@@ -18,9 +18,9 @@ use utils::{
 
 fn main() {
     //s4()
-    s_aten18().unwrap();
+    s_aten(9).unwrap();
 }
-fn s_aten18() -> anyhow::Result<()> {
+fn s_aten(n:usize) -> anyhow::Result<()> {
     let path = r"T:\Medius\stage4\idea\raw_meta_all.csv";
     let now = Instant::now();
     let rows = read_raw4_meta_rows_from_csv(path).unwrap();
@@ -35,7 +35,7 @@ fn s_aten18() -> anyhow::Result<()> {
         let all =fs::read(wav_path).unwrap();
         match read_wav(&all) {
             Ok(raw) => {
-                let vx = parse_aten(&raw,sampling_rate,18).unwrap();
+                let vx = parse_aten(&raw,sampling_rate,n).unwrap();
                 let vy = r.r#type;
                 x_raw.push(vx);
                 y_raw.push(vy);
@@ -46,7 +46,8 @@ fn s_aten18() -> anyhow::Result<()> {
         }
         total.step(&r.path);
     });
-    save_to_csv(&mut x_raw, &mut y_raw, "data/A18_R/".as_ref());
+    let data_name = format!("data/A{n}_R");
+    save_to_csv(&mut x_raw, &mut y_raw, data_name.as_ref());
     let elapsed = now.elapsed();
     let calc_per_sec: f64 = (num_iters as f64) / (elapsed.as_secs() as f64);
     println!("Total runtime: {elapsed:.2?}");

@@ -893,29 +893,25 @@ mod tests {
         let sums1: Vec<f32> = bins1.iter().map(|bin| bin.iter().sum()).collect();
 
         // For bins2, chunk sub-bins by 2 and sum them to reconstruct the original main bin sums.
-        let sums2: Vec<f32> = bins2
-            .chunks(2)
-            .map(|chunk| -> f32 {
-                chunk
-                    .iter()
-                    .map(|sub_bin| sub_bin.iter().sum::<f32>())
-                    .sum()
-            })
-            .collect();
+        let sums2: Vec<f32> = sum_by_chunks(bins2, 2);
 
         // For bins3, chunk sub-bins by 3.
-        let sums3: Vec<f32> = bins3
-            .chunks(3)
-            .map(|chunk| -> f32 {
-                chunk
-                    .iter()
-                    .map(|sub_bin| sub_bin.iter().sum::<f32>())
-                    .sum()
-            })
-            .collect();
+        let sums3: Vec<f32> = sum_by_chunks(bins3, 3);
 
         // Since the input data and operations are exact, we can directly compare the resulting sums.
         assert_eq!(sums1, sums2, "Bins for n=2 by sum should match expected");
         assert_eq!(sums1, sums3, "Bins for n=3 by sum should match expected");
+    }
+
+    fn sum_by_chunks(bins3: Vec<Vec<f32>>, chunks:usize) -> Vec<f32> {
+        bins3
+            .chunks(chunks)
+            .map(|chunk| -> f32 {
+                chunk
+                    .iter()
+                    .map(|sub_bin| sub_bin.iter().sum::<f32>())
+                    .sum()
+            })
+            .collect()
     }
 }

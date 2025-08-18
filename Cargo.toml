@@ -37,7 +37,7 @@ ndarray = "0.16.1"
 num-complex = "0.4.6"
 plotly = "0.13.5"
 indicatif = "0.18.0"
-sysinfo = "0.36.1"
+sysinfo = "0.37.0"
 
 # do not update this version for compatibility with candle-nn
 safetensors = "=0.4.5"

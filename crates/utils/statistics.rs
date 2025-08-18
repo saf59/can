@@ -150,6 +150,31 @@ pub fn sum_of_logs(data: &[f32]) -> f32 {
         sum + (if num != &0.0_f32 { num } else { &1.0E-5_f32 }).ln()
     })
 }
+pub fn iqr(data: &[f32]) -> f32 {
+    if data.is_empty() {
+        return 0.0;
+    }
+    let mut sorted = data.to_vec();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    let len = sorted.len();
+    let q1_idx = len as f32 * 0.25;
+    let q3_idx = len as f32 * 0.75;
+
+    let q1 = if q1_idx.fract() == 0.0 {
+        (sorted[q1_idx as usize - 1] + sorted[q1_idx as usize]) / 2.0
+    } else {
+        sorted[q1_idx.floor() as usize]
+    };
+
+    let q3 = if q3_idx.fract() == 0.0 {
+        (sorted[q3_idx as usize - 1] + sorted[q3_idx as usize]) / 2.0
+    } else {
+        sorted[q3_idx.floor() as usize]
+    };
+
+    q3 - q1
+}
 
 pub fn sum_sq(data: &[f32]) -> f32 {
     data.iter().fold(0.0_f32, |sum, num| sum + num * num)

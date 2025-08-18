@@ -18,7 +18,7 @@ use utils::{
 
 fn main() {
     //s4()
-    s_aten(9).unwrap();
+    s_aten(24).unwrap();
 }
 fn s_aten(n:usize) -> anyhow::Result<()> {
     let path = r"T:\Medius\stage4\idea\raw_meta_all.csv";

@@ -6,7 +6,7 @@ cargo build --release --bin train --bin test3
 @rem 4
 @remSET "DEF=34 200 hom none none raw true"
 rem SET "DEF=18 4000 ten none none raw false"
-SET "DEF=9 5000 a-ten none none raw false"
+SET "DEF=24 200 a-ten none none raw false"
 rem SET "DEF=18 200 ten none none impulse false"
 
 @rem 3
@@ -14,8 +14,12 @@ rem SET "DEF=18 200 ten none none impulse false"
 
 @rem SET hidden="100,40,10"
 @rem SET hidden="40,20,10,5"
-"куь SET hidden="30,30,30"
-SET hidden="36,36,36,12"
+@rem SET hidden="30,30,30"
+@rem SET hidden="36,36,36,12"
+@rem SET hidden="60,30,15"
+@rem SET hidden="60,60,60,15"
+SET hidden="48,48,48,12"
+@rem SET hidden="60,60,60,60,15"
 @rem SET hidden="36,18,9"
 SET "DETECT=detect4"
 REM set "JOINED=-- -j"

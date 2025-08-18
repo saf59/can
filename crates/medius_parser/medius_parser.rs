@@ -9,7 +9,7 @@ use std::fs;
 use std::path::Path;
 use utils::fft::{asize, fft_amplitudes};
 use utils::mfcc::MFCC;
-use utils::statistics::{mean, skew, stat3, to_db};
+use utils::statistics::{iqr, mean, population_variance, skew, stat3, to_db};
 use utils::{median_and_multiplier, normalize_array};
 
 const SAMPLE_RATE: usize = 192_000;
@@ -50,7 +50,7 @@ pub fn parse_all(
     }
 }
 pub fn parse_aten(raw: &[f32], sampling_rate: f32, n: usize) -> anyhow::Result<Vec<f32>> {
-    let n_list: Vec<usize> = vec![9, 18];
+    let n_list: Vec<usize> = vec![9, 17, 18, 24, 30];
     if !n_list.contains(&n) {
         return Err(anyhow::anyhow!("Aten algorithm requires N in {n_list:?} !"));
     }
@@ -61,22 +61,61 @@ pub fn parse_aten(raw: &[f32], sampling_rate: f32, n: usize) -> anyhow::Result<V
     let buff_size = asize(useful.len()).0 * 2;
     let ampl = fft_amplitudes(&useful, buff_size);
     // 10 bins
-    let bins = bin_harmonics(&ampl, 10_000.0, 1_500.0, sampling_rate);
-    let skew: Vec<f32> = bins[1..]
-        .iter()
-        .map(|bin| to_db(bin))
-        .map(|db| skew(&db))
-        .collect();
     // 18 total
     let vx = match n {
         18 => {
+            let bins = bin_harmonics(&ampl, 10_000.0, 1_500.0, sampling_rate);
+            let skew: Vec<f32> = bins[1..]
+                .iter()
+                .map(|bin| to_db(bin))
+                .map(|db| skew(&db))
+                .collect();
             let avg: Vec<f32> = bins[1..].iter().map(|bin| mean(bin)).collect();
-            let mut vx = vec![0.0; 18];
+            let mut vx = vec![0.0; n];
             vx[..9].copy_from_slice(&avg);
             vx[9..].copy_from_slice(&skew);
             vx
         }
+        17 => {
+            let bins = bin_n_harmonics(&ampl, 1 , 10_000.0, 1_500.0, sampling_rate);
+            let db_vec:Vec<Vec<f32>> = bins.iter().map(|bin| to_db(bin)).collect();
+            let skew: Vec<f32> = db_vec.iter().map(|db_bin| skew(db_bin)).collect();
+            let variance: Vec<f32> = db_vec.iter().map(|db_bin| population_variance(db_bin)).collect();
+            let irq: Vec<f32> = db_vec.iter().map(|db_bin| iqr(db_bin)).collect();
+            let mut vx = vec![0.0; n];
+            vx[..7].copy_from_slice(&skew[2..]);
+            vx[7]=variance[1];
+            vx[8..13].copy_from_slice(&variance[4..]);
+            vx[13..].copy_from_slice(&irq[5..]);
+            vx
+        }
+        24 => {
+            let bins = bin_n_harmonics(&ampl, 3 , 10_000.0, 1_500.0, sampling_rate);
+            let db_vec:Vec<Vec<f32>> = bins.iter().map(|bin| to_db(bin)).collect();
+            let skew: Vec<f32> = db_vec.iter().map(|db_bin| skew(db_bin)).collect();
+            skew[2..].to_vec()
+        }
+        30 => {
+            let bins = bin_n_harmonics(&ampl, 2 , 10_000.0, 1_500.0, sampling_rate);
+            let db_vec:Vec<Vec<f32>> = bins.iter().map(|bin| to_db(bin)).collect();
+            let skew: Vec<f32> = db_vec.iter().map(|db_bin| skew(db_bin)).collect();
+            let variance: Vec<f32> = db_vec.iter().map(|db_bin| population_variance(db_bin)).collect();
+            let irq: Vec<f32> = db_vec.iter().map(|db_bin| iqr(db_bin)).collect();
+            let mut vx = vec![0.0; n];
+            vx[..6].copy_from_slice(&skew[4..10]);
+            vx[6..12].copy_from_slice(&skew[11..]);
+            vx[12]=variance[4];
+            vx[13..22].copy_from_slice(&variance[8..]);
+            vx[22..].copy_from_slice(&irq[9..]);
+            vx
+        }
         9 => {
+            let bins = bin_harmonics(&ampl, 10_000.0, 1_500.0, sampling_rate);
+            let skew: Vec<f32> = bins[1..]
+                .iter()
+                .map(|bin| to_db(bin))
+                .map(|db| skew(&db))
+                .collect();
             if skew.len() != 9 {
                 return Err(anyhow::anyhow!("Aten skew data requires N=9!"));
             }
@@ -84,7 +123,7 @@ pub fn parse_aten(raw: &[f32], sampling_rate: f32, n: usize) -> anyhow::Result<V
         }
         _ => {
             return Err(anyhow::anyhow!(
-                "Aten algorithm requires N in [{n_list:?}] !"
+                "Aten algorithm requires {n} in [{n_list:?}] !"
             ))
         }
     };

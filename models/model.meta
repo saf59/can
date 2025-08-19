@@ -1,4 +1,4 @@
-n: 24
+n: 52
 alg_type: ATen
 buff_size: None
 scale: null
@@ -9,6 +9,6 @@ activation: Relu6
 batch_size: 1
 learning_rate: 5e-6
 train_part: 1.0
-hidden: 48,48,48,12
+hidden: 104,104,104,20
 outputs: 3
 version: null

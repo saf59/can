@@ -50,7 +50,7 @@ pub fn parse_all(
     }
 }
 pub fn parse_aten(raw: &[f32], sampling_rate: f32, n: usize) -> anyhow::Result<Vec<f32>> {
-    let n_list: Vec<usize> = vec![9, 17, 18, 24, 30];
+    let n_list: Vec<usize> = vec![9, 17, 18, 24, 30, 34, 38, 52];
     if !n_list.contains(&n) {
         return Err(anyhow::anyhow!("Aten algorithm requires N in {n_list:?} !"));
     }
@@ -63,6 +63,19 @@ pub fn parse_aten(raw: &[f32], sampling_rate: f32, n: usize) -> anyhow::Result<V
     // 10 bins
     // 18 total
     let vx = match n {
+        // 9 && 18 are OLD approach
+        9 => {
+            let bins = bin_harmonics(&ampl, 10_000.0, 1_500.0, sampling_rate);
+            let skew: Vec<f32> = bins[1..]
+                .iter()
+                .map(|bin| to_db(bin))
+                .map(|db| skew(&db))
+                .collect();
+            if skew.len() != 9 {
+                return Err(anyhow::anyhow!("Aten skew data requires N=9!"));
+            }
+            skew
+        }
         18 => {
             let bins = bin_harmonics(&ampl, 10_000.0, 1_500.0, sampling_rate);
             let skew: Vec<f32> = bins[1..]
@@ -76,6 +89,7 @@ pub fn parse_aten(raw: &[f32], sampling_rate: f32, n: usize) -> anyhow::Result<V
             vx[9..].copy_from_slice(&skew);
             vx
         }
+        // all others via bin_n_harmonics()
         17 => {
             let bins = bin_n_harmonics(&ampl, 1 , 10_000.0, 1_500.0, sampling_rate);
             let db_vec:Vec<Vec<f32>> = bins.iter().map(|bin| to_db(bin)).collect();
@@ -109,17 +123,50 @@ pub fn parse_aten(raw: &[f32], sampling_rate: f32, n: usize) -> anyhow::Result<V
             vx[22..].copy_from_slice(&irq[9..]);
             vx
         }
-        9 => {
-            let bins = bin_harmonics(&ampl, 10_000.0, 1_500.0, sampling_rate);
-            let skew: Vec<f32> = bins[1..]
+        34 => {
+            let bins = bin_n_harmonics(&ampl,2, 10_000.0, 1_500.0, sampling_rate);
+            let skew: Vec<f32> = bins
                 .iter()
                 .map(|bin| to_db(bin))
                 .map(|db| skew(&db))
                 .collect();
-            if skew.len() != 9 {
-                return Err(anyhow::anyhow!("Aten skew data requires N=9!"));
-            }
-            skew
+            let avg: Vec<f32> = bins.iter().map(|bin| mean(bin)).collect();
+            let mut vx = vec![0.0; n];
+            vx[..17].copy_from_slice(&avg);
+            vx[17..].copy_from_slice(&skew);
+            vx
+        }
+        38 => {
+            let bins = bin_n_harmonics(&ampl, 3 , 10_000.0, 1_500.0, sampling_rate);
+            let db_vec:Vec<Vec<f32>> = bins.iter().map(|bin| to_db(bin)).collect();
+            let skew: Vec<f32> = db_vec.iter().map(|db_bin| skew(db_bin)).collect();
+            let variance: Vec<f32> = db_vec.iter().map(|db_bin| population_variance(db_bin)).collect();
+            let irq: Vec<f32> = db_vec.iter().map(|db_bin| iqr(db_bin)).collect();
+            let mut vx = vec![0.0; n];
+            vx[..24].copy_from_slice(&skew[2..26]);
+            vx[24]=variance[4];
+            vx[25]=variance[6];
+            vx[26]=variance[10];
+            vx[27]=variance[14];
+            vx[28]=variance[15];
+            vx[29]=variance[17];
+            vx[30]=variance[18];
+            vx[31..36].copy_from_slice(&irq[14..19]);
+            vx[36..].copy_from_slice(&irq[24..]);
+            vx
+        }
+        52 => {
+            let bins = bin_n_harmonics(&ampl,3, 10_000.0, 1_500.0, sampling_rate);
+            let skew: Vec<f32> = bins
+                .iter()
+                .map(|bin| to_db(bin))
+                .map(|db| skew(&db))
+                .collect();
+            let avg: Vec<f32> = bins.iter().map(|bin| mean(bin)).collect();
+            let mut vx = vec![0.0; n];
+            vx[..26].copy_from_slice(&avg);
+            vx[26..].copy_from_slice(&skew);
+            vx
         }
         _ => {
             return Err(anyhow::anyhow!(
